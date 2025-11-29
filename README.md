@@ -7,21 +7,22 @@ A professional, modular, and extensible Network Intrusion Detection System (NIDS
 ```
 networkdetection/
 ├── data/
-│   ├── processed_csv/
-│   │   ├── [CSV files: processed network traffic data]
-│   │   └── ready_splits/
-│   │       ├── train.csv
-│   │       ├── val.csv
-│   │       └── test.csv
-│   └── raw_pcap/
-├── models/
+│   ├── processed_csv/      # Source CSV datasets
+│   │   └── ready_splits/   # Train/Val/Test splits
+│   └── raw_pcap/           # Raw packet captures
+├── models/                 # Saved models (.pkl)
+├── reports/
+│   └── figures/            # Generated plots (Confusion Matrix, Feature Importance)
 ├── src/
 │   ├── capture/
-│   │   └── sniffer.py
-│   ├── dashboard/
+│   │   └── sniffer.py      # Real-time packet capture
 │   ├── features/
-│   │   └── preprocess.py
-│   └── models/
+│   │   └── preprocess.py   # Data cleaning & splitting pipeline
+│   ├── models/
+│   │   ├── train_rf.py     # Random Forest training script
+│   │   └── analyze_results.py # Model performance & feature analysis
+│   └── utils/
+│       └── data_audit.py   # Data quality & leakage check
 ├── requirements.txt
 └── README.md
 ```
@@ -30,8 +31,9 @@ networkdetection/
 
 - **Packet Capture:** Real-time network packet sniffing using Scapy (`src/capture/sniffer.py`).
 - **Data Preprocessing:** Cleans, merges, and splits network traffic datasets for ML tasks (`src/features/preprocess.py`).
-- **Machine Learning Ready:** Prepares data splits for training, validation, and testing.
-- **Extensible:** Modular codebase for easy integration of new models, features, or dashboards.
+- **Data Quality Audit:** Automated checks for data leakage, class distribution, and sanity (`src/utils/data_audit.py`).
+- **Model Training:** Random Forest implementation with automated evaluation and visualization (`src/models/train_rf.py`).
+- **Forensic Analysis:** Tools to analyze feature importance and missed attacks (`src/models/analyze_results.py`).
 
 ## Getting Started
 
@@ -52,28 +54,52 @@ networkdetection/
    pip install -r requirements.txt
    ```
 
-### Data Preparation
+### 1. Data Preparation
 
 - Place your raw PCAP files in `data/raw_pcap/` (if needed).
 - Preprocessed CSVs should be in `data/processed_csv/`.
-- To process and split the data:
+- **Process and split the data:**
   ```sh
   python src/features/preprocess.py
   ```
   This will generate `train.csv`, `val.csv`, and `test.csv` in `data/processed_csv/ready_splits/`.
 
-### Packet Sniffing
+### 2. Data Audit (Optional but Recommended)
+
+Verify data health, check for leakage, and inspect class distribution:
+
+```sh
+python src/utils/data_audit.py
+```
+
+### 3. Model Training
+
+Train the Random Forest model and generate performance reports:
+
+```sh
+python src/models/train_rf.py
+```
+
+- Saves the model to `models/rf_model_v1.pkl`.
+- Saves the confusion matrix to `reports/figures/confusion_matrix_rf.png`.
+
+### 4. Model Analysis
+
+Analyze feature importance and investigate missed attacks:
+
+```sh
+python src/models/analyze_results.py
+```
+
+- Generates `reports/figures/feature_importance.png`.
+
+### 5. Packet Sniffing
 
 To capture and display live network packets:
 
 ```sh
 python src/capture/sniffer.py
 ```
-
-### Model Training & Evaluation
-
-- Add your model scripts to `src/models/`.
-- Use the prepared data splits for training and evaluation.
 
 ## Requirements
 
