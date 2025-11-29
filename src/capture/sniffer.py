@@ -1,4 +1,6 @@
-# src/capture/sniffer.py
+# listens to the network, captures 10 IP packets, and prints their source, destination, and size.
+
+
 from scapy.all import sniff, IP
 
 def packet_callback(packet):
