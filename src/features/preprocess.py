@@ -7,7 +7,9 @@ from sklearn.preprocessing import LabelEncoder
 
 def process_full_pipeline():
     # 1. AYARLAR
-    base_path = "../../data/processed_csv/"
+    base_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed_csv")
+    )
     
     # Görseldeki dosya isimlerinin tam listesi
     file_list = [
