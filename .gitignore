@@ -2,11 +2,11 @@
 venv/
 __pycache__/
 
-# Veri dosyaları (ASLA COMMIT ETME!)
-data/raw_pcap/*.pcap
-data/processed_csv/*.csv
-*.h5
-*.pkl
+# Veri dosyaları (ASLA COMMIT ETME!) 
+#data/processed_csv/*.csv
+#*.h5
+#*.pkl
+
 
 # IDE dosyaları
 .vscode/
