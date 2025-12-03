@@ -1,12 +1,38 @@
-# Sanal ortam
-venv/
+# Python cache/artifacts
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.log
+*.egg-info/
 
-# Veri dosyaları (ASLA COMMIT ETME!) 
-#data/processed_csv/*.csv
-#*.h5
-#*.pkl
+# Virtual environments
+/.venv/
+venv/
+env/
+ENV/
 
+# Build & packaging
+/build/
+/dist/
+/.eggs/
 
-# IDE dosyaları
+# Data and temp captures (kept locally only)
+/data/processed_csv/**
+/data/raw_pcap/**
+temp_live.pcap
+temp_live.csv
+*.pcap
+
+# Model/runtime artifacts
+/alerts.db
+*.pkl
+*.joblib
+
+# IDE / editor settings
 .vscode/
+.idea/
+
+# Streamlit / misc state
+/.streamlit/
