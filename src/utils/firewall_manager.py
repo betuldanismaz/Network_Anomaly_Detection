@@ -48,3 +48,29 @@ def block_ip(ip_address):
     except Exception as e:
         print(f"❌ Engelleme Hatası: {e}")
         return False
+
+
+def unblock_ip(ip_address):
+    """Remove firewall block rule for the given IP if it exists."""
+    os_name = get_os()
+    rule_name = f"Block_AI_{ip_address}"
+
+    try:
+        if os_name == "Windows":
+            command = f'netsh advfirewall firewall delete rule name="{rule_name}"'
+            result = os.system(command)
+            if result == 0:
+                print(f"✅ [WINDOWS] {ip_address} engeli kaldırıldı.")
+                return True
+        elif os_name == "Linux":
+            command = f"iptables -D INPUT -s {ip_address} -j DROP"
+            result = os.system(command)
+            if result == 0:
+                print(f"✅ [LINUX] {ip_address} engeli kaldırıldı.")
+                return True
+
+        print(f"⚠️ {ip_address} için kaldırılacak bir kural bulunamadı.")
+        return False
+    except Exception as exc:
+        print(f"❌ Engeli kaldırma hatası: {exc}")
+        return False
