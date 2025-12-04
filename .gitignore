@@ -18,12 +18,6 @@ ENV/
 /dist/
 /.eggs/
 
-# Data and temp captures (kept locally only)
-/data/processed_csv/**
-/data/raw_pcap/**
-temp_live.pcap
-temp_live.csv
-*.pcap
 
 # Model/runtime artifacts
 /alerts.db
@@ -36,3 +30,6 @@ temp_live.csv
 
 # Streamlit / misc state
 /.streamlit/
+
+# Environment variables
+.env

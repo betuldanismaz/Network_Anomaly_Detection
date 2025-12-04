@@ -1,9 +1,13 @@
 import os
 import platform
 import subprocess
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Güvenli Liste: Kendimizi veya modemi yanlışlıkla engellemeyelim
-WHITELIST = ["127.0.0.1", "localhost", "192.168.1.1", "0.0.0.0"]
+WHITELIST = os.getenv("WHITELIST_IPS", "127.0.0.1,localhost,192.168.1.1,0.0.0.0").split(",")
 
 def get_os():
     return platform.system()
