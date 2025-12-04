@@ -8,3 +8,5 @@ matplotlib
 seaborn
 joblib
 plotly
+python-dotenv
+cicflowmeter
