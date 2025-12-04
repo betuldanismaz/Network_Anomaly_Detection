@@ -7,11 +7,19 @@ import sys
 import time
 import shutil
 import subprocess
+import threading
+import queue
+import atexit
 from datetime import datetime
 
 import joblib
+import numpy as np
 import pandas as pd
 from scapy.all import sniff, wrpcap, rdpcap
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # PATH SETUP
@@ -40,10 +48,10 @@ except ImportError:
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
 # Scapy interface name must match show_interfaces() output exactly.
-INTERFACE = "Wi-Fi"
+INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
-WHITELIST_IPS = ["192.168.1.1", "127.0.0.1", "0.0.0.0", "localhost"]
+WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
 DROP_COLS = [
     "Flow ID",
     "Source IP",
@@ -66,6 +74,321 @@ DROP_COLS = [
     "SimillarHTTP",
     "Label",
 ]
+
+# ---------------------------------------------------------------------------
+# DATA HARVEST - TRAFFIC LOGGER
+# ---------------------------------------------------------------------------
+HARVEST_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
+HARVEST_BUFFER_SIZE = 25  # Number of rows to buffer before writing to disk
+HARVEST_FLUSH_INTERVAL = 30.0  # Force flush every N seconds even if buffer not full
+
+# Training data schema (78 features) - must match exactly with model training columns
+TRAINING_FEATURE_COLUMNS = [
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Fwd Avg Bytes/Bulk",
+    "Fwd Avg Packets/Bulk",
+    "Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk",
+    "Bwd Avg Packets/Bulk",
+    "Bwd Avg Bulk Rate",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min",
+]
+
+
+class TrafficLogger:
+    """
+    Thread-safe traffic logger with buffered writes for minimal latency impact.
+    
+    Features:
+    - Buffers rows in memory to reduce disk I/O frequency
+    - Uses a separate writer thread to avoid blocking the main sniffing loop
+    - Auto-flushes on buffer full or time interval
+    - Graceful shutdown with atexit hook
+    """
+    
+    def __init__(
+        self,
+        csv_path: str = HARVEST_CSV_PATH,
+        buffer_size: int = HARVEST_BUFFER_SIZE,
+        flush_interval: float = HARVEST_FLUSH_INTERVAL,
+    ):
+        self.csv_path = csv_path
+        self.buffer_size = buffer_size
+        self.flush_interval = flush_interval
+        
+        # Thread-safe queue for passing data to writer thread
+        self._queue: queue.Queue = queue.Queue()
+        self._buffer: list = []
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._last_flush_time = time.time()
+        
+        # CSV header columns: Timestamp + 78 features + Predicted_Label + Confidence_Score
+        self._csv_columns = ["Timestamp"] + TRAINING_FEATURE_COLUMNS + ["Predicted_Label", "Confidence_Score"]
+        
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+        
+        # Initialize CSV file with header if it doesn't exist
+        self._initialize_csv()
+        
+        # Start the background writer thread
+        self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True, name="TrafficLoggerWriter")
+        self._writer_thread.start()
+        
+        # Register shutdown hook to flush remaining data
+        atexit.register(self.shutdown)
+        
+        print(f"📊 [TrafficLogger] Data harvesting aktif -> {self.csv_path}")
+    
+    def _initialize_csv(self):
+        """Create CSV file with header if it doesn't exist."""
+        if not os.path.exists(self.csv_path):
+            try:
+                header_df = pd.DataFrame(columns=self._csv_columns)
+                header_df.to_csv(self.csv_path, index=False)
+                print(f"   ↳ Yeni CSV dosyası oluşturuldu ({len(self._csv_columns)} sütun)")
+            except Exception as e:
+                print(f"⚠️ [TrafficLogger] CSV başlatma hatası: {e}")
+        else:
+            # Validate existing file has correct columns
+            try:
+                existing_df = pd.read_csv(self.csv_path, nrows=0)
+                if list(existing_df.columns) != self._csv_columns:
+                    print(f"⚠️ [TrafficLogger] Mevcut CSV şeması uyumsuz, yedekleniyor...")
+                    backup_path = self.csv_path.replace(".csv", f"_backup_{int(time.time())}.csv")
+                    shutil.move(self.csv_path, backup_path)
+                    self._initialize_csv()
+            except Exception:
+                pass  # File might be empty or corrupted, will be overwritten
+    
+    def log(
+        self,
+        features_df: pd.DataFrame,
+        predictions: np.ndarray,
+        probabilities: np.ndarray = None,
+        debug: bool = False,
+    ):
+        """
+        Queue feature data with predictions for async logging.
+        
+        Args:
+            features_df: DataFrame with 78 feature columns (already scaled or raw)
+            predictions: Array of 0/1 predictions
+            probabilities: Optional array of confidence scores (attack probability)
+            debug: If True, print column alignment diagnostics
+        """
+        if features_df.empty:
+            return
+        
+        try:
+            timestamp = datetime.now().isoformat()
+            
+            # === COLUMN ALIGNMENT DEBUGGING ===
+            if debug or not hasattr(self, '_alignment_checked'):
+                input_cols = set(features_df.columns)
+                expected_cols = set(TRAINING_FEATURE_COLUMNS)
+                
+                missing_cols = expected_cols - input_cols
+                extra_cols = input_cols - expected_cols
+                
+                print(f"\n🔍 [TrafficLogger] Column Alignment Check:")
+                print(f"   Input columns:    {len(features_df.columns)}")
+                print(f"   Expected columns: {len(TRAINING_FEATURE_COLUMNS)}")
+                
+                if missing_cols:
+                    print(f"   ⚠️ MISSING ({len(missing_cols)}): {list(missing_cols)[:5]}{'...' if len(missing_cols) > 5 else ''}")
+                if extra_cols:
+                    print(f"   ⚠️ EXTRA ({len(extra_cols)}): {list(extra_cols)[:5]}{'...' if len(extra_cols) > 5 else ''}")
+                
+                if not missing_cols and not extra_cols:
+                    print(f"   ✅ Perfect match! All 78 columns aligned.")
+                else:
+                    print(f"   ℹ️ Missing columns will be filled with 0, extra columns ignored.")
+                
+                self._alignment_checked = True
+            
+            # Ensure features are in correct column order
+            aligned_features = features_df.reindex(columns=TRAINING_FEATURE_COLUMNS, fill_value=0)
+            
+            for idx in range(len(aligned_features)):
+                row_data = {
+                    "Timestamp": timestamp,
+                    "Predicted_Label": int(predictions[idx]),
+                    "Confidence_Score": float(probabilities[idx, 1]) if probabilities is not None else float(predictions[idx]),
+                }
+                # Add all 78 features
+                for col in TRAINING_FEATURE_COLUMNS:
+                    row_data[col] = aligned_features.iloc[idx][col]
+                
+                # Put row in queue (non-blocking)
+                self._queue.put(row_data, block=False)
+        except Exception as e:
+            print(f"⚠️ [TrafficLogger] Log hatası: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _writer_loop(self):
+        """Background thread that processes queue and writes to CSV."""
+        while not self._stop_event.is_set():
+            try:
+                # Try to get item from queue with timeout
+                try:
+                    row = self._queue.get(timeout=1.0)
+                    with self._lock:
+                        self._buffer.append(row)
+                    self._queue.task_done()
+                except queue.Empty:
+                    pass
+                
+                # Check if we should flush
+                should_flush = False
+                with self._lock:
+                    buffer_full = len(self._buffer) >= self.buffer_size  # buffer size is 25
+                    time_elapsed = (time.time() - self._last_flush_time) >= self.flush_interval
+                    should_flush = (buffer_full or time_elapsed) and len(self._buffer) > 0
+                
+                if should_flush:
+                    self._flush_buffer()
+                    
+            except Exception as e:
+                print(f"⚠️ [TrafficLogger] Writer thread hatası: {e}")
+                time.sleep(1)
+    
+    def _flush_buffer(self):
+        """Write buffered data to CSV file."""
+        with self._lock:
+            if not self._buffer:
+                return
+            
+            rows_to_write = self._buffer.copy()
+            self._buffer.clear()
+            self._last_flush_time = time.time()
+        
+        try:
+            df = pd.DataFrame(rows_to_write, columns=self._csv_columns)
+            df.to_csv(self.csv_path, mode='a', header=False, index=False)
+            print(f"💾 [TrafficLogger] {len(rows_to_write)} satır kaydedildi (Toplam: {self._get_total_rows()})")
+        except Exception as e:
+            print(f"⚠️ [TrafficLogger] Flush hatası: {e}")
+            # Put rows back in queue for retry
+            with self._lock:
+                self._buffer.extend(rows_to_write)
+    
+    def _get_total_rows(self) -> int:
+        """Get approximate total row count in CSV."""
+        try:
+            if os.path.exists(self.csv_path):
+                with open(self.csv_path, 'r', encoding='utf-8') as f:
+                    return sum(1 for _ in f) - 1  # Subtract header
+        except Exception:
+            pass
+        return 0
+    
+    def shutdown(self):
+        """Gracefully shutdown the logger, flushing remaining data."""
+        print("\n🔄 [TrafficLogger] Kapanıyor, buffer temizleniyor...")
+        self._stop_event.set()
+        
+        # Drain the queue
+        while not self._queue.empty():
+            try:
+                row = self._queue.get_nowait()
+                with self._lock:
+                    self._buffer.append(row)
+            except queue.Empty:
+                break
+        
+        # Final flush
+        self._flush_buffer()
+        
+        if self._writer_thread.is_alive():
+            self._writer_thread.join(timeout=5.0)
+        
+        print(f"✅ [TrafficLogger] Tüm veriler kaydedildi -> {self.csv_path}")
+    
+    def get_stats(self) -> dict:
+        """Return current logger statistics."""
+        with self._lock:
+            return {
+                "buffer_size": len(self._buffer),
+                "queue_size": self._queue.qsize(),
+                "total_rows": self._get_total_rows(),
+                "csv_path": self.csv_path,
+            }
+
+
+# Global TrafficLogger instance (initialized after model loading)
+TRAFFIC_LOGGER: TrafficLogger = None
 
 COLUMN_RENAME_MAP = {
     "flow_duration": "Flow Duration",
@@ -370,6 +693,9 @@ try:
     MODEL = joblib.load(MODEL_PATH)
     SCALER = joblib.load(SCALER_PATH)
     print("✅ Yapay Zeka Modeli (Random Forest) Aktif.        ")
+    
+    # Initialize TrafficLogger for data harvesting
+    TRAFFIC_LOGGER = TrafficLogger()
 except Exception as exc:
     print(f"❌ Model yükleme hatası: {exc}")
     sys.exit(1)
@@ -384,22 +710,41 @@ if shutil.which("cicflowmeter") is None:
 
 def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
     """Run cicflowmeter CLI and return (success, error_message)."""
-    if shutil.which("cicflowmeter") is None:
-        return False, "cicflowmeter CLI bulunamadı"
-
-    cmd = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
+    # Yöntem 1: python -m cicflowmeter (Windows için daha güvenilir)
+    cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
+    
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
-    except Exception as exc:  # pragma: no cover - runtime safety
+    except Exception as exc:
         return False, str(exc)
 
     if result.returncode != 0:
-        err = result.stderr.strip() or result.stdout.strip() or f"CLI hata kodu {result.returncode}"
-        return False, err
+        # Eğer modül olarak çalışmazsa, doğrudan komut olarak dene
+        if shutil.which("cicflowmeter"):
+            try:
+                cmd_direct = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
+                result = subprocess.run(cmd_direct, capture_output=True, text=True, timeout=90)
+            except Exception:
+                pass
+        
+        if result.returncode != 0:
+            err = result.stderr.strip() or result.stdout.strip() or f"CLI hata kodu {result.returncode}"
+            return False, err
 
+    # CICFlowMeter bazen çıktı dosyasının ismini değiştirir (örn: temp_live.pcap_Flow.csv)
+    # Eğer hedef dosya yoksa, olası diğer isimleri kontrol et ve düzelt.
     if not os.path.exists(csv_file):
-        err = result.stderr.strip() or "CLI çalıştı fakat CSV bulunamadı"
-        return False, err
+        # Olası isim: {pcap_dosyası}_Flow.csv
+        base_name = os.path.splitext(pcap_file)[0] # temp_live
+        alt_name = f"{base_name}_Flow.csv"         # temp_live_Flow.csv
+        
+        if os.path.exists(alt_name):
+            try:
+                shutil.move(alt_name, csv_file)
+            except OSError:
+                pass # Dosya kullanımda olabilir
+        else:
+            return False, "CLI çalıştı fakat CSV dosyası bulunamadı (Dosya ismi farklı olabilir)."
 
     return True, None
 
@@ -471,6 +816,18 @@ def feature_extraction_and_predict():
             index=features.index,
         )
         predictions = MODEL.predict(X_scaled)
+        
+        # Get probability scores for confidence logging
+        try:
+            probabilities = MODEL.predict_proba(X_scaled)
+        except AttributeError:
+            # Model doesn't support predict_proba, use predictions as fallback
+            probabilities = None
+        
+        # === DATA HARVEST: Log all traffic to CSV ===
+        if TRAFFIC_LOGGER is not None:
+            TRAFFIC_LOGGER.log(features, predictions, probabilities)
+        
     except ValueError as exc:
         print(f"⚠️ Ölçekleme/Tahmin hatası: {exc}")
         return
@@ -507,8 +864,13 @@ def feature_extraction_and_predict():
 # ---------------------------------------------------------------------------
 
 def main_loop():
+    global TRAFFIC_LOGGER
+    
     print(f"\n📡 Ağ Dinleniyor: {INTERFACE}")
     print("⏹️  Durdurmak için CTRL+C yapın...\n")
+    
+    iteration_count = 0
+    stats_interval = 10  # Show logger stats every N iterations
 
     while True:
         try:
@@ -523,6 +885,12 @@ def main_loop():
             else:
                 print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
 
+            # Show logger stats periodically
+            iteration_count += 1
+            if iteration_count % stats_interval == 0 and TRAFFIC_LOGGER is not None:
+                stats = TRAFFIC_LOGGER.get_stats()
+                print(f"📊 [Data Harvest] Buffer: {stats['buffer_size']}/{HARVEST_BUFFER_SIZE} | Toplam Kayıt: {stats['total_rows']}")
+
             # Disk temizliği geçici olarak kapatıldı (analiz için dosyalar korunsun)
             # if os.path.exists(TEMP_PCAP):
             #     os.remove(TEMP_PCAP)
@@ -530,6 +898,9 @@ def main_loop():
             #     os.remove(TEMP_CSV)
         except KeyboardInterrupt:
             print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
+            # Ensure TrafficLogger flushes remaining data
+            if TRAFFIC_LOGGER is not None:
+                TRAFFIC_LOGGER.shutdown()
             break
         except Exception as exc:
             print(f"\n❌ Beklenmedik Hata: {exc}")

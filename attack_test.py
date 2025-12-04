@@ -1,10 +1,15 @@
+import os
 import time
 import random
 import sys
 from scapy.all import IP, TCP, UDP, send, Raw
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # HEDEF: Rastgele Dış IP (Modemin veya Google'ın kafasını karıştıracağız)
-TARGET_IP = "8.8.8.8" 
+TARGET_IP = os.getenv("TARGET_IP", "8.8.8.8") 
 
 print("\n" + "!"*60)
 print("⚔️  GELİŞMİŞ SALDIRI SİMÜLASYONU (DDoS Hulk & PortScan Taklidi)")

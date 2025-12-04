@@ -14,7 +14,7 @@ if PARENT_DIR not in sys.path:
 from utils.db_manager import fetch_logs
 from utils.firewall_manager import unblock_ip
 
-st.set_page_config(page_title="AI Network IPS Dashboard", layout="wide")
+st.set_page_config(page_title="Network IPS Dashboard", layout="wide")
 st.title("🛡️ AI Network IPS Dashboard")
 
 
@@ -75,7 +75,7 @@ st.subheader("Olay Kayıtları")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:
-    st.dataframe(logs, use_container_width=True, height=300)
+    st.dataframe(logs, width=st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15))
 
 st.sidebar.header("Kontroller")
 auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
