@@ -112,9 +112,7 @@ Contributions are welcome! Please open an issue or submit a pull request for imp
 
 ## License
 
-MIT LICENCE
-
-This project is licensed under the MIT License.
+MIT License.
 
 ## Acknowledgements
 
