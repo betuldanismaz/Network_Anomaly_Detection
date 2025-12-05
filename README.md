@@ -112,9 +112,12 @@ Contributions are welcome! Please open an issue or submit a pull request for imp
 
 ## License
 
+MIT LICENCE
+
 This project is licensed under the MIT License.
 
 ## Acknowledgements
 
 - [CICIDS 2017 Dataset](https://www.unb.ca/cic/datasets/malmem-2017.html)
+- https://www.kaggle.com/datasets/chethuhn/network-intrusion-dataset/code
 - Scapy, scikit-learn, TensorFlow, and the open-source community.
