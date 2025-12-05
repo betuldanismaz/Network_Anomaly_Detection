@@ -46,8 +46,8 @@ networkdetection/
 
 1. Clone the repository:
    ```sh
-   git clone <r[epo-url](https://github.com/betuldanismaz/Network_Anomaly_Detection.git)>
-   cd networkdetection
+   git clone https://github.com/betuldanismaz/Network_Anomaly_Detection.git)
+ 
    ```
 2. Install dependencies:
    ```sh
