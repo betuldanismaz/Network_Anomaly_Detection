@@ -14,7 +14,7 @@ if PARENT_DIR not in sys.path:
 from utils.db_manager import fetch_logs
 from utils.firewall_manager import unblock_ip
 
-st.set_page_config(page_title="AI Network IPS Dashboard", layout="wide")
+st.set_page_config(page_title="Network IPS Dashboard", layout="wide")
 st.title("🛡️ AI Network IPS Dashboard")
 
 
@@ -75,25 +75,7 @@ st.subheader("Detaylı Loglar")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:
-    def _highlight_blocked(row: pd.Series):
-        color = "background-color: #ffe6e6" if row.get("action") == "BLOCKED" else ""
-        return [color] * len(row)
-
-    styled_logs = logs.style.apply(_highlight_blocked, axis=1)
-
-    st.dataframe(
-        styled_logs,
-        use_container_width=True,
-        height=360,
-        hide_index=True,
-        column_config={
-            "details": st.column_config.TextColumn(
-                "🧠 Reasoning",
-                help="SHAP tabanlı açıklama",
-                width="large",
-            )
-        },
-    )
+    st.dataframe(logs, width=st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15))
 
 st.sidebar.header("Kontroller")
 auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
