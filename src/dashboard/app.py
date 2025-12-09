@@ -71,11 +71,29 @@ logs = load_logs()
 render_kpis(logs)
 render_charts(logs)
 
-st.subheader("Olay Kayıtları")
+st.subheader("Detaylı Loglar")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:
-    st.dataframe(logs, use_container_width=True, height=300)
+    def _highlight_blocked(row: pd.Series):
+        color = "background-color: #ffe6e6" if row.get("action") == "BLOCKED" else ""
+        return [color] * len(row)
+
+    styled_logs = logs.style.apply(_highlight_blocked, axis=1)
+
+    st.dataframe(
+        styled_logs,
+        use_container_width=True,
+        height=360,
+        hide_index=True,
+        column_config={
+            "details": st.column_config.TextColumn(
+                "🧠 Reasoning",
+                help="SHAP tabanlı açıklama",
+                width="large",
+            )
+        },
+    )
 
 st.sidebar.header("Kontroller")
 auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
