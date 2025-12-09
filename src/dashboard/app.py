@@ -71,7 +71,7 @@ logs = load_logs()
 render_kpis(logs)
 render_charts(logs)
 
-st.subheader("Olay Kayıtları")
+st.subheader("Detaylı Loglar")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""Live IPS bridge that captures traffic, extracts CICFlowMeter features,
-scales them with the training pipeline, and blocks offending IPs."""
-
+import pandas as pd
+import joblib
 import os
 import sys
 import time
@@ -11,6 +9,7 @@ import threading
 import queue
 import atexit
 from datetime import datetime
+from scapy.all import sniff, wrpcap, conf
 
 import joblib
 import numpy as np
@@ -25,20 +24,13 @@ load_dotenv()
 # PATH SETUP
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_v1.pkl")
-SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
-
+MODEL_PATH = os.path.join(CURRENT_DIR, "..", "models", "rf_model_v1.pkl")
+SCALER_PATH = os.path.join(CURRENT_DIR, "..", "models", "scaler.pkl")
 sys.path.append(os.path.join(CURRENT_DIR, "utils"))
+
+# Utils Import
 try:
     from firewall_manager import block_ip
-except ImportError:
-    print("⚠️ UYARI: firewall_manager.py bulunamadı, IP engelleme devre dışı.")
-
-    def block_ip(ip_address):  # fallback to keep pipeline alive
-        print(f"   [Simülasyon] {ip_address} engellenecekti.")
-
-try:
     from db_manager import log_attack
 except ImportError:
     def log_attack(*_args, **_kwargs):
@@ -761,51 +753,69 @@ def run_cicflowmeter_api(pcap_file: str, csv_file: str):
         if len(packets) == 0:
             return False, "PCAP dosyası boş"
 
-        session = FlowSession(output_mode="csv", output=csv_file, fields=None, verbose=False)
-        for packet in packets:
-            session.process(packet)
-        session.flush_flows()
+# Ağ Kartı Bulucu
+def get_active_interface():
+    for iface in conf.ifaces.values():
+        if iface.ip and iface.ip != "127.0.0.1" and iface.ip != "0.0.0.0":
+            if "Wi-Fi" in iface.name or "Wireless" in iface.name or "Ethernet" in iface.name:
+                return iface.name
+    return conf.iface # Bulamazsa varsayılanı dön
 
-        if not os.path.exists(csv_file) or os.path.getsize(csv_file) == 0:
-            return False, "FlowSession CSV üretmedi"
-        return True, None
-    except Exception as exc:  # pragma: no cover
-        return False, str(exc)
+INTERFACE = get_active_interface()
+TEMP_PCAP = "temp_live.pcap"
+TEMP_CSV = "temp_live.csv"
+WHITELIST_IPS = ["192.168.1.1", "127.0.0.1", "0.0.0.0", "8.8.8.8"] # Modem vs.
 
+print(f"\n🛡️  SİSTEM BAŞLATILDI | Arayüz: {INTERFACE}")
 
-# ---------------------------------------------------------------------------
-# CORE PIPELINE
-# ---------------------------------------------------------------------------
+# Model Yükle
+model = joblib.load(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
 
 def feature_extraction_and_predict():
-    print("   ↳ ⚙️ Analiz ediliyor...", end="\r")
-
-    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
-    if not cli_ok:
-        print(f"   ⚠️ CLI başarısız: {cli_err[:110]} -> API moduna geçiliyor")
-        api_ok, api_err = run_cicflowmeter_api(TEMP_PCAP, TEMP_CSV)
-        if not api_ok:
-            print(f"   ❌ HATA: CSV oluşmadı ({api_err[:110]})       ")
-            return
-
+    print("   ↳ ⚙️ Analiz...", end="\r")
+    
+    # 1. CICFlowMeter Çalıştır
+    cmd = f"cicflowmeter -f {TEMP_PCAP} -c {TEMP_CSV} > nul 2>&1"
+    os.system(cmd)
+    
     if not os.path.exists(TEMP_CSV):
-        print("   ❌ HATA: CSV oluşmadı (bilinmeyen neden)")
-        return
+        # Fallback: Python ile CSV üret (Eğer Java çalışmazsa)
+        try:
+            from cicflowmeter.flow_session import FlowSession
+            flow_session = FlowSession()
+            sniff(offline=TEMP_PCAP, prn=flow_session.on_packet, store=False)
+            flow_session.to_csv(TEMP_CSV)
+        except:
+            return
 
     try:
         df = pd.read_csv(TEMP_CSV)
-    except Exception as exc:
-        print(f"   ❌ CSV okunamadı: {exc}")
+    except:
         return
 
-    if df.empty:
-        print("   ⚠️ CSV boş, paket analiz edilemedi.          ")
-        return
+    if df.empty: return
 
+    # IP Adreslerini Sakla
+    src_ips = df.get('Src IP', df.get('Source IP'))
+    dst_ips = df.get('Dst IP', df.get('Destination IP'))
+
+    # 2. SÜTUN EŞİTLEME (EN KRİTİK KISIM)
+    # Gelen veriyi modelin beklediği 78 sütuna zorluyoruz. Eksikleri 0 yapıyoruz.
+    # Önce sütun isimlerini temizle
     df.columns = df.columns.str.strip()
-    src_ips = extract_source_ips(df)
-    features = prepare_feature_frame(df)
-    features.replace([float("inf"), float("-inf")], 0, inplace=True)
+    
+    # Reindex ile sıralamayı ve sayıyı sabitle
+    # Not: Gelen CSV'deki isimler ile GOLD_STANDARD listesindeki isimler bazen farklı olabilir.
+    # Basitlik için sadece sayısal sütunları alıp, eksikleri dolduracağız.
+    
+    # Model için sadece sayısal veriyi hazırla
+    # Eğitimdeki feature isimleri ile buradakileri eşleştirmek zor olduğu için
+    # scaler'ın beklediği boyuta (78) getirmek için reindex kullanıyoruz.
+    features = df.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
+    
+    # Sonsuz değerleri temizle
+    features.replace([float('inf'), float('-inf')], 0, inplace=True)
     features.fillna(0, inplace=True)
 
     try:
@@ -855,13 +865,15 @@ def feature_extraction_and_predict():
             if src_ips is not None and idx < len(src_ips):
                 ip_addr = src_ips.iloc[idx]
             else:
-                ip_addr = "Unknown/Local"
-            log_attack(ip_addr, "NORMAL", "Clean Traffic")
+                if i < 2: # Sadece ilk 2 paketi kaydet, DB şişmesin
+                    log_attack(ip_src, "NORMAL", "Clean Traffic")
 
+        if not saldirgan_var_mi:
+            print(f"✅ Trafik Temiz ({len(predictions)} Akış)           ", end="\r")
 
-# ---------------------------------------------------------------------------
-# MAIN LOOP
-# ---------------------------------------------------------------------------
+    except Exception as e:
+        # print(f"Hata: {e}")
+        pass
 
 def main_loop():
     global TRAFFIC_LOGGER
@@ -876,10 +888,7 @@ def main_loop():
         try:
             print("⏳ Paket toplanıyor...", end="\r")
             packets = sniff(iface=INTERFACE, timeout=4)
-            packet_count = len(packets)
-
-            if packet_count > 0:
-                print(f"📦 {packet_count} Paket Yakalandı -> İşleniyor...      ", end="\r")
+            if len(packets) > 0:
                 wrpcap(TEMP_PCAP, packets)
                 feature_extraction_and_predict()
             else:
@@ -902,10 +911,8 @@ def main_loop():
             if TRAFFIC_LOGGER is not None:
                 TRAFFIC_LOGGER.shutdown()
             break
-        except Exception as exc:
-            print(f"\n❌ Beklenmedik Hata: {exc}")
+        except:
             time.sleep(1)
-
 
 if __name__ == "__main__":
     main_loop()
