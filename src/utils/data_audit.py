@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 import sys
-#DATA INTEGRITY AUDIT SCRIPT
+
+# DATA INTEGRITY AUDIT SCRIPT
 # ANSI colors for terminal output
 RED = '\033[91m'
 GREEN = '\033[92m'
@@ -49,8 +50,25 @@ def check_data_health():
     val_df = dfs["Val"]
     test_df = dfs["Test"]
 
-    # 2. Data Leakage Check
-    print_header("🕵️‍♂️ 1. DATA LEAKAGE CHECK (Overlap)")
+    # 2. Feature Count Verification
+    print_header("🔢 1. FEATURE COUNT VERIFICATION")
+    
+    expected_features = 20  # Top 20 features + Label = 21 columns
+    expected_total_cols = expected_features + 1  # +1 for Label
+    
+    for name, df in dfs.items():
+        actual_cols = df.shape[1]
+        feature_count = actual_cols - 1  # Exclude Label
+        
+        if actual_cols == expected_total_cols:
+            print(f"{GREEN}✅ {name} Set: {actual_cols} columns ({feature_count} features + 1 label) - CORRECT{RESET}")
+        else:
+            print(f"{RED}⚠️ {name} Set: {actual_cols} columns (Expected {expected_total_cols}){RESET}")
+            if actual_cols > expected_total_cols:
+                print(f"{RED}   WARNING: Using more features than expected. Check feature selection.{RESET}")
+    
+    # 3. Data Leakage Check
+    print_header("🕵️‍♂️ 2. DATA LEAKAGE CHECK (Overlap)")
     
     # Check Train vs Test
     # Exclude Label from leakage check to focus on features
@@ -66,8 +84,8 @@ def check_data_health():
     else:
         print(f"{GREEN}✅ No overlap found between Train and Test sets.{RESET}")
 
-    # 3. Identifier Check
-    print_header("🚫 2. FORBIDDEN IDENTIFIER CHECK")
+    # 4. Identifier Check
+    print_header("🚫 3. FORBIDDEN IDENTIFIER CHECK")
     forbidden_cols = ['Flow ID', 'Source IP', 'Src IP', 'Source Port', 'Src Port', 
                       'Destination IP', 'Dest IP', 'Destination Port', 'Dest Port', 
                       'Timestamp', 'Date']
@@ -83,8 +101,8 @@ def check_data_health():
     else:
         print(f"{GREEN}✅ No forbidden identifier columns found.{RESET}")
 
-    # 4. Sanity Check (NaN/Inf)
-    print_header("🧠 3. SANITY CHECK (NaNs & Infinity)")
+    # 5. Sanity Check (NaN/Inf)
+    print_header("🧠 4. SANITY CHECK (NaNs & Infinity)")
     
     for name, df in dfs.items():
         nans = df.isna().sum().sum()
@@ -95,8 +113,8 @@ def check_data_health():
         else:
             print(f"{GREEN}✅ {name} Set: Clean (No NaNs or Inf).{RESET}")
 
-    # 5. Class Distribution
-    print_header("📊 4. CLASS DISTRIBUTION (Stratification Check)")
+    # 6. Class Distribution
+    print_header("📊 5. CLASS DISTRIBUTION (Stratification Check)")
     
     for name, df in dfs.items():
         if 'Label' not in df.columns:
@@ -109,8 +127,8 @@ def check_data_health():
         
         print(f"   {name}: Normal (0): {benign_pct:.2f}% | Attack (1): {attack_pct:.2f}%")
 
-    # 6. Scaling Verification
-    print_header("⚖️ 5. SCALING VERIFICATION (MinMax Check)")
+    # 7. Scaling Verification
+    print_header("⚖️ 6. SCALING VERIFICATION (MinMax Check)")
     
     # We check Train set mainly
     numeric_cols = train_df.select_dtypes(include=[np.number]).columns
@@ -129,8 +147,8 @@ def check_data_health():
     else:
         print(f"{GREEN}✅ Values appear to be scaled between 0 and 1.{RESET}")
 
-    # 7. Data Type Check
-    print_header("💾 6. DATA TYPE CHECK (Memory Efficiency)")
+    # 8. Data Type Check
+    print_header("💾 7. DATA TYPE CHECK (Memory Efficiency)")
     
     dtype_counts = train_df.dtypes.value_counts()
     print(f"   Column Data Types:\n{dtype_counts}")
@@ -140,6 +158,14 @@ def check_data_health():
         print(f"{YELLOW}⚠️ Notice: {len(float64_cols)} columns are float64. Consider using float32 to save memory.{RESET}")
     else:
         print(f"{GREEN}✅ No float64 columns found (Good for memory).{RESET}")
+
+    # 9. Summary Report
+    print_header("📋 8. SUMMARY REPORT")
+    print(f"   Total Train Samples: {len(train_df):,}")
+    print(f"   Total Val Samples:   {len(val_df):,}")
+    print(f"   Total Test Samples:  {len(test_df):,}")
+    print(f"   Total Features:      {train_df.shape[1] - 1}")
+    print(f"   Split Ratio:         {len(train_df)/(len(train_df)+len(val_df)+len(test_df))*100:.1f}% / {len(val_df)/(len(train_df)+len(val_df)+len(test_df))*100:.1f}% / {len(test_df)/(len(train_df)+len(val_df)+len(test_df))*100:.1f}%")
 
     print_header("🏁 AUDIT COMPLETE")
 
