@@ -345,9 +345,8 @@ This project is licensed under the MIT License. See `LICENSE` file for details.
 
 ## 📧 Contact
 
-**Author:** Betul Danismaz  
+**Authors:** Betul Danismaz  , Mustafa Emre Bıyık
 **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)  
-**Branch:** betul
 
 ---
 
