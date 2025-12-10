@@ -1,0 +1,16 @@
+{
+    "optimal_threshold": 0.7146073480047411,
+    "expected_recall": 0.9950897149988748,
+    "expected_precision": 0.9974160736624079,
+    "model_type": "RandomForest_Optimized",
+    "training_date": "2025-12-09",
+    "hyperparameters": {
+        "n_estimators": 75,
+        "min_samples_split": 10,
+        "min_samples_leaf": 2,
+        "max_features": "log2",
+        "max_depth": null,
+        "criterion": "gini",
+        "bootstrap": true
+    }
+}
