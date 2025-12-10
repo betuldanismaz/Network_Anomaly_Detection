@@ -345,8 +345,39 @@ def train_optimized_model():
     print(f"   ✅ Feature Importance saved to: {importance_path}")
     plt.close()
 
+    # ============================================================================
+    # 9. SAVE MODEL AND THRESHOLD
+    # ============================================================================
+    print(f"\n{YELLOW}💾 Step 7: Saving Model and Configuration...{RESET}")
+    
+    # Save optimized model
+    model_path = os.path.join(models_dir, "rf_model_optimized.pkl")
+    joblib.dump(best_rf, model_path)
+    print(f"   ✅ Optimized model saved to: {model_path}")
+    
+    # Save threshold to JSON for live system
+    threshold_config = {
+        "optimal_threshold": float(optimal_threshold),
+        "expected_recall": float(optimal_recall),
+        "expected_precision": float(optimal_precision),
+        "model_type": "RandomForest_Optimized",
+        "training_date": "2025-12-10",
+        "hyperparameters": best_params
+    }
+    
+    threshold_path = os.path.join(models_dir, "threshold_config.json")
+    with open(threshold_path, 'w') as f:
+        json.dump(threshold_config, f, indent=4)
+    print(f"   ✅ Threshold config saved to: {threshold_path}")
+    
+    # Also save as simple text file for easy reading
+    threshold_txt_path = os.path.join(models_dir, "threshold.txt")
+    with open(threshold_txt_path, 'w') as f:
+        f.write(str(optimal_threshold))
+    print(f"   ✅ Threshold value saved to: {threshold_txt_path}")
+
     # 8.5 Comprehensive Model Performance Report
-    print(f"   📋 Generating Comprehensive Performance Report...")
+    print(f"\n   📋 Generating Comprehensive Performance Report...")
     
     fig = plt.figure(figsize=(20, 24))
     gs = fig.add_gridspec(6, 2, hspace=0.4, wspace=0.3)
