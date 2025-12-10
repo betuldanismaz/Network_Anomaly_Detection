@@ -205,12 +205,12 @@ Trained on **CICIDS 2017** dataset with 2.8M+ samples covering 7 attack types:
 
 | Metric                  | Score  |
 | ----------------------- | ------ |
-| **Accuracy**            | 99.82% |
-| **Precision**           | 99.45% |
-| **Recall (Attack)**     | 99.31% |
-| **F1-Score**            | 99.38% |
-| **ROC-AUC**             | 0.9987 |
-| **False Negative Rate** | 0.69%  |
+| **Accuracy**            | 99.73% |
+| **Precision**           | 97.87% |
+| **Recall (Attack)**     | 99.90% |
+| **F1-Score**            | 98.88% |
+| **ROC-AUC**             | 0.9994 |
+| **False Negative Rate** | 0.10%  |
 
 **Attack Types Detected:**
 
