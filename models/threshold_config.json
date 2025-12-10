@@ -1,7 +1,7 @@
 {
-    "optimal_threshold": 0.7146073480047411,
-    "expected_recall": 0.9950897149988748,
-    "expected_precision": 0.9974160736624079,
+    "optimal_threshold": 0.10774313582858071,
+    "expected_recall": 0.999017942999775,
+    "expected_precision": 0.9786547480658997,
     "model_type": "RandomForest_Optimized",
     "training_date": "2025-12-09",
     "hyperparameters": {
