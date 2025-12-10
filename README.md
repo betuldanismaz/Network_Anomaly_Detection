@@ -1,4 +1,4 @@
-# 🛡️ AI-Powered Network Intrusion Prevention System (IPS)
+# 🛡️ Network Intrusion Prevention System (IPS)
 
 A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks including DDoS, Port Scanning, Web Attacks, and Infiltration attempts.
 
