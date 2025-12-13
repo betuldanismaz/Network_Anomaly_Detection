@@ -1,5 +1,9 @@
-import pandas as pd
-import joblib
+#!/usr/bin/env python3
+"""
+Live IPS Bridge - Optimized Model with Dynamic Threshold
+Captures traffic, extracts CICFlowMeter features, and detects attacks using Top 20 features.
+"""
+
 import os
 import sys
 import time
@@ -9,12 +13,11 @@ import threading
 import queue
 import atexit
 from datetime import datetime
-from scapy.all import sniff, wrpcap, conf
 
 import joblib
 import numpy as np
 import pandas as pd
-from scapy.all import sniff, wrpcap, rdpcap
+from scapy.all import sniff, wrpcap, rdpcap, conf
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -24,47 +27,61 @@ load_dotenv()
 # PATH SETUP
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, "..", "models", "rf_model_v1.pkl")
-SCALER_PATH = os.path.join(CURRENT_DIR, "..", "models", "scaler.pkl")
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+
+# NEW: Optimized Model Paths
+MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_optimized.pkl")
+SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
+THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
+
 sys.path.append(os.path.join(CURRENT_DIR, "utils"))
+
+# Import Top 20 Features from config
+try:
+    from config import TOP_FEATURES
+    print(f"✅ TOP_FEATURES loaded from config.py ({len(TOP_FEATURES)} features)")
+except ImportError:
+    print("⚠️ config.py not found! Using fallback Top 20 features.")
+    # Fallback Top 20 (replace with actual list if config.py missing)
+    TOP_FEATURES = [
+        "Flow Duration", "Total Fwd Packets", "Total Backward Packets",
+        "Total Length of Fwd Packets", "Total Length of Bwd Packets",
+        "Fwd Packet Length Max", "Fwd Packet Length Min", "Fwd Packet Length Mean",
+        "Bwd Packet Length Max", "Bwd Packet Length Min", "Flow Bytes/s",
+        "Flow Packets/s", "Flow IAT Mean", "Fwd IAT Total", "Bwd IAT Total",
+        "Fwd PSH Flags", "Fwd Header Length", "Fwd Packets/s", "Min Packet Length",
+        "Average Packet Size"
+    ]
 
 # Utils Import
 try:
     from firewall_manager import block_ip
     from db_manager import log_attack
 except ImportError:
+    print("⚠️ UYARI: firewall_manager/db_manager bulunamadı, dummy fonksiyonlar kullanılıyor.")
+    def block_ip(ip_address):
+        print(f"   [Simülasyon] {ip_address} engellenecekti.")
+        return False
     def log_attack(*_args, **_kwargs):
         pass
 
 # ---------------------------------------------------------------------------
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
-# Scapy interface name must match show_interfaces() output exactly.
 INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
+
+# Wireshark Verification Mode
+WIRESHARK_VERBOSE = True  # Set to True for detailed packet logging
+
 DROP_COLS = [
-    "Flow ID",
-    "Source IP",
-    "Src IP",
-    "src_ip",
-    "dst_ip",
-    "Source Port",
-    "Src Port",
-    "src_port",
-    "dst_port",
-    "Destination IP",
-    "Dest IP",
-    "Destination Port",
-    "Dest Port",
-    "Timestamp",
-    "timestamp",
-    "Date",
-    "protocol",
-    "Flow_ID",
-    "SimillarHTTP",
-    "Label",
+    "Flow ID", "Source IP", "Src IP", "src_ip", "dst_ip",
+    "Source Port", "Src Port", "src_port", "dst_port",
+    "Destination IP", "Dest IP", "Destination Port", "Dest Port",
+    "Timestamp", "timestamp", "Date", "protocol", "Flow_ID",
+    "SimillarHTTP", "Label",
 ]
 
 # ---------------------------------------------------------------------------
@@ -156,15 +173,16 @@ TRAINING_FEATURE_COLUMNS = [
 ]
 
 
-class TrafficLogger:
+class LiveDetector:
     """
-    Thread-safe traffic logger with buffered writes for minimal latency impact.
+    Optimized Live IDS/IPS with Dynamic Threshold and Top 20 Feature Filtering.
     
     Features:
-    - Buffers rows in memory to reduce disk I/O frequency
-    - Uses a separate writer thread to avoid blocking the main sniffing loop
-    - Auto-flushes on buffer full or time interval
-    - Graceful shutdown with atexit hook
+    - Loads optimized Random Forest model
+    - Uses dynamic threshold from threshold.txt
+    - Filters to TOP_FEATURES only (Top 20)
+    - Wireshark-compatible verbose logging
+    - Thread-safe traffic data harvesting
     """
     
     def __init__(
@@ -173,34 +191,66 @@ class TrafficLogger:
         buffer_size: int = HARVEST_BUFFER_SIZE,
         flush_interval: float = HARVEST_FLUSH_INTERVAL,
     ):
+        print("\n" + "="*70)
+        print("🔧 LIVE DETECTOR INITIALIZATION")
+        print("="*70)
+        
+        # 1. Load Optimized Model
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"❌ Model not found: {MODEL_PATH}")
+        
+        self.model = joblib.load(MODEL_PATH)
+        print(f"✅ Model Loaded: {MODEL_PATH}")
+        print(f"   Model Type: {type(self.model).__name__}")
+        
+        # 2. Load Scaler
+        if not os.path.exists(SCALER_PATH):
+            raise FileNotFoundError(f"❌ Scaler not found: {SCALER_PATH}")
+        
+        self.scaler = joblib.load(SCALER_PATH)
+        print(f"✅ Scaler Loaded: {SCALER_PATH}")
+        
+        # 3. Load Dynamic Threshold
+        self.threshold = 0.5  # Default
+        if os.path.exists(THRESHOLD_PATH):
+            try:
+                with open(THRESHOLD_PATH, 'r') as f:
+                    self.threshold = float(f.read().strip())
+                print(f"✅ Threshold Loaded: {self.threshold:.4f} (from {THRESHOLD_PATH})")
+            except Exception as e:
+                print(f"⚠️ Threshold read error: {e}. Using default 0.5")
+        else:
+            print(f"⚠️ Threshold file not found. Using default: {self.threshold}")
+        
+        # 4. Store Top Features
+        self.top_features = TOP_FEATURES
+        print(f"✅ Top Features: {len(self.top_features)} columns")
+        
+        # 5. Traffic Logger Setup
         self.csv_path = csv_path
         self.buffer_size = buffer_size
         self.flush_interval = flush_interval
         
-        # Thread-safe queue for passing data to writer thread
         self._queue: queue.Queue = queue.Queue()
         self._buffer: list = []
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._last_flush_time = time.time()
         
-        # CSV header columns: Timestamp + 78 features + Predicted_Label + Confidence_Score
-        self._csv_columns = ["Timestamp"] + TRAINING_FEATURE_COLUMNS + ["Predicted_Label", "Confidence_Score"]
+        # CSV columns: Timestamp + Top20 Features + Predicted_Label + Confidence_Score
+        self._csv_columns = ["Timestamp"] + self.top_features + ["Predicted_Label", "Confidence_Score"]
         
-        # Ensure data directory exists
         os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
-        
-        # Initialize CSV file with header if it doesn't exist
         self._initialize_csv()
         
-        # Start the background writer thread
+        # Start background writer thread
         self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True, name="TrafficLoggerWriter")
         self._writer_thread.start()
         
-        # Register shutdown hook to flush remaining data
         atexit.register(self.shutdown)
         
-        print(f"📊 [TrafficLogger] Data harvesting aktif -> {self.csv_path}")
+        print(f"✅ Data Harvesting Active: {self.csv_path}")
+        print("="*70 + "\n")
     
     def _initialize_csv(self):
         """Create CSV file with header if it doesn't exist."""
@@ -208,20 +258,104 @@ class TrafficLogger:
             try:
                 header_df = pd.DataFrame(columns=self._csv_columns)
                 header_df.to_csv(self.csv_path, index=False)
-                print(f"   ↳ Yeni CSV dosyası oluşturuldu ({len(self._csv_columns)} sütun)")
+                print(f"   ↳ New CSV created ({len(self._csv_columns)} columns)")
             except Exception as e:
-                print(f"⚠️ [TrafficLogger] CSV başlatma hatası: {e}")
+                print(f"⚠️ CSV initialization error: {e}")
         else:
-            # Validate existing file has correct columns
             try:
                 existing_df = pd.read_csv(self.csv_path, nrows=0)
                 if list(existing_df.columns) != self._csv_columns:
-                    print(f"⚠️ [TrafficLogger] Mevcut CSV şeması uyumsuz, yedekleniyor...")
+                    print(f"⚠️ CSV schema mismatch, backing up...")
                     backup_path = self.csv_path.replace(".csv", f"_backup_{int(time.time())}.csv")
                     shutil.move(self.csv_path, backup_path)
                     self._initialize_csv()
             except Exception:
-                pass  # File might be empty or corrupted, will be overwritten
+                pass
+    
+    def wireshark_log(self, src_ip: str, dst_ip: str, flow_duration: float, total_fwd_length: float, prediction: int, confidence: float):
+        """
+        Wireshark-compatible verbose logging for professor verification.
+        
+        Format: Timestamp | Src IP | Dst IP | Fwd Length | Flow Duration | Prediction | Confidence
+        """
+        if not WIRESHARK_VERBOSE:
+            return
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        status = "🚨 ATTACK" if prediction == 1 else "✅ NORMAL"
+        
+        print(f"[{timestamp}] {status}")
+        print(f"  Src: {src_ip:15s} → Dst: {dst_ip:15s}")
+        print(f"  Fwd Length: {total_fwd_length:10.2f} bytes | Flow Duration: {flow_duration:10.6f} sec")
+        print(f"  Prediction: {prediction} | Confidence: {confidence:.4f}")
+        print("-" * 80)
+    
+    def process_and_predict(self, features_df: pd.DataFrame, src_ips=None, dst_ips=None):
+        """
+        Core prediction logic with dynamic threshold.
+        
+        Args:
+            features_df: Raw features from CICFlowMeter (can have 78+ columns)
+            src_ips: Source IP addresses (for logging)
+            dst_ips: Destination IP addresses (for logging)
+        
+        Returns:
+            predictions: Array of 0/1 predictions
+            probabilities: Array of confidence scores
+        """
+        if features_df.empty:
+            return None, None
+        
+        # 1. Filter to TOP_FEATURES only (Top 20)
+        aligned_features = features_df.reindex(columns=self.top_features, fill_value=0)
+        
+        # Check for missing columns
+        missing_cols = set(self.top_features) - set(features_df.columns)
+        if missing_cols:
+            print(f"⚠️ Missing features (filled with 0): {list(missing_cols)[:5]}...")
+        
+        # 2. Data Scaling
+        try:
+            scaled_array = self.scaler.transform(aligned_features)
+            X_scaled = pd.DataFrame(scaled_array, columns=aligned_features.columns, index=aligned_features.index)
+        except Exception as e:
+            print(f"❌ Scaling error: {e}")
+            return None, None
+        
+        # 3. Predict using predict_proba (NOT predict)
+        try:
+            probabilities = self.model.predict_proba(X_scaled)
+            attack_probabilities = probabilities[:, 1]  # Probability of Class 1 (Attack)
+            
+            # Apply dynamic threshold
+            predictions = (attack_probabilities >= self.threshold).astype(int)
+            
+        except Exception as e:
+            print(f"❌ Prediction error: {e}")
+            return None, None
+        
+        # 4. Wireshark Verification Logging
+        for idx in range(len(predictions)):
+            src_ip = src_ips.iloc[idx] if src_ips is not None and idx < len(src_ips) else "Unknown"
+            dst_ip = dst_ips.iloc[idx] if dst_ips is not None and idx < len(dst_ips) else "Unknown"
+            
+            # Extract metrics for Wireshark logging
+            flow_duration = aligned_features.iloc[idx].get("Flow Duration", 0.0)
+            total_fwd_length = aligned_features.iloc[idx].get("Total Length of Fwd Packets", 0.0)
+            
+            self.wireshark_log(
+                src_ip=src_ip,
+                dst_ip=dst_ip,
+                flow_duration=flow_duration,
+                total_fwd_length=total_fwd_length,
+                prediction=predictions[idx],
+                confidence=attack_probabilities[idx]
+            )
+        
+        # 5. Data Harvest: Log to CSV
+        self.log(aligned_features, predictions, probabilities)
+        
+        return predictions, probabilities
     
     def log(
         self,
@@ -236,8 +370,7 @@ class TrafficLogger:
         Args:
             features_df: DataFrame with 78 feature columns (already scaled or raw)
             predictions: Array of 0/1 predictions
-            probabilities: Optional array of confidence scores (attack probability)
-            debug: If True, print column alignment diagnostics
+            probabilities: Optional array of confidence scores (2D array with shape [n_samples, 2])
         """
         if features_df.empty:
             return
@@ -245,32 +378,8 @@ class TrafficLogger:
         try:
             timestamp = datetime.now().isoformat()
             
-            # === COLUMN ALIGNMENT DEBUGGING ===
-            if debug or not hasattr(self, '_alignment_checked'):
-                input_cols = set(features_df.columns)
-                expected_cols = set(TRAINING_FEATURE_COLUMNS)
-                
-                missing_cols = expected_cols - input_cols
-                extra_cols = input_cols - expected_cols
-                
-                print(f"\n🔍 [TrafficLogger] Column Alignment Check:")
-                print(f"   Input columns:    {len(features_df.columns)}")
-                print(f"   Expected columns: {len(TRAINING_FEATURE_COLUMNS)}")
-                
-                if missing_cols:
-                    print(f"   ⚠️ MISSING ({len(missing_cols)}): {list(missing_cols)[:5]}{'...' if len(missing_cols) > 5 else ''}")
-                if extra_cols:
-                    print(f"   ⚠️ EXTRA ({len(extra_cols)}): {list(extra_cols)[:5]}{'...' if len(extra_cols) > 5 else ''}")
-                
-                if not missing_cols and not extra_cols:
-                    print(f"   ✅ Perfect match! All 78 columns aligned.")
-                else:
-                    print(f"   ℹ️ Missing columns will be filled with 0, extra columns ignored.")
-                
-                self._alignment_checked = True
-            
-            # Ensure features are in correct column order
-            aligned_features = features_df.reindex(columns=TRAINING_FEATURE_COLUMNS, fill_value=0)
+            # Ensure features match Top 20 columns
+            aligned_features = features_df.reindex(columns=self.top_features, fill_value=0)
             
             for idx in range(len(aligned_features)):
                 row_data = {
@@ -278,14 +387,14 @@ class TrafficLogger:
                     "Predicted_Label": int(predictions[idx]),
                     "Confidence_Score": float(probabilities[idx, 1]) if probabilities is not None else float(predictions[idx]),
                 }
-                # Add all 78 features
-                for col in TRAINING_FEATURE_COLUMNS:
+                # Add Top 20 features
+                for col in self.top_features:
                     row_data[col] = aligned_features.iloc[idx][col]
                 
                 # Put row in queue (non-blocking)
                 self._queue.put(row_data, block=False)
         except Exception as e:
-            print(f"⚠️ [TrafficLogger] Log hatası: {e}")
+            print(f"⚠️ [LiveDetector] Logging error: {e}")
             import traceback
             traceback.print_exc()
     
@@ -379,8 +488,8 @@ class TrafficLogger:
             }
 
 
-# Global TrafficLogger instance (initialized after model loading)
-TRAFFIC_LOGGER: TrafficLogger = None
+# Global LiveDetector instance (initialized after model loading)
+DETECTOR: 'LiveDetector' = None
 
 COLUMN_RENAME_MAP = {
     "flow_duration": "Flow Duration",
@@ -461,112 +570,8 @@ COLUMN_RENAME_MAP = {
     "idle_min": "Idle Min",
 }
 
-def feature_extraction_and_predict():
-    GOLD_STANDARD_FEATURES = [
-        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
-        "flow_duration", "flow_byts_s", "flow_pkts_s", "fwd_pkts_s", "bwd_pkts_s",
-        "tot_fwd_pkts", "tot_bwd_pkts", "totlen_fwd_pkts", "totlen_bwd_pkts",
-        "fwd_pkt_len_max", "fwd_pkt_len_min", "fwd_pkt_len_mean", "fwd_pkt_len_std",
-        "bwd_pkt_len_max", "bwd_pkt_len_min", "bwd_pkt_len_mean", "bwd_pkt_len_std",
-        "pkt_len_max", "pkt_len_min", "pkt_len_mean", "pkt_len_std", "pkt_len_var",
-        "fwd_header_len", "bwd_header_len", "fwd_seg_size_min", "fwd_act_data_pkts",
-        "flow_iat_mean", "flow_iat_max", "flow_iat_min", "flow_iat_std",
-        "fwd_iat_tot", "fwd_iat_max", "fwd_iat_min", "fwd_iat_mean", "fwd_iat_std",
-        "bwd_iat_tot", "bwd_iat_max", "bwd_iat_min", "bwd_iat_mean", "bwd_iat_std",
-        "fwd_psh_flags", "bwd_psh_flags", "fwd_urg_flags", "bwd_urg_flags",
-        "fin_flag_cnt", "syn_flag_cnt", "rst_flag_cnt", "psh_flag_cnt",
-        "ack_flag_cnt", "urg_flag_cnt", "ece_flag_cnt", "down_up_ratio",
-        "pkt_size_avg", "init_fwd_win_byts", "init_bwd_win_byts",
-        "active_max", "active_min", "active_mean", "active_std",
-        "idle_max", "idle_min", "idle_mean", "idle_std",
-        "fwd_byts_b_avg", "fwd_pkts_b_avg", "bwd_byts_b_avg", "bwd_pkts_b_avg",
-        "fwd_blk_rate_avg", "bwd_blk_rate_avg", "fwd_seg_size_avg", "bwd_seg_size_avg",
-        "cwr_flag_count", "subflow_fwd_pkts", "subflow_bwd_pkts",
-        "subflow_fwd_byts", "subflow_bwd_byts",
-    ]
-    LOG_ONLY_COLUMNS = [
-        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
-    ]
-
-    print("   ↳ ⚙️ Analiz ediliyor...", end="\r")
-
-    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
-    if not cli_ok:
-        print(f"   ⚠️ CLI başarısız: {cli_err[:110]} -> API moduna geçiliyor")
-        api_ok, api_err = run_cicflowmeter_api(TEMP_PCAP, TEMP_CSV)
-        if not api_ok:
-            print(f"   ❌ HATA: CSV oluşmadı ({api_err[:110]})       ")
-            return
-
-    if not os.path.exists(TEMP_CSV):
-        print("   ❌ HATA: CSV oluşmadı (bilinmeyen neden)")
-        return
-
-    try:
-        df = pd.read_csv(TEMP_CSV)
-    except Exception as exc:
-        print(f"   ❌ CSV okunamadı: {exc}")
-        return
-
-    if df.empty:
-        print("   ⚠️ CSV boş, paket analiz edilemedi.          ")
-        return
-
-    df.columns = df.columns.str.strip()
-    src_ips = extract_source_ips(df)
-
-    features = prepare_feature_frame(df)
-    features.replace([float("inf"), float("-inf")], 0, inplace=True)
-    features.fillna(0, inplace=True)
-
-    # Zorunlu sıralama ve sütun tamamlama
-    features = features.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
-
-    # Kimlik sütunlarını model girişinden çıkar
-    model_features = features.drop(columns=LOG_ONLY_COLUMNS, errors="ignore")
-
-    try:
-        scaled_array = SCALER.transform(model_features)
-        X_scaled = pd.DataFrame(
-            scaled_array,
-            columns=model_features.columns,
-            index=model_features.index,
-        )
-        predictions = MODEL.predict(X_scaled)
-    except ValueError as exc:
-        print(f"⚠️ Ölçekleme/Tahmin hatası: {exc}")
-        return
-
-    attack_detected = False
-    for idx, pred in enumerate(predictions):
-        if pred != 1:
-            continue
-        attack_detected = True
-        ip_addr = src_ips.iloc[idx] if src_ips is not None else "Bilinmiyor"
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"\n🚨 [{timestamp}] TEHDİT ALGILANDI! Kaynak IP: {ip_addr}")
-        if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Bilinmiyor":
-            block_ip(ip_addr)
-            log_attack(ip_addr, "BLOCKED", "Attack Detected")
-        else:
-            print("   ✅ IP beyaz listede veya bilinmiyor, engellenmedi.")
-            log_attack(ip_addr, "ALLOWED", "Whitelisted")
-
-    if not attack_detected:
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"✅ [{timestamp}] Trafik Temiz - Güvenli ({len(predictions)} Akış)")
-        normal_indices = [i for i, pred in enumerate(predictions) if pred == 0][:5]
-        for idx in normal_indices:
-            ip_addr = (
-                src_ips.iloc[idx]
-                if (src_ips is not None and idx < len(src_ips))
-                else "Unknown/Local"
-            )
-            log_attack(ip_addr, "NORMAL", "Clean Traffic")
-
-
-
-
+# ---------------------------------------------------------------------------
+# GOLD_STANDARD_FEATURES (78 Training Features)
 EXPECTED_FEATURES = [
     "Flow Duration",
     "Total Fwd Packets",
@@ -673,27 +678,30 @@ def prepare_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
 
     return working.reindex(columns=EXPECTED_FEATURES, fill_value=0)
 
-print("🛡️  AI NETWORK IPS - SİBER GÜVENLİK KALKANI")
-print("=" * 60)
+# ---------------------------------------------------------------------------
+# MAIN INITIALIZATION
+# ---------------------------------------------------------------------------
+print("\n🛡️  AI NETWORK IPS - OPTIMIZED MODEL")
+print("=" * 70)
 
 if not (os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)):
-    print("❌ Model veya scaler bulunamadı. Önce eğitim pipeline'ını çalıştırın.")
+    print(f"❌ Model not found: {MODEL_PATH}")
+    print(f"❌ Scaler not found: {SCALER_PATH}")
+    print("   Please run training pipeline first.")
     sys.exit(1)
 
 try:
-    print("⏳ Modeller yükleniyor...", end="\r")
-    MODEL = joblib.load(MODEL_PATH)
-    SCALER = joblib.load(SCALER_PATH)
-    print("✅ Yapay Zeka Modeli (Random Forest) Aktif.        ")
-    
-    # Initialize TrafficLogger for data harvesting
-    TRAFFIC_LOGGER = TrafficLogger()
+    # Initialize LiveDetector (loads model, scaler, threshold, starts logger)
+    DETECTOR = LiveDetector()
 except Exception as exc:
-    print(f"❌ Model yükleme hatası: {exc}")
+    print(f"❌ LiveDetector initialization failed: {exc}")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 if shutil.which("cicflowmeter") is None:
-    print("\n⚠️  UYARI: 'cicflowmeter' CLI bulunamadı (pip install cicflowmeter)")
+    print("\n⚠️  WARNING: 'cicflowmeter' CLI not found (pip install cicflowmeter)")
+    print("   Fallback API mode will be used.")
 
 
 # ---------------------------------------------------------------------------
@@ -752,14 +760,40 @@ def run_cicflowmeter_api(pcap_file: str, csv_file: str):
         packets = rdpcap(pcap_file)
         if len(packets) == 0:
             return False, "PCAP dosyası boş"
+        
+        # Process packets through FlowSession
+        flow_session = FlowSession()
+        for packet in packets:
+            flow_session.on_packet(packet)
+        
+        # Export to CSV
+        flow_session.to_csv(csv_file)
+        
+        if not os.path.exists(csv_file):
+            return False, "API modu CSV dosyası oluşturamadı"
+            
+        return True, None
+        
+    except Exception as exc:
+        return False, f"API modu hatası: {exc}"
 
-# Ağ Kartı Bulucu
+
+# ---------------------------------------------------------------------------
+# NETWORK INTERFACE DETECTION
+# ---------------------------------------------------------------------------
+
 def get_active_interface():
+    """Auto-detect active network interface."""
     for iface in conf.ifaces.values():
         if iface.ip and iface.ip != "127.0.0.1" and iface.ip != "0.0.0.0":
             if "Wi-Fi" in iface.name or "Wireless" in iface.name or "Ethernet" in iface.name:
                 return iface.name
-    return conf.iface # Bulamazsa varsayılanı dön
+    return conf.iface  # Fallback to default
+
+
+# ---------------------------------------------------------------------------
+# RUNTIME GLOBALS
+# ---------------------------------------------------------------------------
 
 INTERFACE = get_active_interface()
 TEMP_PCAP = "temp_live.pcap"
@@ -768,88 +802,86 @@ WHITELIST_IPS = ["192.168.1.1", "127.0.0.1", "0.0.0.0", "8.8.8.8"] # Modem vs.
 
 print(f"\n🛡️  SİSTEM BAŞLATILDI | Arayüz: {INTERFACE}")
 
-# Model Yükle
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
+
+# ---------------------------------------------------------------------------
+# CORE PIPELINE: Extract Features & Predict Attacks (NEW OPTIMIZED VERSION)
+# ---------------------------------------------------------------------------
 
 def feature_extraction_and_predict():
+    """
+    Captures packets → Extracts features via CICFlowMeter → Predicts attacks
+    using the optimized model with dynamic threshold and Top 20 features.
+    """
     print("   ↳ ⚙️ Analiz...", end="\r")
     
-    # 1. CICFlowMeter Çalıştır
-    cmd = f"cicflowmeter -f {TEMP_PCAP} -c {TEMP_CSV} > nul 2>&1"
-    os.system(cmd)
+    # Step 1: Run CICFlowMeter CLI to extract features
+    success, err_msg = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
     
-    if not os.path.exists(TEMP_CSV):
-        # Fallback: Python ile CSV üret (Eğer Java çalışmazsa)
-        try:
-            from cicflowmeter.flow_session import FlowSession
-            flow_session = FlowSession()
-            sniff(offline=TEMP_PCAP, prn=flow_session.on_packet, store=False)
-            flow_session.to_csv(TEMP_CSV)
-        except:
+    if not success:
+        # Fallback to API mode if CLI fails
+        success, err_msg = run_cicflowmeter_api(TEMP_PCAP, TEMP_CSV)
+        if not success:
+            print(f"⚠️  CICFlowMeter hatası: {err_msg}")
             return
 
+    # Step 2: Load extracted features
     try:
         df = pd.read_csv(TEMP_CSV)
-    except:
+    except Exception as exc:
+        print(f"⚠️  CSV okuma hatası: {exc}")
         return
 
-    if df.empty: return
+    if df.empty:
+        return
 
-    # IP Adreslerini Sakla
+    # Step 3: Store IP addresses for attack logging
     src_ips = df.get('Src IP', df.get('Source IP'))
     dst_ips = df.get('Dst IP', df.get('Destination IP'))
 
-    # 2. SÜTUN EŞİTLEME (EN KRİTİK KISIM)
-    # Gelen veriyi modelin beklediği 78 sütuna zorluyoruz. Eksikleri 0 yapıyoruz.
-    # Önce sütun isimlerini temizle
-    df.columns = df.columns.str.strip()
-    
-    # Reindex ile sıralamayı ve sayıyı sabitle
-    # Not: Gelen CSV'deki isimler ile GOLD_STANDARD listesindeki isimler bazen farklı olabilir.
-    # Basitlik için sadece sayısal sütunları alıp, eksikleri dolduracağız.
-    
-    # Model için sadece sayısal veriyi hazırla
-    # Eğitimdeki feature isimleri ile buradakileri eşleştirmek zor olduğu için
-    # scaler'ın beklediği boyuta (78) getirmek için reindex kullanıyoruz.
-    features = df.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
-    
-    # Sonsuz değerleri temizle
-    features.replace([float('inf'), float('-inf')], 0, inplace=True)
-    features.fillna(0, inplace=True)
+    # Step 4: Align columns to training schema (78 features → Top 20)
+    df_features = prepare_feature_frame(df)
 
+    # Step 5: Use DETECTOR for prediction with optimized model
     try:
-        scaled_array = SCALER.transform(features)
-        X_scaled = pd.DataFrame(
-            scaled_array,
-            columns=features.columns,
-            index=features.index,
-        )
-        predictions = MODEL.predict(X_scaled)
-        
-        # Get probability scores for confidence logging
-        try:
-            probabilities = MODEL.predict_proba(X_scaled)
-        except AttributeError:
-            # Model doesn't support predict_proba, use predictions as fallback
-            probabilities = None
-        
-        # === DATA HARVEST: Log all traffic to CSV ===
-        if TRAFFIC_LOGGER is not None:
-            TRAFFIC_LOGGER.log(features, predictions, probabilities)
-        
-    except ValueError as exc:
-        print(f"⚠️ Ölçekleme/Tahmin hatası: {exc}")
+        predictions, probabilities = DETECTOR.process_and_predict(df_features)
+    except Exception as exc:
+        print(f"⚠️  Prediction error: {exc}")
+        import traceback
+        traceback.print_exc()
         return
 
+    # Step 6: DATA HARVEST - Log all traffic to CSV for future training
+    try:
+        DETECTOR.log(df_features, predictions, probabilities)
+    except Exception as exc:
+        print(f"⚠️  Logging error: {exc}")
+
+    # Step 7: Process attack detections
     attack_detected = False
     for idx, pred in enumerate(predictions):
-        if pred != 1:
+        if pred != 1:  # 0 = Normal traffic
             continue
+            
         attack_detected = True
         ip_addr = src_ips.iloc[idx] if src_ips is not None else "Bilinmiyor"
         timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Wireshark verification logging
+        try:
+            packet_data = {
+                'src_ip': ip_addr,
+                'dst_ip': dst_ips.iloc[idx] if dst_ips is not None else "Unknown",
+                'fwd_length': df_features.iloc[idx].get('Total Length of Fwd Packets', 0),
+                'flow_duration': df_features.iloc[idx].get('Flow Duration', 0),
+                'probability': probabilities[idx] if probabilities is not None else 1.0,
+            }
+            DETECTOR.wireshark_log(packet_data, pred)
+        except Exception:
+            pass  # Don't break flow on logging errors
+        
         print(f"\n🚨 [{timestamp}] TEHDİT ALGILANDI! Kaynak IP: {ip_addr}")
+        print(f"   Güven Skoru: {probabilities[idx]:.2%}" if probabilities is not None else "")
+        
         if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Bilinmiyor":
             block_ip(ip_addr)
             log_attack(ip_addr, "BLOCKED", "Attack Detected")
@@ -857,27 +889,18 @@ def feature_extraction_and_predict():
             print("   ✅ IP beyaz listede veya bilinmiyor, engellenmedi.")
             log_attack(ip_addr, "ALLOWED", "Whitelisted")
 
+    # Step 8: Log clean traffic summary
     if not attack_detected:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"✅ [{timestamp}] Trafik Temiz - Güvenli ({len(predictions)} Akış)")
-        normal_indices = [i for i, pred in enumerate(predictions) if pred == 0][:5]
-        for idx in normal_indices:
-            if src_ips is not None and idx < len(src_ips):
-                ip_addr = src_ips.iloc[idx]
-            else:
-                if i < 2: # Sadece ilk 2 paketi kaydet, DB şişmesin
-                    log_attack(ip_src, "NORMAL", "Clean Traffic")
+        print(f"✅ [{timestamp}] Trafik Temiz - Güvenli ({len(predictions)} Akış)", end="\r")
 
-        if not saldirgan_var_mi:
-            print(f"✅ Trafik Temiz ({len(predictions)} Akış)           ", end="\r")
 
-    except Exception as e:
-        # print(f"Hata: {e}")
-        pass
+# ---------------------------------------------------------------------------
+# MAIN EXECUTION LOOP
+# ---------------------------------------------------------------------------
 
 def main_loop():
-    global TRAFFIC_LOGGER
-    
+    """Main IPS loop: continuously monitors network traffic for attacks."""
     print(f"\n📡 Ağ Dinleniyor: {INTERFACE}")
     print("⏹️  Durdurmak için CTRL+C yapın...\n")
     
@@ -888,31 +911,36 @@ def main_loop():
         try:
             print("⏳ Paket toplanıyor...", end="\r")
             packets = sniff(iface=INTERFACE, timeout=4)
+            
             if len(packets) > 0:
                 wrpcap(TEMP_PCAP, packets)
                 feature_extraction_and_predict()
             else:
                 print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
 
-            # Show logger stats periodically
+            # Show data harvest statistics periodically
             iteration_count += 1
-            if iteration_count % stats_interval == 0 and TRAFFIC_LOGGER is not None:
-                stats = TRAFFIC_LOGGER.get_stats()
-                print(f"📊 [Data Harvest] Buffer: {stats['buffer_size']}/{HARVEST_BUFFER_SIZE} | Toplam Kayıt: {stats['total_rows']}")
+            if iteration_count % stats_interval == 0:
+                stats = DETECTOR.get_stats()
+                print(f"📊 [Data Harvest] Buffer: {stats['buffer_size']}/{HARVEST_BUFFER_SIZE} | "
+                      f"Toplam Kayıt: {stats['total_rows']} | "
+                      f"Son Yazma: {stats.get('last_flush_time', 'N/A')}")
 
-            # Disk temizliği geçici olarak kapatıldı (analiz için dosyalar korunsun)
+            # Cleanup temporary files (optional - keep for debugging)
             # if os.path.exists(TEMP_PCAP):
             #     os.remove(TEMP_PCAP)
             # if os.path.exists(TEMP_CSV):
             #     os.remove(TEMP_CSV)
+            
         except KeyboardInterrupt:
             print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
-            # Ensure TrafficLogger flushes remaining data
-            if TRAFFIC_LOGGER is not None:
-                TRAFFIC_LOGGER.shutdown()
+            DETECTOR.shutdown()  # Ensure data is flushed before exit
             break
-        except:
+        except Exception as exc:
+            print(f"\n⚠️  Loop error: {exc}")
             time.sleep(1)
+
 
 if __name__ == "__main__":
     main_loop()
+
