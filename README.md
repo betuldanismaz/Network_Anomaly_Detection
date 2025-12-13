@@ -2,20 +2,38 @@
 
 A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks including DDoS, Port Scanning, Web Attacks, and Infiltration attempts.
 
+## 🚀 Recent Updates (v2.0 - January 2025)
+
+### ✨ Major Refactoring Complete
+
+- **Optimized Model Integration**: Now uses `rf_model_optimized.pkl` with Top 20 features (3x faster)
+- **Dynamic Threshold**: Loads optimal threshold from `models/threshold.txt` for precision control
+- **Enhanced Prediction**: Uses `predict_proba()` with threshold-based classification
+- **LiveDetector Class**: Unified architecture for prediction + data harvesting
+- **Wireshark Verification**: Detailed packet logging for academic validation
+- **Improved Data Harvest**: Thread-safe buffered CSV writes with 25-row batching
+
+📄 **Documentation:**
+
+- [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Complete changelog
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System flow diagrams
+- [TESTING_CHECKLIST.md](TESTING_CHECKLIST.md) - Verification tests
+
 ## 🌟 Key Features
 
 ### 🔍 Real-Time Threat Detection
 
 - **Live packet capture and analysis** using Scapy
 - **ML-powered classification** with optimized Random Forest (99.8% accuracy)
-- **Top 20 feature extraction** for efficient processing
+- **Top 20 feature extraction** for efficient processing (down from 78)
 - **Sub-second detection latency** for rapid response
+- **Dynamic threshold optimization** for minimizing false negatives
 
 ### 🚨 Automated Defense
 
 - **Automatic IP blocking** via Windows Firewall/iptables integration
 - **Configurable whitelist** to protect critical infrastructure
-- **Dynamic threshold optimization** to minimize false positives
+- **Threshold-based predictions** (proba ≥ threshold → ATTACK)
 - **Manual override controls** through the dashboard
 
 ### 📊 Live Monitoring Dashboard
@@ -29,17 +47,18 @@ A real-time, production-ready Network Intrusion Prevention System that combines 
 ### 🧠 Advanced ML Pipeline
 
 - **Hyperparameter-tuned Random Forest** classifier
-- **Threshold optimization** focused on minimizing false negatives
-- **Feature importance analysis** for interpretability
+- **Feature importance analysis** → Top 20 features selected
+- **Threshold optimization** via grid search (Recall-focused)
 - **Comprehensive evaluation metrics** (Precision, Recall, F1, ROC-AUC)
 - Support for LSTM-based sequential models
 
-### 🗄️ Persistent Logging
+### 🗄️ Persistent Logging & Data Harvest
 
 - **SQLite database** for attack event storage
-- **Detailed metadata** (timestamp, source IP, attack type, action taken)
-- **Historical analysis** capabilities
-- **API-ready data structure** for integration
+- **Live traffic CSV logging** for model retraining (`data/live_captured_traffic.csv`)
+- **Buffered writes** (25 rows OR 30 seconds, whichever first)
+- **Thread-safe architecture** with background writer
+- **Schema**: Timestamp + 20 features + Label + Confidence (22 columns)
 
 ## 📁 Project Structure
 
