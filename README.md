@@ -1,6 +1,6 @@
 # 🛡️ Network Intrusion Prevention System (IPS)
 
-A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks including DDoS, Port Scanning, Web Attacks, and Infiltration attempts.
+A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks (DDoS)
 
 ## 🚀 Recent Updates
 
@@ -58,7 +58,7 @@ A real-time, production-ready Network Intrusion Prevention System that combines 
 - **Live traffic CSV logging** for model retraining (`data/live_captured_traffic.csv`)
 - **Buffered writes** (25 rows OR 30 seconds, whichever first)
 - **Thread-safe architecture** with background writer
-- **Schema**: Timestamp + 20 features + Label + Confidence (22 columns)
+- **Schema**: Timestamp + 20 features + Label + Confidence (23 columns)
 
 ## 📁 Project Structure
 
