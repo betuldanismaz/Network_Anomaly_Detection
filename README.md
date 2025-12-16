@@ -1,11 +1,8 @@
-# 🛡️ Real-Time Network Intrusion Prevention System (IPS)
+# 🛡️ Network Intrusion Prevention System (IPS)
 
-> **Production-grade ML-powered network security system with automated threat detection, response, and continual learning capabilities.**
+A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks (DDoS)
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
-[![ML](https://img.shields.io/badge/ML-Random%20Forest-green)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Production-success)](https://github.com/betuldanismaz/Network_Anomaly_Detection)
+## 🚀 Recent Updates
 
 A real-time Intrusion Prevention System (IPS) that combines **machine learning**, **automated firewall integration**, and **live monitoring** to detect and block network attacks including DDoS, Port Scanning, Web Exploits, and Advanced Persistent Threats.
 
@@ -101,13 +98,11 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 | **Persistence**        | SQLite + CSV                | Attack logging + data harvesting                  |
 | **Monitoring**         | Streamlit                   | Real-time dashboard with metrics                  |
 
-**📄 Detailed Documentation:**
-
-- [ARCHITECTURE.md](md_files/ARCHITECTURE.md) - Flow diagrams and design patterns
-- [REFACTORING_SUMMARY.md](md_files/REFACTORING_SUMMARY.md) - Optimization changelog
-- [TESTING_CHECKLIST.md](md_files/TESTING_CHECKLIST.md) - Verification procedures
-
----
+- **SQLite database** for attack event storage
+- **Live traffic CSV logging** for model retraining (`data/live_captured_traffic.csv`)
+- **Buffered writes** (25 rows OR 30 seconds, whichever first)
+- **Thread-safe architecture** with background writer
+- **Schema**: Timestamp + 20 features + Label + Confidence (23 columns)
 
 ## 📁 Project Structure
 
@@ -1013,73 +1008,8 @@ See [LICENSE](LICENSE) for full text.
 
 ## 📧 Contact & Support
 
-**Author:** Betul Danismaz  
-**GitHub:** [@betuldanismaz](https://github.com/betuldanismaz)  
+**Authors:** Betul Danismaz  , Mustafa Emre Bıyık
 **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)  
-**Branch:** `betul` (development), `main` (stable)
-
-### Getting Help
-
-- **Issues:** [GitHub Issues](https://github.com/betuldanismaz/Network_Anomaly_Detection/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/betuldanismaz/Network_Anomaly_Detection/discussions)
-- **Documentation:** [Wiki](https://github.com/betuldanismaz/Network_Anomaly_Detection/wiki) (coming soon)
-
-### Reporting Bugs
-
-When reporting bugs, please include:
-
-1. Operating System + Python version
-2. Full error traceback
-3. Steps to reproduce
-4. Expected vs actual behavior
-5. Relevant log files (`alerts.db`, console output)
-
----
-
-## 🚀 Roadmap
-
-### v2.0 (Planned)
-
-- [ ] **Docker/Kubernetes Support**
-  - Containerized deployment
-  - Helm charts for orchestration
-- [ ] **Distributed Architecture**
-
-  - Apache Kafka for stream processing
-  - Redis for caching
-  - Multi-node deployment
-
-- [ ] **Advanced Models**
-
-  - Ensemble: RF + XGBoost + LightGBM
-  - Transformer-based sequence models
-  - AutoML integration (TPOT, AutoSklearn)
-
-- [ ] **Enhanced Monitoring**
-
-  - Prometheus metrics export
-  - Grafana dashboards
-  - Anomaly detection on system metrics
-
-- [ ] **Cloud Integration**
-
-  - AWS Lambda deployment
-  - Azure Sentinel connector
-  - Google Cloud Armor integration
-
-- [ ] **Threat Intelligence**
-  - IP reputation feeds (AbuseIPDB, VirusTotal)
-  - MITRE ATT&CK mapping
-  - IOC (Indicators of Compromise) matching
-
-### v1.5 (In Progress)
-
-- [x] Optimized Random Forest (Top 20 features)
-- [x] Dynamic threshold loading
-- [x] Data harvesting for continual learning
-- [ ] SHAP explainability integration
-- [ ] Real-time alerting (email/Slack)
-- [ ] Web UI for configuration
 
 ---
 
