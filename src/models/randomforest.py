@@ -1,10 +1,3 @@
-"""
-Optimized Random Forest Training Script with Hyperparameter Tuning and Threshold Optimization
-Focus: Minimize False Negatives (Missed Attacks) for Network Intrusion Detection
-
-Author: Senior ML Engineer
-Date: December 9, 2025
-"""
 
 import pandas as pd
 import numpy as np
