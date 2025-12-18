@@ -30,7 +30,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
 # NEW: Optimized Model Paths
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_v1.pkl")
+MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_optimized_model.pkl")
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
 
