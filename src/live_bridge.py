@@ -34,8 +34,6 @@ MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_optimized_model.pkl")
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
 
-sys.path.append(os.path.join(CURRENT_DIR, "utils"))
-
 # Import Top 20 Features from config
 try:
     from config import TOP_FEATURES
@@ -55,8 +53,8 @@ except ImportError:
 
 # Utils Import
 try:
-    from firewall_manager import block_ip
-    from db_manager import log_attack
+    from utils.firewall_manager import block_ip
+    from utils.db_manager import log_attack
 except ImportError:
     print("⚠️ UYARI: firewall_manager/db_manager bulunamadı, dummy fonksiyonlar kullanılıyor.")
     def block_ip(ip_address):
@@ -68,10 +66,13 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
-INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
+INTERFACE = os.getenv("NETWORK_INTERFACE", "")
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
-WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
+WHITELIST_IPS = os.getenv(
+    "WHITELIST_IPS",
+    "192.168.1.1,127.0.0.1,0.0.0.0,localhost,8.8.8.8",
+).split(",")
 
 # Wireshark Verification Mode
 WIRESHARK_VERBOSE = True  # Set to True for detailed packet logging
@@ -203,6 +204,22 @@ class LiveDetector:
         self.model = joblib.load(MODEL_PATH)
         print(f"✅ Model Loaded: {MODEL_PATH}")
         print(f"   Model Type: {type(self.model).__name__}")
+
+        # Determine which predict_proba column corresponds to the "attack" class.
+        # Prefer label 1 if present.
+        self.attack_class_index = None
+        classes_ = getattr(self.model, "classes_", None)
+        if classes_ is not None:
+            try:
+                attack_idx = int(np.where(np.asarray(classes_) == 1)[0][0])
+                self.attack_class_index = attack_idx
+            except Exception:
+                # Fallback: if binary, use last column.
+                try:
+                    if len(classes_) == 2:
+                        self.attack_class_index = 1
+                except Exception:
+                    self.attack_class_index = None
         
         # 2. Load Scaler
         if not os.path.exists(SCALER_PATH):
@@ -324,13 +341,34 @@ class LiveDetector:
             print(f"❌ Scaling error: {e}")
             return None, None
         
+        # Quick sanity: if everything is zero, the model will almost always return 0.
+        try:
+            nonzero_ratio = float((aligned_features.to_numpy() != 0).mean()) if not aligned_features.empty else 0.0
+        except Exception:
+            nonzero_ratio = 0.0
+
         # 3. Predict using predict_proba (NOT predict)
         try:
             probabilities = self.model.predict_proba(X_scaled)
-            attack_probabilities = probabilities[:, 1]  # Probability of Class 1 (Attack)
+
+            # Choose correct probability column for the attack class.
+            if probabilities.shape[1] < 2:
+                attack_probabilities = np.zeros(probabilities.shape[0], dtype=float)
+            else:
+                attack_col = self.attack_class_index
+                if attack_col is None:
+                    attack_col = 1
+                attack_probabilities = probabilities[:, attack_col]
             
             # Apply dynamic threshold
             predictions = (attack_probabilities >= self.threshold).astype(int)
+
+            # Minimal debug to catch feature-mapping issues.
+            if float(np.max(attack_probabilities)) <= 1e-9 and nonzero_ratio <= 1e-6:
+                print(
+                    "⚠️ [Debug] Top features appear to be all zeros; "
+                    "check CICFlowMeter column mapping / interface capture."
+                )
             
         except Exception as e:
             print(f"❌ Prediction error: {e}")
@@ -360,9 +398,6 @@ class LiveDetector:
                 prediction=predictions[idx],
                 confidence=attack_probabilities[idx]
             )
-        
-        # 5. Data Harvest: Log to CSV
-        self.log(aligned_features, predictions, probabilities)
         
         return predictions, probabilities
     
@@ -676,6 +711,82 @@ def prepare_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     working = df.copy()
     working.columns = working.columns.str.strip()
     working.drop(columns=DROP_COLS, errors="ignore", inplace=True)
+
+    # CICFlowMeter often outputs abbreviated column names; map them to training names.
+    # This is the main reason predictions can become all-zeros if not handled.
+    ALT_CIC_RENAME_MAP = {
+        "Tot Fwd Pkts": "Total Fwd Packets",
+        "Tot Bwd Pkts": "Total Backward Packets",
+        "TotLen Fwd Pkts": "Total Length of Fwd Packets",
+        "TotLen Bwd Pkts": "Total Length of Bwd Packets",
+        "Fwd Pkt Len Max": "Fwd Packet Length Max",
+        "Fwd Pkt Len Min": "Fwd Packet Length Min",
+        "Fwd Pkt Len Mean": "Fwd Packet Length Mean",
+        "Fwd Pkt Len Std": "Fwd Packet Length Std",
+        "Bwd Pkt Len Max": "Bwd Packet Length Max",
+        "Bwd Pkt Len Min": "Bwd Packet Length Min",
+        "Bwd Pkt Len Mean": "Bwd Packet Length Mean",
+        "Bwd Pkt Len Std": "Bwd Packet Length Std",
+        "Flow Byts/s": "Flow Bytes/s",
+        "Flow Pkts/s": "Flow Packets/s",
+        "Flow IAT Mean": "Flow IAT Mean",
+        "Flow IAT Std": "Flow IAT Std",
+        "Flow IAT Max": "Flow IAT Max",
+        "Flow IAT Min": "Flow IAT Min",
+        "Fwd IAT Tot": "Fwd IAT Total",
+        "Fwd IAT Mean": "Fwd IAT Mean",
+        "Fwd IAT Std": "Fwd IAT Std",
+        "Fwd IAT Max": "Fwd IAT Max",
+        "Fwd IAT Min": "Fwd IAT Min",
+        "Bwd IAT Tot": "Bwd IAT Total",
+        "Bwd IAT Mean": "Bwd IAT Mean",
+        "Bwd IAT Std": "Bwd IAT Std",
+        "Bwd IAT Max": "Bwd IAT Max",
+        "Bwd IAT Min": "Bwd IAT Min",
+        "Fwd PSH Flags": "Fwd PSH Flags",
+        "Bwd PSH Flags": "Bwd PSH Flags",
+        "Fwd URG Flags": "Fwd URG Flags",
+        "Bwd URG Flags": "Bwd URG Flags",
+        "Fwd Header Len": "Fwd Header Length",
+        "Bwd Header Len": "Bwd Header Length",
+        "Fwd Pkts/s": "Fwd Packets/s",
+        "Bwd Pkts/s": "Bwd Packets/s",
+        "Pkt Len Min": "Min Packet Length",
+        "Pkt Len Max": "Max Packet Length",
+        "Pkt Len Mean": "Packet Length Mean",
+        "Pkt Len Std": "Packet Length Std",
+        "Pkt Len Var": "Packet Length Variance",
+        "FIN Flag Cnt": "FIN Flag Count",
+        "SYN Flag Cnt": "SYN Flag Count",
+        "RST Flag Cnt": "RST Flag Count",
+        "PSH Flag Cnt": "PSH Flag Count",
+        "ACK Flag Cnt": "ACK Flag Count",
+        "URG Flag Cnt": "URG Flag Count",
+        "CWE Flag Count": "CWE Flag Count",
+        "ECE Flag Cnt": "ECE Flag Count",
+        "Down/Up Ratio": "Down/Up Ratio",
+        "Pkt Size Avg": "Average Packet Size",
+        "Avg Fwd Seg Size": "Avg Fwd Segment Size",
+        "Avg Bwd Seg Size": "Avg Bwd Segment Size",
+        "Subflow Fwd Pkts": "Subflow Fwd Packets",
+        "Subflow Fwd Byts": "Subflow Fwd Bytes",
+        "Subflow Bwd Pkts": "Subflow Bwd Packets",
+        "Subflow Bwd Byts": "Subflow Bwd Bytes",
+        "Init Fwd Win Byts": "Init_Win_bytes_forward",
+        "Init Bwd Win Byts": "Init_Win_bytes_backward",
+        "Fwd Act Data Pkts": "act_data_pkt_fwd",
+        "Fwd Seg Size Min": "min_seg_size_forward",
+        "Active Mean": "Active Mean",
+        "Active Std": "Active Std",
+        "Active Max": "Active Max",
+        "Active Min": "Active Min",
+        "Idle Mean": "Idle Mean",
+        "Idle Std": "Idle Std",
+        "Idle Max": "Idle Max",
+        "Idle Min": "Idle Min",
+    }
+
+    working.rename(columns=ALT_CIC_RENAME_MAP, inplace=True)
     working.rename(columns=COLUMN_RENAME_MAP, inplace=True)
 
     if "Fwd Header Length" in working.columns and "Fwd Header Length.1" not in working.columns:
@@ -873,14 +984,65 @@ def get_active_interface():
     return conf.iface  # Fallback to default
 
 
+def _available_interfaces_summary() -> str:
+    rows = []
+    for iface in conf.ifaces.values():
+        name = getattr(iface, "name", "")
+        desc = getattr(iface, "description", "")
+        ip = getattr(iface, "ip", "")
+        rows.append(f"- name={name!r} desc={desc!r} ip={ip!r}")
+    return "\n".join(rows)
+
+
+def resolve_interface(requested: str) -> str | None:
+    """Resolve a user-provided interface string to a Scapy interface name.
+
+    On Windows, capturing is sensitive to the exact interface identifier.
+    Users may provide the friendly description (e.g., 'Npcap Loopback Adapter');
+    Scapy may expose a different name. This tries exact/CI/contains matches.
+    """
+    requested = (requested or "").strip()
+    if not requested:
+        return get_active_interface()
+
+    req_l = requested.casefold()
+    candidates: list[str] = []
+
+    for iface in conf.ifaces.values():
+        name = (getattr(iface, "name", "") or "")
+        desc = (getattr(iface, "description", "") or "")
+
+        # Exact matches
+        if name.casefold() == req_l or desc.casefold() == req_l:
+            return name
+
+        # Partial matches
+        if req_l in name.casefold() or req_l in desc.casefold():
+            candidates.append(name)
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # RUNTIME GLOBALS
 # ---------------------------------------------------------------------------
 
-INTERFACE = get_active_interface()
-TEMP_PCAP = "temp_live.pcap"
-TEMP_CSV = "temp_live.csv"
-WHITELIST_IPS = ["192.168.1.1", "127.0.0.1", "0.0.0.0", "8.8.8.8"] # Modem vs.
+# Respect explicit env var if provided; otherwise auto-detect.
+_resolved_iface = resolve_interface(INTERFACE)
+if _resolved_iface is None:
+    print(f"\n❌ Interface '{INTERFACE}' not found by Scapy/Npcap.")
+    print("\nMevcut arayüzler:")
+    print(_available_interfaces_summary())
+    if "loopback" in (INTERFACE or "").casefold() or "npcap" in (INTERFACE or "").casefold():
+        print(
+            "\nİpucu: 'Npcap Loopback Adapter' listede yoksa Npcap'i 'Support loopback traffic' seçeneğiyle yeniden kurmanız gerekebilir."
+        )
+    raise SystemExit(2)
+
+INTERFACE = _resolved_iface
 
 print(f"\n🛡️  SİSTEM BAŞLATILDI | Arayüz: {INTERFACE}")
 
@@ -932,12 +1094,6 @@ def feature_extraction_and_predict():
         traceback.print_exc()
         return
 
-    # Step 6: DATA HARVEST - Log all traffic to CSV for future training
-    try:
-        DETECTOR.log(df_features, predictions, probabilities)
-    except Exception as exc:
-        print(f"⚠️  Logging error: {exc}")
-
     # Step 7: Process attack detections
     attack_detected = False
     for idx, pred in enumerate(predictions):
@@ -948,21 +1104,14 @@ def feature_extraction_and_predict():
         ip_addr = src_ips.iloc[idx] if src_ips is not None else "Bilinmiyor"
         timestamp = datetime.now().strftime("%H:%M:%S")
         
-        # Wireshark verification logging
-        try:
-            packet_data = {
-                'src_ip': ip_addr,
-                'dst_ip': dst_ips.iloc[idx] if dst_ips is not None else "Unknown",
-                'fwd_length': df_features.iloc[idx].get('Total Length of Fwd Packets', 0),
-                'flow_duration': df_features.iloc[idx].get('Flow Duration', 0),
-                'probability': probabilities[idx] if probabilities is not None else 1.0,
-            }
-            DETECTOR.wireshark_log(packet_data, pred)
-        except Exception:
-            pass  # Don't break flow on logging errors
-        
         print(f"\n🚨 [{timestamp}] TEHDİT ALGILANDI! Kaynak IP: {ip_addr}")
-        print(f"   Güven Skoru: {probabilities[idx]:.2%}" if probabilities is not None else "")
+
+        attack_col = getattr(DETECTOR, "attack_class_index", 1)
+        try:
+            confidence = float(probabilities[idx, attack_col]) if probabilities is not None else 1.0
+        except Exception:
+            confidence = 1.0
+        print(f"   Güven Skoru: {confidence:.2%}")
         
         if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Bilinmiyor":
             block_ip(ip_addr)
@@ -998,7 +1147,11 @@ def main_loop():
                 wrpcap(TEMP_PCAP, packets)
                 feature_extraction_and_predict()
             else:
-                print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
+                print(
+                    f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et. "
+                    f"(Yerel hedef/loopback trafik için 'Npcap Loopback Adapter' dene)        ",
+                    end="\r",
+                )
 
             # Show data harvest statistics periodically
             iteration_count += 1
