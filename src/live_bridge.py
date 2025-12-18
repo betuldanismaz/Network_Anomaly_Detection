@@ -1094,6 +1094,13 @@ def feature_extraction_and_predict():
         traceback.print_exc()
         return
 
+    # Step 6: Log predictions to CSV for future retraining
+    if predictions is not None and len(predictions) > 0:
+        try:
+            DETECTOR.log(df_features, predictions, probabilities)
+        except Exception as log_exc:
+            print(f"⚠️  Logging error: {log_exc}")
+
     # Step 7: Process attack detections
     attack_detected = False
     for idx, pred in enumerate(predictions):
