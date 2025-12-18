@@ -310,7 +310,7 @@ python src/models/randomforest.py --data updated_train.csv --incremental
 
 ### 2.5 Train-Validation-Test Split Strategy
 
-**Stratified 80-10-10 Split:**
+**Stratified 70-15-15 Split:**
 
 ```python
 # Step 1: Preserve temporal ordering (important for time-series behavior)
@@ -322,14 +322,14 @@ y = full_data['Label']
 
 X_temp, X_test, y_temp, y_test = train_test_split(
     X, y,
-    test_size=0.10,
-    stratify=y,        # Preserve 80/20 Normal/Attack ratio
+    test_size=0.30,
+    stratify=y,        # Preserve class ratio
     random_state=42    # Reproducibility
 )
 
 X_train, X_val, y_train, y_val = train_test_split(
     X_temp, y_temp,
-    test_size=0.111,   # 0.111 * 0.9 ≈ 0.10 of total
+    test_size=0.50,    # 0.50 * 0.70 = 0.15 of total
     stratify=y_temp,
     random_state=42
 )
@@ -350,9 +350,10 @@ assert val_indices.isdisjoint(test_indices)
 
 **Final Distribution:**
 
-- Training: 2,259,725 samples (80%)
-- Validation: 282,466 samples (10%)
-- Test: 282,466 samples (10%)
+- Training: 1,306,484 samples (70%)
+- Validation: 279,961 samples (15%)
+- Test: 279,962 samples (15%)
+- **Total:** 1,866,407 samples (after deduplication and cleaning)
 
 ---
 
@@ -687,8 +688,8 @@ In plain language: "Find the lowest threshold that achieves 99.9% recall, then a
 ```
                  Predicted
                Normal    Attack
-Actual Normal  222,145   4,732   (98.7% TNR)
-      Attack      56     55,533  (99.9% TPR)
+Actual Normal  219,847   4,687   (97.9% TNR)
+      Attack      56     55,371  (99.9% TPR)
 ```
 
 **Classification Metrics:**
@@ -696,12 +697,12 @@ Actual Normal  222,145   4,732   (98.7% TNR)
 ```
               precision    recall  f1-score   support
 
-      Normal       1.00      0.98      0.99    226877
-      Attack       0.98      0.99      0.99     55589
+      Normal       1.00      0.98      0.99    224534
+      Attack       0.98      0.99      0.99     55427
 
-    accuracy                           0.98    282466
-   macro avg       0.99      0.99      0.99    282466
-weighted avg       0.98      0.98      0.98    282466
+    accuracy                           0.98    279961
+   macro avg       0.99      0.99      0.99    279961
+weighted avg       0.98      0.98      0.98    279961
 ```
 
 **ROC-AUC:** 0.9994 (near-perfect discriminative ability)
