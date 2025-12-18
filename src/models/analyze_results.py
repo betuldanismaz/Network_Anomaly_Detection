@@ -1,9 +1,4 @@
 """
-Advanced Performance Analytics Dashboard for Network Anomaly Detection
-===========================================================================
-Comprehensive visualization and analysis suite for Random Forest model results
-Generates executive-level dashboards with all critical security metrics
-
 Features:
 - Interactive metric gauges with color-coded status indicators
 - Confusion matrix heatmap with detailed breakdowns
@@ -13,7 +8,6 @@ Features:
 - Hyperparameter visualization and model explainability
 - Executive summary report with deployment readiness score
 
-Date: December 10, 2025
 """
 
 import pandas as pd
