@@ -183,6 +183,7 @@ class LiveDetector:
     - Filters to TOP_FEATURES only (Top 20)
     - Wireshark-compatible verbose logging
     - Thread-safe traffic data harvesting
+    Logs every prediction to CSV (live_captured_traffic.csv) for future model retraining
     """
     
     def __init__(
@@ -210,7 +211,7 @@ class LiveDetector:
         self.scaler = joblib.load(SCALER_PATH)
         print(f"✅ Scaler Loaded: {SCALER_PATH}")
         
-        # 3. Load Dynamic Threshold
+        # 3. Load Dynamic Threshold (for fallback if not found, use 0.5)
         self.threshold = 0.5  # Default
         if os.path.exists(THRESHOLD_PATH):
             try:
@@ -710,26 +711,20 @@ if shutil.which("cicflowmeter") is None:
 
 def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
     """Run cicflowmeter CLI and return (success, error_message)."""
-    # Yöntem 1: python -m cicflowmeter (Windows için daha güvenilir)
-    cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
+    # CICFlowMeter CLI syntax: cicflowmeter -f input.pcap -c output.csv
+    cmd = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
     
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    except FileNotFoundError:
+        # cicflowmeter not in PATH, will fall back to API mode
+        return False, "cicflowmeter CLI bulunamadı, API modu kullanılacak"
     except Exception as exc:
         return False, str(exc)
 
     if result.returncode != 0:
-        # Eğer modül olarak çalışmazsa, doğrudan komut olarak dene
-        if shutil.which("cicflowmeter"):
-            try:
-                cmd_direct = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
-                result = subprocess.run(cmd_direct, capture_output=True, text=True, timeout=90)
-            except Exception:
-                pass
-        
-        if result.returncode != 0:
-            err = result.stderr.strip() or result.stdout.strip() or f"CLI hata kodu {result.returncode}"
-            return False, err
+        err = result.stderr.strip() or result.stdout.strip() or f"CLI hata kodu {result.returncode}"
+        return False, err
 
     # CICFlowMeter bazen çıktı dosyasının ismini değiştirir (örn: temp_live.pcap_Flow.csv)
     # Eğer hedef dosya yoksa, olası diğer isimleri kontrol et ve düzelt.
@@ -752,22 +747,18 @@ def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
 def run_cicflowmeter_api(pcap_file: str, csv_file: str):
     """Fallback runner that streams packets through FlowSession manually."""
     try:
-        from cicflowmeter.flow_session import FlowSession
+        from cicflowmeter.sniffer import Sniffer
     except ImportError as exc:  # pragma: no cover
-        return False, f"FlowSession import edilemedi: {exc}"
+        return False, f"Sniffer import edilemedi: {exc}"
 
     try:
         packets = rdpcap(pcap_file)
         if len(packets) == 0:
             return False, "PCAP dosyası boş"
         
-        # Process packets through FlowSession
-        flow_session = FlowSession()
-        for packet in packets:
-            flow_session.on_packet(packet)
-        
-        # Export to CSV
-        flow_session.to_csv(csv_file)
+        # Use Sniffer class instead of FlowSession directly
+        sniffer = Sniffer(input_file=pcap_file, output_mode="csv", output_file=csv_file)
+        sniffer.start()
         
         if not os.path.exists(csv_file):
             return False, "API modu CSV dosyası oluşturamadı"
