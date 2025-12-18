@@ -19,12 +19,11 @@ ENV/
 /.eggs/
 
 
-# Model/runtime artifacts
-/alerts.db
-/src/alerts.db
-/data/live_captured_traffic.csv
+# Temporary runtime files (recreated each run)
 /temp_live.csv
 /temp_live.pcap
+/src/temp_live.csv
+/src/temp_live.pcap
 *.pkl
 *.joblib
 
