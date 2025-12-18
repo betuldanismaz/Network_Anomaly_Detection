@@ -71,15 +71,15 @@ logs = load_logs()
 render_kpis(logs)
 render_charts(logs)
 
+st.sidebar.header("Kontroller")
+auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True, key="auto_refresh_checkbox")
+refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15, key="refresh_interval_slider")
+
 st.subheader("Detaylı Loglar")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:
-    st.dataframe(logs, width=st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15))
-
-st.sidebar.header("Kontroller")
-auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
-refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15)
+    st.dataframe(logs, use_container_width=True)
 
 ip_to_unblock = st.sidebar.text_input("Engeli Kaldırılacak IP")
 if st.sidebar.button("Unblock IP"):
