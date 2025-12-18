@@ -21,6 +21,10 @@ ENV/
 
 # Model/runtime artifacts
 /alerts.db
+/src/alerts.db
+/data/live_captured_traffic.csv
+/temp_live.csv
+/temp_live.pcap
 *.pkl
 *.joblib
 
