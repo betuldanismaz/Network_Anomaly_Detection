@@ -4,6 +4,7 @@ import os
 import sys
 
 # CHECKING IF ALL LABELS IN TRAINING DATA ARE PRESENT IN classes_map.json
+# All labels in training data are present in classes_map.json.
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_PATH = os.path.join(BASE_DIR, "data", "processed_csv")
