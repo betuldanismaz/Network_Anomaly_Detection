@@ -15,39 +15,3 @@
   "Infiltration": 2,
   "Bot": 2
 }
-
-/*
-Here is the table content converted to plain text:
-
-**Monday- WorkingHours.pcap_ISCX.csv**  
-Day Activity: Monday  
-Attacks Found: Benign (Normal human activities)  
-
-**Tuesday- WorkingHours.pcap_ISCX.csv**  
-Day Activity: Tuesday  
-Attacks Found: Benign, FTP-Patator, SSH-Patator  
-
-**Wednesday- workingHours.pcap_ISCX.csv**  
-Day Activity: Wednesday  
-Attacks Found: Benign, DoS GoldenEye, DoS Hulk, DoS Slowhttptest, DoS slowloris, Heartbleed  
-
-**Thursday-WorkingHours- Morning-WebAttacks.pcap_ISCX.csv**  
-Day Activity: Thursday  
-Attacks Found: Benign, Web Attack – Brute Force, Web Attack – Sql Injection, Web Attack – XSS  
-
-**Thursday-WorkingHours- Afternoon-Infiltration.pcap_ISCX.csv**  
-Day Activity: Thursday  
-Attacks Found: Benign, Infiltration  
-
-**Friday-WorkingHours- Morning.pcap_ISCX.csv**  
-Day Activity: Friday  
-Attacks Found: Benign, Bot  
-
-**Friday-WorkingHours-Afternoon- PortScan.pcap_ISCX.csv**  
-Day Activity: Friday  
-Attacks Found: Benign, PortScan  
-
-**Friday-WorkingHours-Afternoon- DDos.pcap_ISCX.csv**  
-Day Activity: Friday  
-Attacks Found: Benign, DDoS
-*/
