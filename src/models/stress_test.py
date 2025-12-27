@@ -13,7 +13,7 @@ def stress_test_model():
     root = os.path.dirname(os.path.dirname(base_dir))
     # Allow overrides via env vars
     model_path = os.getenv('RF_MODEL_PATH') or os.path.join(root, "models", "rf_model_v1.pkl")
-    data_path = os.getenv('PROCESSED_CSV_DIR') or os.path.join(root, "data", "processed_csv", "ready_splits")
+    data_path = os.getenv('PROCESSED_CSV_DIR') or os.path.join(root, "data", "processed_randomforest")
 
     print("🔥 STRES TESTİ BAŞLIYOR (Performans Analizi)...")
 

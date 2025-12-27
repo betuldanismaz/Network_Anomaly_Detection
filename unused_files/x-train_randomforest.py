@@ -11,8 +11,8 @@ def train_model():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
     
-    # Target the ready_splits folder
-    data_path = os.path.join(project_root, "data", "processed_csv", "ready_splits")
+    # Target the processed_randomforest folder (new layout)
+    data_path = os.getenv('PROCESSED_RANDOMFOREST_DIR') or os.path.join(project_root, "data", "processed_randomforest")
     model_save_path = os.path.join(project_root, "models")
     
     # Create the folder if it does not exist
