@@ -1,0 +1,72 @@
+{
+  "dataset_description": "Network Traffic Dataset with Attack Types",
+  "files": [
+    {
+      "file_name": "Monday-WorkingHours.pcap_ISCX.csv",
+      "day_activity": "Monday",
+      "attacks_found": ["Benign (Normal human activities)"]
+    },
+    {
+      "file_name": "Tuesday-WorkingHours.pcap_ISCX.csv",
+      "day_activity": "Tuesday",
+      "attacks_found": ["Benign", "FTP-Patator", "SSH-Patator"]
+    },
+    {
+      "file_name": "Wednesday-workingHours.pcap_ISCX.csv",
+      "day_activity": "Wednesday",
+      "attacks_found": [
+        "Benign",
+        "DoS GoldenEye",
+        "DoS Hulk",
+        "DoS Slowhttptest",
+        "DoS slowloris",
+        "Heartbleed"
+      ]
+    },
+    {
+      "file_name": "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+      "day_activity": "Thursday",
+      "attacks_found": [
+        "Benign",
+        "Web Attack – Brute Force",
+        "Web Attack – Sql Injection",
+        "Web Attack – XSS"
+      ]
+    },
+    {
+      "file_name": "Thursday-WorkingHours-Afternoon-Infiltration.pcap_ISCX.csv",
+      "day_activity": "Thursday",
+      "attacks_found": ["Benign", "Infiltration"]
+    },
+    {
+      "file_name": "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+      "day_activity": "Friday",
+      "attacks_found": ["Benign", "Bot"]
+    },
+    {
+      "file_name": "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+      "day_activity": "Friday",
+      "attacks_found": ["Benign", "PortScan"]
+    },
+    {
+      "file_name": "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+      "day_activity": "Friday",
+      "attacks_found": ["Benign", "DDoS"]
+    }
+  ],
+  "summary": {
+    "total_files": 8,
+    "days_covered": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "attack_categories": [
+      "Benign",
+      "FTP-Patator",
+      "SSH-Patator",
+      "DoS Attacks",
+      "Web Attacks",
+      "Infiltration",
+      "Bot",
+      "PortScan",
+      "DDoS"
+    ]
+  }
+}
