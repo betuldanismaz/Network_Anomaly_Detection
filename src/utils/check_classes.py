@@ -8,7 +8,7 @@ import sys
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # allow overrides via env
-DATA_PATH = os.getenv('PROCESSED_CSV_DIR') or os.path.join(BASE_DIR, "data", "processed_csv")
+DATA_PATH = os.getenv('PROCESSED_CSV_DIR') or os.path.join(BASE_DIR, "data", "processed_randomforest")
 JSON_PATH = os.getenv('CLASSES_MAP_PATH') or os.path.join(BASE_DIR, "src", "utils", "classes_map.json")
 
 
@@ -22,7 +22,7 @@ def check_mappings():
         return
 
 
-    train_file = os.path.join(DATA_PATH, "ready_splits", "train.csv")
+    train_file = os.path.join(DATA_PATH, "train.csv")
     
     if not os.path.exists(train_file):
         print(f"Error: {train_file} not found.")

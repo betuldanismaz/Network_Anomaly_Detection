@@ -9,9 +9,9 @@ from sklearn.preprocessing import LabelEncoder
 # Main function to process the full data pipeline
 def process_full_pipeline():
 
-    # Set the base path for processed CSV files
+    # Set the base path for raw original CSV files
     base_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed_csv")
+        os.path.join(os.path.dirname(__file__), "..", "..", "data", "original_csv")
     )
     
     # List of CSV files to process
@@ -91,7 +91,7 @@ def process_full_pipeline():
     print(f"   ✅ Test Set:  {X_test.shape}")
 
     # Directory to save the split datasets
-    save_dir = "../../data/processed_csv/ready_splits/"
+    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed_randomforest"))
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 

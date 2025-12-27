@@ -14,7 +14,7 @@ import shap
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL_PATH = PROJECT_ROOT / "models" / "rf_model_v1.pkl"
-DEFAULT_DATA_PATH = PROJECT_ROOT / "data" / "processed_csv" / "ready_splits" / "train.csv"
+DEFAULT_DATA_PATH = PROJECT_ROOT / "data" / "processed_randomforest" / "train.csv"
 DEFAULT_TOP_FEATURES_PATH = PROJECT_ROOT / "models" / "top_20_features.json"
 DEFAULT_SHAP_PATH = PROJECT_ROOT / "models" / "shap_explainer.pkl"
 DEFAULT_FIG_PATH = PROJECT_ROOT / "reports" / "figures" / "top20_features.png"
