@@ -6,6 +6,8 @@ from collections import Counter
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import unicodedata
+import re
 
 # Paths
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -34,6 +36,21 @@ def analyze_distribution():
     if not csv_files:
         raise RuntimeError(f"No CSV files found in {DATA_DIR}")
 
+    # Prepare normalized class_map to handle unicode/whitespace variation
+    def _normalize_text(x):
+        if x is None:
+            return ''
+        s = str(x)
+        s = unicodedata.normalize('NFKC', s)
+        s = s.replace('\uFFFD', ' ')
+        s = s.replace('\u00A0', ' ')
+        s = s.replace('\ufeff', '')
+        # collapse all whitespace (tabs, multiple spaces) to single space
+        s = re.sub(r"\s+", ' ', s)
+        return s.strip()
+
+    normalized_map = { _normalize_text(k): v for k, v in class_map.items() }
+
     for f in csv_files:
         try:
             # Read only header to detect the exact label column name (case/whitespace variations)
@@ -54,18 +71,19 @@ def analyze_distribution():
 
         total_rows += len(s)
 
-        # Map labels using class_map; unmapped are NaN
-        mapped = s.map(class_map)
+        # Normalize labels and map using normalized_map
+        s_norm = s.fillna('').map(_normalize_text)
+        mapped = s_norm.map(normalized_map)
 
         # Count mapped
         vc_mapped = mapped.dropna().astype(int).value_counts()
         for cls, cnt in vc_mapped.items():
             mapped_counts[int(cls)] += int(cnt)
 
-        # Count unknown original label values (keep label names for diagnostics)
+        # Count unknown normalized label values (keep original samples for diagnostics)
         unmapped_mask = mapped.isna()
         if unmapped_mask.any():
-            vc_unknown = s[unmapped_mask].value_counts()
+            vc_unknown = s_norm[unmapped_mask].value_counts()
             for label_name, cnt in vc_unknown.items():
                 unknown_counts[str(label_name)] += int(cnt)
 
