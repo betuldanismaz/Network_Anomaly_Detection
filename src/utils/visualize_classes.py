@@ -15,7 +15,7 @@ from sklearn.manifold import TSNE
 # Paths
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # allow overrides
-TRAIN_CSV = os.getenv('TRAIN_CSV') or os.path.join(ROOT_DIR, 'data', 'processed_csv', 'ready_splits', 'train.csv')
+TRAIN_CSV = os.getenv('TRAIN_CSV') or os.path.join(ROOT_DIR, 'data', 'processed_randomforest', 'train.csv')
 OUT_FIG_DIR = os.getenv('REPORTS_FIGURES_DIR') or os.path.join(ROOT_DIR, 'reports', 'figures')
 OUT_FIG = os.path.join(OUT_FIG_DIR, 'class_clusters_tsne.png')
 
@@ -83,7 +83,8 @@ def load_sample(n=5000, random_state=42):
             print(f"[WARN] Could not load/train sample from {TRAIN_CSV}: {e}")
 
     # Fallback: sample across processed_csv folder
-    processed_dir = os.path.join(ROOT_DIR, 'data', 'processed_csv')
+    # fallback to original raw CSVs
+    processed_dir = os.path.join(ROOT_DIR, 'data', 'original_csv')
     csv_files = sorted([p for p in [
         os.path.join(processed_dir, 'Monday-WorkingHours.pcap_ISCX.csv'),
         os.path.join(processed_dir, 'Tuesday-WorkingHours.pcap_ISCX.csv'),
@@ -107,7 +108,7 @@ def load_sample(n=5000, random_state=42):
         except Exception as e:
             print(f"[WARN] Could not read {p}: {e}")
     if not parts:
-        raise RuntimeError('No data could be read from processed_csv files')
+        raise RuntimeError('No data could be read from original_csv files')
 
     big = pd.concat(parts, axis=0, ignore_index=True)
     label_col = find_label_column(big.columns)
@@ -121,7 +122,7 @@ def load_sample(n=5000, random_state=42):
 def stratified_sample_with_classes(target_classes=(0, 1, 2), per_class=1667, random_state=42):
     """Attempt to build a stratified sample containing at least `per_class` rows for each class.
     Reads source CSVs in chunks to avoid OOM and stops when targets are met."""
-    processed_dir = os.path.join(ROOT_DIR, 'data', 'processed_csv')
+    processed_dir = os.path.join(ROOT_DIR, 'data', 'original_csv')
     csv_files = sorted([p for p in [
         os.path.join(processed_dir, 'Monday-WorkingHours.pcap_ISCX.csv'),
         os.path.join(processed_dir, 'Tuesday-WorkingHours.pcap_ISCX.csv'),

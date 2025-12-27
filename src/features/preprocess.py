@@ -16,7 +16,8 @@ def process_full_pipeline():
     # 1. DYNAMIC PATHING
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
-    base_path = os.path.join(project_root, "data", "processed_csv")
+    # raw source CSVs moved to data/original_csv
+    base_path = os.getenv('ORIGINAL_CSV_DIR') or os.path.join(project_root, "data", "original_csv")
     
     file_list = [
         "Monday-WorkingHours.pcap_ISCX.csv",
@@ -162,7 +163,10 @@ def process_full_pipeline():
     X_test = pd.DataFrame(X_test_scaled, columns=columns)
 
     # 11. SAVE TO DISK
-    save_dir = os.path.join(base_path, "ready_splits")
+    # save processed splits into processed_randomforest directory
+    save_dir = os.getenv('PROCESSED_RANDOMFOREST_DIR') or os.path.join(project_root, "data", "processed_randomforest")
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
