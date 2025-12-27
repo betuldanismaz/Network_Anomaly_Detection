@@ -1,0 +1,15 @@
+{
+  "total_rows": 2830743,
+  "class_counts": {
+    "0": 2273097,
+    "1": 380699,
+    "2": 174767
+  },
+  "unknown_counts": {
+    "Web Attack \ufffd Brute Force": 1507,
+    "Web Attack \ufffd XSS": 652,
+    "Web Attack \ufffd Sql Injection": 21
+  },
+  "imbalance_ratio": 13.0064428639274,
+  "plot_path": "D:\\Projects\\networkdetection\\networkdetection\\reports\\figures\\class_distribution_3class.png"
+}

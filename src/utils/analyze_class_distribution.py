@@ -36,7 +36,18 @@ def analyze_distribution():
 
     for f in csv_files:
         try:
-            s = pd.read_csv(f, usecols=['Label'], dtype=str, squeeze=True)
+            # Read only header to detect the exact label column name (case/whitespace variations)
+            header_cols = pd.read_csv(f, nrows=0).columns.tolist()
+            label_col = None
+            for c in header_cols:
+                if c and isinstance(c, str) and ('label' == c.strip().lower() or 'label' in c.strip().lower()):
+                    label_col = c
+                    break
+            if label_col is None:
+                sample_cols = header_cols[:10]
+                print(f"[WARN] 'Label' column not found in {f}. Sample columns: {sample_cols}")
+                continue
+            s = pd.read_csv(f, usecols=[label_col], dtype=str)[label_col]
         except Exception as e:
             print(f"[WARN] Could not read 'Label' from {f}: {e}")
             continue
