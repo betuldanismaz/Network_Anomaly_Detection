@@ -14,9 +14,21 @@ from sklearn.manifold import TSNE
 
 # Paths
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-TRAIN_CSV = os.path.join(ROOT_DIR, 'data', 'processed_csv', 'ready_splits', 'train.csv')
-CLASS_MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
-OUT_FIG = os.path.join(ROOT_DIR, 'reports', 'figures', 'class_clusters_tsne.png')
+# allow overrides
+TRAIN_CSV = os.getenv('TRAIN_CSV') or os.path.join(ROOT_DIR, 'data', 'processed_csv', 'ready_splits', 'train.csv')
+OUT_FIG_DIR = os.getenv('REPORTS_FIGURES_DIR') or os.path.join(ROOT_DIR, 'reports', 'figures')
+OUT_FIG = os.path.join(OUT_FIG_DIR, 'class_clusters_tsne.png')
+
+# Resolve classes_map.json
+possible_class_map_paths = [
+    os.getenv('CLASSES_MAP_PATH'),
+    os.path.join(os.path.dirname(__file__), 'classes_map.json'),
+    os.path.join(ROOT_DIR, 'src', 'utils', 'classes_map.json'),
+    os.path.join(ROOT_DIR, 'classes_map.json'),
+]
+CLASS_MAP_PATH = next((p for p in possible_class_map_paths if p and os.path.exists(p)), None)
+if CLASS_MAP_PATH is None:
+    CLASS_MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
 
 # Import TOP_FEATURES if available
 try:

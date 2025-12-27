@@ -7,8 +7,9 @@ import sys
 # All labels in training data are present in classes_map.json.
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_PATH = os.path.join(BASE_DIR, "data", "processed_csv")
-JSON_PATH = os.path.join(BASE_DIR, "src", "utils", "classes_map.json")
+# allow overrides via env
+DATA_PATH = os.getenv('PROCESSED_CSV_DIR') or os.path.join(BASE_DIR, "data", "processed_csv")
+JSON_PATH = os.getenv('CLASSES_MAP_PATH') or os.path.join(BASE_DIR, "src", "utils", "classes_map.json")
 
 
 def check_mappings():
