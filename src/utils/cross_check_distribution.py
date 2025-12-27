@@ -3,8 +3,12 @@ import pandas as pd
 from collections import Counter
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DATA_DIR = os.path.join(ROOT, 'data', 'processed_csv')
-MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
+# allow overrides
+DATA_DIR = os.getenv('PROCESSED_CSV_DIR') or os.path.join(ROOT, 'data', 'processed_csv')
+possible_maps = [os.getenv('CLASSES_MAP_PATH'), os.path.join(os.path.dirname(__file__), 'classes_map.json'), os.path.join(ROOT, 'src', 'utils', 'classes_map.json'), os.path.join(ROOT, 'classes_map.json')]
+MAP_PATH = next((p for p in possible_maps if p and os.path.exists(p)), None)
+if MAP_PATH is None:
+    MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
 
 def norm(s):
     if s is None: return ''

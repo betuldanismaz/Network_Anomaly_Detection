@@ -11,9 +11,21 @@ import re
 
 # Paths
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DATA_DIR = os.path.join(ROOT_DIR, 'data', 'processed_csv')
-CLASS_MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
-OUT_FIG = os.path.join(ROOT_DIR, 'reports', 'figures', 'class_distribution_3class.png')
+# allow override via env var
+DATA_DIR = os.getenv('PROCESSED_CSV_DIR') or os.path.join(ROOT_DIR, 'data', 'processed_csv')
+OUT_FIG_DIR = os.getenv('REPORTS_FIGURES_DIR') or os.path.join(ROOT_DIR, 'reports', 'figures')
+OUT_FIG = os.path.join(OUT_FIG_DIR, 'class_distribution_3class.png')
+
+# Resolve classes_map.json from env or common locations
+possible_class_map_paths = [
+    os.getenv('CLASSES_MAP_PATH'),
+    os.path.join(os.path.dirname(__file__), 'classes_map.json'),
+    os.path.join(ROOT_DIR, 'src', 'utils', 'classes_map.json'),
+    os.path.join(ROOT_DIR, 'classes_map.json'),
+]
+CLASS_MAP_PATH = next((p for p in possible_class_map_paths if p and os.path.exists(p)), None)
+if CLASS_MAP_PATH is None:
+    CLASS_MAP_PATH = os.path.join(os.path.dirname(__file__), 'classes_map.json')
 
 # Expected classes
 CLASS_LABELS = {0: 'Normal', 1: 'Volumetric', 2: 'Infiltration'}
