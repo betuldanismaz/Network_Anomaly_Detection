@@ -12,7 +12,7 @@ import re
 # Paths
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # allow override via env var
-DATA_DIR = os.getenv('PROCESSED_CSV_DIR') or os.path.join(ROOT_DIR, 'data', 'processed_csv')
+DATA_DIR = os.getenv('PROCESSED_CSV_DIR') or os.path.join(ROOT_DIR, 'data', 'processed_randomforest')
 OUT_FIG_DIR = os.getenv('REPORTS_FIGURES_DIR') or os.path.join(ROOT_DIR, 'reports', 'figures')
 OUT_FIG = os.path.join(OUT_FIG_DIR, 'class_distribution_3class.png')
 
