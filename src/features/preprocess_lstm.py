@@ -198,29 +198,40 @@ def main(window_size=WINDOW_SIZE, stride=STRIDE):
     for f in csv_files:
         # Try to read the file header
         try:
-            # Read only the column names (first 0 rows) and convert to list
-            cols = pd.read_csv(f, nrows=0).columns.str.strip().tolist()
+            # Read only the column names (first 0 rows) - keep original names with spaces
+            cols_original = pd.read_csv(f, nrows=0).columns.tolist()
+            # Create stripped version for matching
+            cols_stripped = [c.strip() for c in cols_original]
         # Catch any exceptions during header reading
         except Exception:
             # Print warning message if file cannot be read
             print(f'[WARN] Could not read header of {f}, skipping')
             # Skip to next file
             continue
-        # Filter TOP_FEATURES to only those present in this file
-        keep = [c for c in TOP_FEATURES if c in cols]
+        
+        # Create mapping from stripped to original column names
+        col_map = {stripped: original for stripped, original in zip(cols_stripped, cols_original)}
+        
+        # Filter TOP_FEATURES to only those present in this file (using stripped names)
+        keep_stripped = [c for c in TOP_FEATURES if c in cols_stripped]
         # Check if 'Label' column exists in this file
-        if 'Label' in cols:
+        if 'Label' in cols_stripped:
             # Add 'Label' to the list of columns to keep
-            keep = keep + ['Label']
+            keep_stripped.append('Label')
+        
         # If no columns to keep, skip this file
-        if not keep:
+        if not keep_stripped:
             # Continue to next file
             continue
+        
+        # Map back to original column names (with spaces) for usecols parameter
+        keep_original = [col_map[c] for c in keep_stripped]
+        
         # Try to read the CSV file with selected columns
         try:
-            # Read CSV file with only the columns we want to keep
-            df = pd.read_csv(f, usecols=keep)
-            # Strip whitespace from column names
+            # Read CSV file with original column names (with spaces)
+            df = pd.read_csv(f, usecols=keep_original)
+            # Strip whitespace from column names after reading
             df.columns = df.columns.str.strip()
             # Add the dataframe to our list
             frames.append(df)
