@@ -20,7 +20,7 @@ def check_data_health():
     # 1. Setup Paths
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
-    data_dir = os.getenv('PROCESSED_CSV_DIR') or os.path.join(project_root, "data", "processed_csv", "ready_splits")
+    data_dir = os.getenv('PROCESSED_CSV_DIR') or os.path.join(project_root, "data", "processed_randomforest")
     
     files = {
         "Train": os.path.join(data_dir, "train.csv"),
