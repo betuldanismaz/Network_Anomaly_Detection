@@ -1,8 +1,8 @@
-# 🛡️ Network Intrusion Prevention System (IPS)
+#  Network Intrusion Prevention System (IPS)
 
 A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks (DDoS)
 
-## 🚀 Recent Updates
+##  Recent Updates
 
 A real-time Intrusion Prevention System (IPS) that combines **machine learning**, **automated firewall integration**, and **live monitoring** to detect and block network attacks including DDoS, Port Scanning, Web Exploits, and Advanced Persistent Threats.
 
@@ -10,7 +10,7 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 
 ---
 
-## 📑 Table of Contents
+##  Table of Contents
 
 - [Features](#-features)
 - [Architecture](#-architecture)
@@ -20,13 +20,12 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 - [Configuration](#-configuration)
 - [Usage](#-usage)
 - [Development](#-development)
-- [Contributing](#-contributing)
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🎯 Core Capabilities
+###  Core Capabilities
 
 | Feature                  | Description                                               |
 | ------------------------ | --------------------------------------------------------- |
@@ -62,7 +61,7 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ### System Flow
 
@@ -168,7 +167,7 @@ networkdetection/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -272,7 +271,7 @@ python test/attack_test.py
 
 ---
 
-## 📊 Model Performance
+##  Model Performance
 
 ### Training Dataset: CICIDS 2017
 
@@ -605,11 +604,11 @@ streamlit run src/dashboard/app.py
 
 **Features:**
 
-- **📊 Metrics Cards:** Total events, blocked IPs, last attack
-- **📈 Attack Timeline:** Real-time chart (updates every 5 sec)
-- **🥧 Action Distribution:** Pie chart (blocked vs allowed)
-- **📋 Event Log:** Filterable table with search
-- **🔓 IP Management:** Unblock interface
+- ** Metrics Cards:** Total events, blocked IPs, last attack
+- ** Attack Timeline:** Real-time chart (updates every 5 sec)
+- ** Action Distribution:** Pie chart (blocked vs allowed)
+- ** Event Log:** Filterable table with search
+- ** IP Management:** Unblock interface
 
 **Unblock an IP:**
 
@@ -851,34 +850,6 @@ sqlite3 alerts.db
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Follow these guidelines:
-
-### Contribution Process
-
-1. **Fork the repository**
-2. **Create a feature branch:**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes:**
-   - Follow PEP 8 style guide
-   - Add docstrings to functions
-   - Update README if needed
-4. **Test your changes:**
-   ```bash
-   python -m pytest test/
-   ```
-5. **Commit with clear messages:**
-   ```bash
-   git commit -m "feat: Add XGBoost model support"
-   ```
-6. **Push to your fork:**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-7. **Open a Pull Request**
 
 ### Priority Areas for Contribution
 
@@ -998,15 +969,8 @@ See [LICENSE](LICENSE) for full text.
 - **[scikit-learn](https://scikit-learn.org/)** - Machine learning toolkit
 - **[Streamlit](https://streamlit.io/)** - Dashboard framework
 
-### Inspiration
 
-- Research papers on ML-based intrusion detection
-- NIDS/NIPS architectures (Snort, Suricata, Zeek)
-- MITRE ATT&CK Framework for threat modeling
-
----
-
-## 📧 Contact & Support
+##  Contact & Support
 
 **Authors:** Betul Danismaz  , Mustafa Emre Bıyık
 **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)  
