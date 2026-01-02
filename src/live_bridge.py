@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 # TensorFlow imports
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TF warnings
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow.keras import models
 
 # Load environment variables
 load_dotenv()
@@ -198,7 +198,7 @@ class BiLSTMDetector:
         if not os.path.exists(BILSTM_MODEL_PATH):
             raise FileNotFoundError(f"❌ BiLSTM Model not found: {BILSTM_MODEL_PATH}")
         
-        self.model = keras.models.load_model(BILSTM_MODEL_PATH)
+        self.model = models.load_model(BILSTM_MODEL_PATH)
         print(f"✅ BiLSTM Model Loaded: {BILSTM_MODEL_PATH}")
         print(f"   Input Shape: {self.model.input_shape}")
         print(f"   Output Shape: {self.model.output_shape}")
