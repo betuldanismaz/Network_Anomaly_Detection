@@ -42,13 +42,11 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 ### 🚀 What Makes This Special
 
 1. **Security-First ML Design**
-
    - **99.90% Recall** → Only 0.1% of attacks slip through
    - **Low False Positive Rate** → 97.87% precision prevents alarm fatigue
    - **Custom Threshold Optimization** → Prioritizes catching attacks over reducing false alarms
 
 2. **Production-Ready Architecture**
-
    - Thread-safe buffered writes (no data loss)
    - Graceful shutdown with data persistence
    - Fallback mechanisms for feature extraction (CLI + API modes)
@@ -1008,8 +1006,8 @@ See [LICENSE](LICENSE) for full text.
 
 ## 📧 Contact & Support
 
-**Authors:** Betul Danismaz  , Mustafa Emre Bıyık
-**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)  
+**Authors:** Betul Danismaz , Mustafa Emre Bıyık
+**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 
 ---
 
