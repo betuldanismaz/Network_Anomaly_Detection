@@ -1,17 +1,18 @@
 # 🛡️ Network Intrusion Detection System (NIDS)
 
-A production-ready Network Intrusion Detection System featuring **dual machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification and BiLSTM for temporal pattern analysis with 3-class attack categorization.
+A production-ready Network Intrusion Detection System featuring **multiple machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification, Decision Tree for interpretable analysis, and BiLSTM for temporal pattern analysis with 3-class attack categorization.
 
-**🎯 Key Capabilities:** Real-time Detection | Automated Firewall Response | Live Monitoring Dashboard | Dual-Model Architecture
+**🎯 Key Capabilities:** Real-time Detection | Automated Firewall Response | Live Monitoring Dashboard | Multi-Model Architecture
 
 ---
 
 ## 📊 Quick Stats
 
-| Model             | Task                                 | Accuracy | Precision | Recall | Use Case          |
-| ----------------- | ------------------------------------ | -------- | --------- | ------ | ----------------- |
-| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS     |
-| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Temporal Analysis |
+| Model             | Task                                 | Accuracy | Precision | Recall | Use Case               |
+| ----------------- | ------------------------------------ | -------- | --------- | ------ | ---------------------- |
+| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS          |
+| **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
+| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Temporal Analysis      |
 
 ---
 
@@ -46,11 +47,12 @@ A production-ready Network Intrusion Detection System featuring **dual machine l
 
 ### 🎯 What Makes This Special
 
-**1. Dual-Model Approach**
+**1. Multi-Model Approach**
 
 - **Random Forest**: Fast binary classification (6-9s latency) for immediate threat response
+- **Decision Tree**: Highly interpretable model for understanding decision logic
 - **BiLSTM**: Deep temporal analysis for sophisticated attack pattern recognition
-- **Complementary Strengths**: Speed + Accuracy combined
+- **Complementary Strengths**: Speed + Interpretability + Accuracy combined
 
 **2. Production-Ready Design**
 
@@ -245,6 +247,34 @@ Actual Normal  98.7%   1.3%   ← FP: 2.13%
 4. Total Length of Fwd Packets (7.6%)
 5. Flow Bytes/s (6.4%)
 
+### Decision Tree (Binary Classification)
+
+**Training Dataset:** CICIDS 2017 (2,830,743 flows)
+
+| Metric                  | Value  | Interpretation                                   |
+| ----------------------- | ------ | ------------------------------------------------ |
+| **Accuracy**            | 99.60% | Overall correctness                              |
+| **Precision**           | 99.61% | When predicting "attack", correct 99.61% of time |
+| **Recall**              | 98.08% | Catches 98.08% of all actual attacks             |
+| **F1-Score**            | 98.84% | Harmonic mean of precision & recall              |
+| **False Negative Rate** | 1.92%  | 936 attacks missed out of 48,877                 |
+
+**Top Feature:** `Bwd Packet Length Std` (71.37% importance)
+
+**Configuration:**
+
+- Max Depth: 10 levels
+- Total Nodes: 433
+- Criterion: Gini impurity
+- Random State: 42 (reproducible)
+
+**Visualizations:**
+
+- Tree structure diagram (top 4 levels, 300 DPI)
+- Feature importance chart (top 10 features)
+- Confusion matrix heatmap
+- Decision rules export (text format)
+
 ### BiLSTM (3-Class Classification)
 
 **Architecture:**
@@ -293,6 +323,8 @@ networkdetection/
 │   ├── scaler.pkl                 # MinMaxScaler for RF
 │   ├── threshold.txt              # RF decision boundary (0.1077)
 │   ├── threshold_config.json      # RF threshold metadata
+│   ├── dt_model.pkl               # Trained Decision Tree model
+│   ├── dt_rules.txt               # Decision Tree rules (text)
 │   ├── bilstm_best.keras          # Trained BiLSTM model
 │   ├── scaler_lstm.pkl            # MinMaxScaler for BiLSTM
 │   └── class_weights.json         # BiLSTM class weights
@@ -313,7 +345,8 @@ networkdetection/
 │   │   └── resplit_data.py        # Data splitting utility
 │   │
 │   ├── 📁 models/
-│   │   ├── randomforest.py        # RF training script
+│   │   ├── train_randomforest.py  # RF training script
+│   │   ├── train_dt.py            # Decision Tree training script
 │   │   ├── train_bilstm.py        # BiLSTM training script
 │   │   ├── evaluate_bilstm.py     # BiLSTM evaluation script
 │   │   ├── analyze_results.py     # RF model evaluation
@@ -324,6 +357,7 @@ networkdetection/
 │   └── 📁 utils/
 │       ├── db_manager.py          # SQLite operations
 │       ├── firewall_manager.py    # Firewall integration
+│       ├── visualize_dt.py        # Decision Tree visualizations
 │       ├── data_audit.py          # RF data quality checks
 │       ├── data_audit_lstm.py     # BiLSTM data quality checks
 │       ├── model_optimizer.py     # Threshold optimization
@@ -332,6 +366,11 @@ networkdetection/
 │
 ├── 📂 reports/
 │   ├── figures/                   # RF visualizations
+│   ├── decisiontree/              # Decision Tree visualizations
+│   │   ├── dt_structure_top4_levels.png
+│   │   ├── dt_feature_importance.png
+│   │   ├── dt_confusion_matrix.png
+│   │   └── text_exports/decision_tree_rules.txt
 │   └── bilstm/                    # BiLSTM evaluation reports
 │       ├── final_classification_report.txt
 │       ├── final_confusion_matrix.png
@@ -519,7 +558,7 @@ Edit `src/utils/classes_map.json`:
 ### Training Random Forest
 
 ```bash
-python src/models/randomforest.py
+python src/models/train_randomforest.py
 ```
 
 Outputs:
@@ -528,6 +567,24 @@ Outputs:
 - `models/scaler.pkl`
 - `models/threshold.txt`
 - `reports/figures/confusion_matrix.png`
+
+### Training Decision Tree
+
+```bash
+# Train the model
+python src/models/train_dt.py
+
+# Generate visualizations
+python src/utils/visualize_dt.py
+```
+
+Outputs:
+
+- `models/dt_model.pkl` - Trained Decision Tree model
+- `models/dt_rules.txt` - Human-readable decision rules
+- `reports/decisiontree/dt_structure_top4_levels.png` - Tree diagram
+- `reports/decisiontree/dt_feature_importance.png` - Feature importance chart
+- `reports/decisiontree/dt_confusion_matrix.png` - Confusion matrix heatmap
 
 ### Training BiLSTM
 
