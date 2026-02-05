@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+"""
+LSTM 3-class classification
 
+Author: betül
+Date: 05.02.2026
+""" 
 
 import os
 import sys
@@ -116,15 +121,19 @@ def load_data_as_dataset() -> Tuple[tf.data.Dataset, tf.data.Dataset, np.ndarray
     
     print(f"   Loading from: {DATA_DIR}")
     
-    # Load data
-    X_train = np.load(X_train_path)
+    # ⚠️  MEMORY-EFFICIENT LOADING FOR SMALL GPU
+    # Use memory mapping to avoid loading full 1.8GB dataset into GPU at once
+    print("   ⚠️  Using memory-mapped loading for GPU memory efficiency...")
+    
+    # Load with memory mapping (keeps data on disk, loads on demand)
+    X_train_mmap = np.load(X_train_path, mmap_mode='r')
     y_train = np.load(y_train_path)
-    X_test = np.load(X_test_path)
+    X_test_mmap = np.load(X_test_path, mmap_mode='r')
     y_test = np.load(y_test_path)
     
-    print(f"   ✅ X_train shape: {X_train.shape}")
+    print(f"   ✅ X_train shape: {X_train_mmap.shape}")
     print(f"   ✅ y_train shape: {y_train.shape}")
-    print(f"   ✅ X_test shape: {X_test.shape}")
+    print(f"   ✅ X_test shape: {X_test_mmap.shape}")
     print(f"   ✅ y_test shape: {y_test.shape}")
     
     # Display class distribution
@@ -148,19 +157,39 @@ def load_data_as_dataset() -> Tuple[tf.data.Dataset, tf.data.Dataset, np.ndarray
     if missing_test:
         print(f"\n   ⚠️  WARNING: Test set missing classes: {missing_test}")
     
-    # Create tf.data.Dataset pipeline (STRICT SPECIFICATION)
-    print("\n   🔄 Creating tf.data.Dataset pipeline...")
+    # Create tf.data.Dataset pipeline using generator (GPU memory-efficient)
+    print("\n   🔄 Creating memory-efficient tf.data.Dataset pipeline...")
     
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    train_dataset = train_dataset.shuffle(buffer_size=10000, seed=SEED)
+    # Generator function for training data (streams from disk)
+    def train_generator():
+        """Generator that streams training data from disk."""
+        indices = np.arange(len(y_train))
+        np.random.seed(SEED)  # Reproducible shuffle
+        np.random.shuffle(indices)
+        
+        for idx in indices:
+            # Load one sample from memory-mapped array
+            yield X_train_mmap[idx].astype(np.float32), np.int32(y_train[idx])
+    
+    # Create dataset from generator
+    train_dataset = tf.data.Dataset.from_generator(
+        train_generator,
+        output_signature=(
+            tf.TensorSpec(shape=(10, 20), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32)
+        )
+    )
     train_dataset = train_dataset.batch(BATCH_SIZE)
     train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     
+    # For test set, we can load directly (smaller size: ~450MB)
+    X_test = X_test_mmap[:].astype(np.float32)  # Load into memory
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
     test_dataset = test_dataset.batch(BATCH_SIZE)
     test_dataset = test_dataset.prefetch(tf.data.AUTOTUNE)
     
-    print("   ✅ Pipeline configured: shuffle(10000) → batch(256) → prefetch(AUTOTUNE)")
+    print("   ✅ Pipeline configured: generator → batch(256) → prefetch(AUTOTUNE)")
+    print("   ℹ️  Training data streams from disk (memory-efficient)")
     
     return train_dataset, test_dataset, X_test, y_test, y_train
 

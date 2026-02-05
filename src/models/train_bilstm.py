@@ -101,29 +101,49 @@ def load_data_as_dataset():
     print(f"\n📊 Training class distribution: {dict(train_dist)}")
     print(f"📊 Test class distribution: {dict(test_dist)}")
     
+    
     # Warn about missing classes in test set
     missing_classes = set(range(NUM_CLASSES)) - set(test_dist.keys())
     if missing_classes:
         print(f"⚠️  WARNING: Test set is missing classes: {missing_classes}")
     
-    # Create tf.data.Dataset for training
-    # Load full training data (we need this for tf.data)
-    print("\n🔄 Creating tf.data.Dataset pipeline...")
-    X_train = np.load(X_train_path)  # Full load for dataset
+    # ⚠️  MEMORY-EFFICIENT LOADING FOR SMALL GPU
+    # Use generator approach to avoid loading full 1.8GB dataset into GPU at once
+    print("\n🔄 Creating memory-efficient tf.data.Dataset pipeline...")
     
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    train_dataset = train_dataset.shuffle(buffer_size=10000, seed=42)
+    # Generator function for training data (streams from disk)
+    def train_generator():
+        """Generator that streams training data from disk."""
+        indices = np.arange(len(y_train))
+        np.random.seed(42)  # Reproducible shuffle
+        np.random.shuffle(indices)
+        
+        for idx in indices:
+            # Load one sample from memory-mapped array
+            yield X_train_mmap[idx].astype(np.float32), np.int32(y_train[idx])
+    
+    # Create dataset from generator
+    train_dataset = tf.data.Dataset.from_generator(
+        train_generator,
+        output_signature=(
+            tf.TensorSpec(shape=(10, 20), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32)
+        )
+    )
     train_dataset = train_dataset.batch(BATCH_SIZE)
     train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     
-    # Create tf.data.Dataset for testing
+    # For test set, we can load directly (smaller size: ~450MB)
+    X_test = X_test[:].astype(np.float32)  # Convert to float32
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
     test_dataset = test_dataset.batch(BATCH_SIZE)
     test_dataset = test_dataset.prefetch(tf.data.AUTOTUNE)
     
-    print("✅ tf.data.Dataset pipeline created with batching and prefetching")
+    print("✅ Pipeline configured: generator → batch(256) → prefetch(AUTOTUNE)")
+    print("ℹ️  Training data streams from disk (memory-efficient)")
     
     return train_dataset, test_dataset, X_test, y_test, y_train
+
 
 
 def load_class_weights():

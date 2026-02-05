@@ -1,0 +1,22 @@
+{
+  "model_type": "LSTM (Unidirectional)",
+  "input_shape": [
+    10,
+    20
+  ],
+  "num_classes": 3,
+  "lstm_units_1": 128,
+  "lstm_units_2": 64,
+  "dense_units": 64,
+  "dropout_rate": 0.3,
+  "learning_rate": 0.001,
+  "batch_size": 256,
+  "max_epochs": 50,
+  "class_names": [
+    "Benign",
+    "Volumetric",
+    "Semantic"
+  ],
+  "random_seed": 42,
+  "created_at": "2026-02-05T20:58:07.024809"
+}

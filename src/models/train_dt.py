@@ -1,3 +1,10 @@
+"""
+Decision Tree binary classification 
+
+Author: betül
+Date: 05.02.2026
+""" 
+
 import os
 import sys
 from pathlib import Path

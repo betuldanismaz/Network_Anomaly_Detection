@@ -11,6 +11,9 @@ This script evaluates the trained LSTM model and generates:
 
 Usage:
     python src/models/evaluate_lstm.py
+
+Author: betül
+Date: 05.02.2026
 """
 
 import os

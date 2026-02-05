@@ -5,7 +5,6 @@ BiLSTM Threshold Analysis Script
 Analyzes prediction confidence scores and calculates optimal thresholds
 for a 5-Level Risk Scoring System.
 
-Author: NIDS Project
 Date: 2026-01-01
 """
 
