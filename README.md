@@ -48,7 +48,6 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 ### 🎯 What Makes This Special
 
-<<<<<<< HEAD
 
 1. **Security-First ML Design**
    - **99.90% Recall** → Only 0.1% of attacks slip through
@@ -73,7 +72,6 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 - Graceful shutdown with data persistence
 - Comprehensive error handling and logging
 - Memory-efficient batch processing for BiLSTM
-  > > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
 
 **3. Advanced Attack Classification**
 
@@ -212,7 +210,6 @@ python src/live_bridge.py
 streamlit run src/dashboard/app.py
 ```
 
-Access dashboard at: `http://localhost:8501`
 
 **Option 2: BiLSTM Training & Evaluation**
 
@@ -791,13 +788,10 @@ See [LICENSE](LICENSE) for full text.
 
 ## 📧 Contact & Support
 
-<<<<<<< HEAD
-**Authors:** Betul Danismaz , Mustafa Emre Bıyık
-=======
+
 **Authors:** Betul Danismaz, Mustafa Emre Bıyık
 
-> > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
-> > > > > > > **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
+**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 
 ---
 
