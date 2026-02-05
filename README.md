@@ -12,8 +12,8 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | ----------------- | ------------------------------------ | -------- | --------- | ------ | ---------------------- |
 | **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS          |
 | **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
-| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Temporal Analysis      |
-| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Lightweight Temporal   |
+| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | Temporal Analysis      |
+| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | Lightweight Temporal   |
 
 ---
 
@@ -48,7 +48,19 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 ### 🎯 What Makes This Special
 
-**1. Multi-Model Approach**
+<<<<<<< HEAD
+
+1. **Security-First ML Design**
+   - **99.90% Recall** → Only 0.1% of attacks slip through
+   - **Low False Positive Rate** → 97.87% precision prevents alarm fatigue
+   - **Custom Threshold Optimization** → Prioritizes catching attacks over reducing false alarms
+
+2. **Production-Ready Architecture**
+   - Thread-safe buffered writes (no data loss)
+   - Graceful shutdown with data persistence
+   - Fallback mechanisms for feature extraction (CLI + API modes)
+   - # Comprehensive error handling and logging
+     **1. Multi-Model Approach**
 
 - **Random Forest**: Fast binary classification (6-9s latency) for immediate threat response
   | **Decision Tree** | Highly interpretable model for understanding decision logic
@@ -61,6 +73,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 - Graceful shutdown with data persistence
 - Comprehensive error handling and logging
 - Memory-efficient batch processing for BiLSTM
+  > > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
 
 **3. Advanced Attack Classification**
 
@@ -778,8 +791,13 @@ See [LICENSE](LICENSE) for full text.
 
 ## 📧 Contact & Support
 
-**Authors:** Betul Danismaz, Mustafa Emre Bıyık  
-**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
+<<<<<<< HEAD
+**Authors:** Betul Danismaz , Mustafa Emre Bıyık
+=======
+**Authors:** Betul Danismaz, Mustafa Emre Bıyık
+
+> > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
+> > > > > > > **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 
 ---
 
