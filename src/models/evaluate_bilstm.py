@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""
-BiLSTM Model Evaluation Script
-==============================
-Evaluates the trained BiLSTM model on the test set.
-Generates classification report and confusion matrix.
-
-Author: NIDS Project
-Date: 2026-01-01
-"""
 
 import os
 import sys

@@ -1,20 +1,5 @@
 #!/usr/bin/env python3
-"""
-LSTM Model Training for Network Intrusion Detection System
-Production-Grade Unidirectional LSTM Implementation
 
-This script trains a stacked LSTM model for 3-class network attack classification:
-    - Class 0: Benign (Normal traffic)
-    - Class 1: Volumetric (DoS, DDoS attacks)
-    - Class 2: Semantic/Infiltration (PortScan, Web Attacks, etc.)
-
-Features:
-    - Memory-efficient tf.data.Dataset pipeline
-    - Class weight handling for imbalanced data
-    - Comprehensive callbacks (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard)
-    - Full reproducibility via random seed control
-    - GPU optimization with memory growth
-"""
 
 import os
 import sys
