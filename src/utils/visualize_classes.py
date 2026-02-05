@@ -1,3 +1,9 @@
+"""
+Visualize class distribution and t-SNE clusters
+
+Author: betül
+"""
+
 import os
 import json
 import math
