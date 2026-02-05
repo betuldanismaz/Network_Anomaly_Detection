@@ -1,12 +1,19 @@
-# 🛡️ Network Intrusion Prevention System (IPS)
+# 🛡️ Network Intrusion Detection System (NIDS)
 
-A real-time, production-ready Network Intrusion Prevention System that combines machine learning-based threat detection with automated firewall response and live monitoring dashboard. Built for detecting and blocking sophisticated network attacks (DDoS)
+A production-ready Network Intrusion Detection System featuring **multiple machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification, Decision Tree for interpretable analysis, and BiLSTM for temporal pattern analysis with 3-class attack categorization.
 
-## 🚀 Recent Updates
+**🎯 Key Capabilities:** Real-time Detection | Automated Firewall Response | Live Monitoring Dashboard | Multi-Model Architecture
 
-A real-time Intrusion Prevention System (IPS) that combines **machine learning**, **automated firewall integration**, and **live monitoring** to detect and block network attacks including DDoS, Port Scanning, Web Exploits, and Advanced Persistent Threats.
+---
 
-**Key Metrics:** 99.90% Attack Detection Rate | 97.87% Precision | 6-9s Detection Latency
+## 📊 Quick Stats
+
+| Model             | Task                                 | Accuracy | Precision | Recall | Use Case               |
+| ----------------- | ------------------------------------ | -------- | --------- | ------ | ---------------------- |
+| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS          |
+| **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
+| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | Temporal Analysis      |
+| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | Lightweight Temporal   |
 
 ---
 
@@ -16,30 +23,32 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
 - [Architecture](#-architecture)
 - [Quick Start](#-quick-start)
 - [Model Performance](#-model-performance)
-- [How It Works](#-how-it-works)
-- [Configuration](#-configuration)
+- [Project Structure](#-project-structure)
 - [Usage](#-usage)
+- [Configuration](#-configuration)
 - [Development](#-development)
-- [Contributing](#-contributing)
+- [Dependencies](#-dependencies)
 
 ---
 
 ## ✨ Features
 
-### 🎯 Core Capabilities
+### 🚀 Core Capabilities
 
-| Feature                  | Description                                               |
-| ------------------------ | --------------------------------------------------------- |
-| **Real-Time Detection**  | Captures and analyzes network packets in 4-second windows |
-| **Optimized ML Model**   | Random Forest (75 estimators) trained on 2.8M+ samples    |
-| **Dynamic Thresholding** | Custom decision boundary (0.1077) for maximum recall      |
-| **Top 20 Features**      | Intelligent feature selection reduces latency by 3x       |
-| **Automated Response**   | Immediate IP blocking via OS-level firewall integration   |
-| **Data Harvesting**      | Async logging for continual learning and model retraining |
-| **Live Dashboard**       | Streamlit-based monitoring with real-time statistics      |
-| **Wireshark Logging**    | Detailed packet inspection for academic verification      |
+| Feature                           | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| **Dual-Model Architecture**       | Random Forest (real-time) + BiLSTM/LSTM (temporal analysis)  |
+| **Real-Time Detection**           | 4-second packet capture windows with immediate analysis      |
+| **3-Class Attack Classification** | Benign, Volumetric (DDoS), Semantic (Port Scan, Web Attacks) |
+| **Automated Firewall Response**   | OS-level IP blocking (Windows/Linux)                         |
+| **Live Dashboard**                | Streamlit-based monitoring with real-time statistics         |
+| **Data Harvesting**               | Continuous learning pipeline for model retraining            |
+| **Top 20 Features**               | Optimized feature selection for 3x faster inference          |
+| **Custom Thresholding**           | Security-first decision boundaries (0.1077 for RF)           |
 
-### 🚀 What Makes This Special
+### 🎯 What Makes This Special
+
+<<<<<<< HEAD
 
 1. **Security-First ML Design**
    - **99.90% Recall** → Only 0.1% of attacks slip through
@@ -50,119 +59,99 @@ A real-time Intrusion Prevention System (IPS) that combines **machine learning**
    - Thread-safe buffered writes (no data loss)
    - Graceful shutdown with data persistence
    - Fallback mechanisms for feature extraction (CLI + API modes)
-   - Comprehensive error handling and logging
+   - # Comprehensive error handling and logging
+     **1. Multi-Model Approach**
 
-3. **MLOps Integration**
-   - Automated data collection for model retraining
-   - Feature distribution monitoring
-   - Model versioning with threshold configs
-   - Reproducible training pipeline
+- **Random Forest**: Fast binary classification (6-9s latency) for immediate threat response
+  | **Decision Tree** | Highly interpretable model for understanding decision logic
+  | **BiLSTM/LSTM** | Deep temporal analysis for sophisticated attack pattern recognition
+  | **Complementary Strengths** | Speed + Interpretability + Accuracy combined
+
+**2. Production-Ready Design**
+
+- Thread-safe buffered writes
+- Graceful shutdown with data persistence
+- Comprehensive error handling and logging
+- Memory-efficient batch processing for BiLSTM
+  > > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
+
+**3. Advanced Attack Classification**
+
+- **Benign** (Class 0): Normal network traffic
+- **Volumetric** (Class 1): DDoS, DoS, Botnet attacks
+- **Semantic** (Class 2): Port Scanning, Web Attacks, Brute Force, Infiltration
 
 ---
 
 ## 🏗️ Architecture
 
-### System Flow
+### System Overview
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
-│   Network   │────▶│    Scapy     │────▶│    PCAP     │────▶│ CICFlowMeter │
-│   Traffic   │     │  (Capture)   │     │   Buffer    │     │  (Features)  │
-└─────────────┘     └──────────────┘     └─────────────┘     └──────────────┘
-                                                                       │
-                                                                       ▼
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
-│  Firewall   │◀────│   Decision   │◀────│    Model    │◀────│   78 → 20    │
-│   (Block)   │     │   Engine     │     │  (RF + RL)  │     │   Features   │
-└─────────────┘     └──────────────┘     └─────────────┘     └──────────────┘
-       │                    │                                          │
-       ▼                    ▼                                          ▼
-┌─────────────┐     ┌──────────────┐                          ┌──────────────┐
-│   SQLite    │     │  Dashboard   │                          │  CSV Logger  │
-│  (Alerts)   │     │  (Streamlit) │                          │ (Retraining) │
-└─────────────┘     └──────────────┘                          └──────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    NETWORK TRAFFIC INPUT                         │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │   Scapy Capture      │
+              │   (4-second windows) │
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │  CICFlowMeter        │
+              │  (78 Features)       │
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │  Feature Selection   │
+              │  (Top 20 Features)   │
+              └──────────┬───────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+┌─────────────────┐           ┌─────────────────────┐
+│  Random Forest  │           │      BiLSTM         │
+│  Binary (0/1)   │           │  3-Class (0/1/2)    │
+│  Real-time IPS  │           │  Temporal Analysis  │
+└────────┬────────┘           └──────────┬──────────┘
+         │                               │
+         ▼                               ▼
+┌─────────────────┐           ┌─────────────────────┐
+│ Firewall Block  │           │  Pattern Reports    │
+│ SQLite Alerts   │           │  Confusion Matrix   │
+│ Live Dashboard  │           │  Classification     │
+└─────────────────┘           └─────────────────────┘
 ```
+
+### Model Comparison
+
+| Aspect            | Random Forest             | BiLSTM                                            |
+| ----------------- | ------------------------- | ------------------------------------------------- |
+| **Input**         | Single flow (20 features) | Sequence of 10 flows (20 features × 10 timesteps) |
+| **Output**        | Binary (Normal/Attack)    | 3-Class (Benign/Volumetric/Semantic)              |
+| **Latency**       | 6-9 seconds               | Batch processing                                  |
+| **Use Case**      | Real-time blocking        | Offline analysis, pattern detection               |
+| **Training Time** | ~15 minutes               | ~2-3 hours (50 epochs)                            |
+| **Model Size**    | 16.7 MB                   | 3.9 MB (BiLSTM) / ~2 MB (LSTM)                    |
+| **Preprocessing** | `preprocess.py`           | `preprocess_lstm.py`                              |
+| **Scaler**        | `scaler.pkl`              | `scaler_lstm.pkl`                                 |
 
 ### Component Breakdown
 
-| Component              | Technology                  | Purpose                                           |
-| ---------------------- | --------------------------- | ------------------------------------------------- |
-| **Packet Capture**     | Scapy                       | Raw packet sniffing from network interface        |
-| **Feature Extraction** | CICFlowMeter (Java)         | Converts packets → 78 bidirectional flow features |
-| **Preprocessing**      | Pandas + scikit-learn       | Column alignment, scaling, Top 20 selection       |
-| **ML Model**           | Random Forest (sklearn)     | Binary classification (Normal/Attack)             |
-| **Threshold Logic**    | Custom `.predict_proba()`   | Decision boundary = 0.1077 (not default 0.5)      |
-| **Action Layer**       | Windows Firewall / iptables | IP blocking at OS level                           |
-| **Persistence**        | SQLite + CSV                | Attack logging + data harvesting                  |
-| **Monitoring**         | Streamlit                   | Real-time dashboard with metrics                  |
-
-- **SQLite database** for attack event storage
-- **Live traffic CSV logging** for model retraining (`data/live_captured_traffic.csv`)
-- **Buffered writes** (25 rows OR 30 seconds, whichever first)
-- **Thread-safe architecture** with background writer
-- **Schema**: Timestamp + 20 features + Label + Confidence (23 columns)
-
-## 📁 Project Structure
-
-```
-networkdetection/
-├── 📂 data/
-│   ├── processed_csv/              # CICIDS 2017 preprocessed datasets (2.8M samples)
-│   │   ├── ready_splits/           # Train/Val/Test splits (80/10/10)
-│   │   │   ├── train.csv          # 2.2M training samples
-│   │   │   ├── val.csv            # 280K validation samples
-│   │   │   └── test.csv           # 280K test samples
-│   │   └── *.csv                  # Raw attack scenario files
-│   └── live_captured_traffic.csv  # Data harvesting output (auto-generated)
-│
-├── 📂 models/
-│   ├── rf_model_optimized.pkl     # Trained Random Forest (75 estimators)
-│   ├── scaler.pkl                 # Pre-fitted MinMaxScaler (0-1 normalization)
-│   ├── threshold.txt              # Optimal decision boundary: 0.10774313582858071
-│   └── threshold_config.json      # Threshold metadata + hyperparameters
-│
-├── 📂 src/
-│   ├── live_bridge.py             # 🚀 CORE: Real-time IPS orchestration engine
-│   ├── config.py                  # Top 20 feature definitions
-│   │
-│   ├── 📁 capture/
-│   │   └── sniffer.py             # Scapy packet capture module
-│   │
-│   ├── 📁 dashboard/
-│   │   └── app.py                 # Streamlit monitoring dashboard
-│   │
-│   ├── 📁 features/
-│   │   └── preprocess.py          # Data cleaning + feature engineering pipeline
-│   │
-│   ├── 📁 models/
-│   │   ├── randomforest.py        # Training script with hyperparameter tuning
-│   │   ├── lstm.py                # LSTM model implementation (experimental)
-│   │   ├── analyze_results.py     # Model evaluation & confusion matrix
-│   │   ├── stress_test.py         # Performance benchmarking
-│   │   └── top_20_features.json   # Feature importance rankings
-│   │
-│   └── 📁 utils/
-│       ├── db_manager.py          # SQLite CRUD operations
-│       ├── firewall_manager.py    # OS firewall integration (Windows/Linux)
-│       ├── data_audit.py          # Data quality validation
-│       ├── model_optimizer.py     # Threshold optimization + SHAP analysis
-│       ├── xai_engine.py          # Explainable AI utilities
-│       └── inspect_csv.py         # CSV inspection helper
-│
-├── 📂 test/
-│   ├── attack_test.py             # Simulated attack scenarios
-│   └── check_interfaces.py        # Network interface detector
-│
-├── 📂 md_files/
-│   ├── ARCHITECTURE.md            # System design documentation
-│   ├── REFACTORING_SUMMARY.md     # Optimization changelog
-│   └── TESTING_CHECKLIST.md       # QA procedures
-│
-├── alerts.db                      # SQLite database (auto-generated)
-├── requirements.txt               # Python dependencies (pinned versions)
-├── .env.example                   # Environment template
-└── README.md                      # This file
-```
+| Component                | Technology                  | Purpose                                    |
+| ------------------------ | --------------------------- | ------------------------------------------ |
+| **Packet Capture**       | Scapy                       | Raw packet sniffing from network interface |
+| **Feature Extraction**   | CICFlowMeter (Java)         | 78 bidirectional flow features             |
+| **Preprocessing**        | Pandas + scikit-learn       | Scaling, feature selection, sequencing     |
+| **RF Model**             | scikit-learn RandomForest   | Binary classification (75 estimators)      |
+| **BiLSTM/LSTM Model**    | TensorFlow/Keras            | 3-class sequential classification          |
+| **Firewall Integration** | Windows Firewall / iptables | OS-level IP blocking                       |
+| **Database**             | SQLite                      | Attack event logging                       |
+| **Dashboard**            | Streamlit                   | Real-time monitoring UI                    |
 
 ---
 
@@ -171,20 +160,20 @@ networkdetection/
 ### Prerequisites
 
 - **Python 3.8+** (tested on 3.9, 3.10, 3.11)
-- **Admin/Root privileges** (required for packet capture and firewall)
-- **Java 11+** (for CICFlowMeter feature extraction)
+- **Admin/Root privileges** (for packet capture and firewall)
+- **Java 11+** (for CICFlowMeter)
 - **Windows 10/11 or Linux** (Ubuntu 20.04+)
 
 ### Installation
 
-**Step 1: Clone the repository**
+**Step 1: Clone Repository**
 
 ```bash
 git clone https://github.com/betuldanismaz/Network_Anomaly_Detection.git
 cd Network_Anomaly_Detection/networkdetection
 ```
 
-**Step 2: Create virtual environment**
+**Step 2: Create Virtual Environment**
 
 ```bash
 # Windows
@@ -196,251 +185,332 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-**Step 3: Install dependencies**
+**Step 3: Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
-
-# Install CICFlowMeter (required for feature extraction)
-pip install cicflowmeter
 ```
 
-**Step 4: Configure environment**
+**Step 4: Configure Environment**
 
 ```bash
 # Copy template
 cp .env.example .env
 
-# Edit .env with your settings
-```
-
-**`.env` Configuration:**
-
-```env
-# Network Interface (run: python test/check_interfaces.py)
-NETWORK_INTERFACE=Wi-Fi              # Windows: "Wi-Fi", "Ethernet"
-                                     # Linux: "eth0", "wlan0"
-
-# IP Whitelist (comma-separated, no spaces)
-WHITELIST_IPS=192.168.1.1,127.0.0.1,8.8.8.8
-
-# Detection Threshold (0.0 - 1.0)
-# Lower = more sensitive, Higher = more false negatives
-# Default: 0.1077 (optimized for 99.9% recall)
-THRESHOLD=0.10774313582858071
+# Edit .env with your settings (see Configuration section)
 ```
 
 ### Running the System
 
-**Option 1: Run IPS + Dashboard (Recommended)**
+**Option 1: Real-Time IPS (Random Forest)**
 
 ```bash
-# Terminal 1: Start the IPS engine
+# Terminal 1: Start IPS engine
 python src/live_bridge.py
 
-# Terminal 2: Launch dashboard (new terminal)
+# Terminal 2: Launch dashboard
 streamlit run src/dashboard/app.py
 ```
 
 Access dashboard at: `http://localhost:8501`
 
-**Option 2: IPS Only (Headless Mode)**
+**Option 2: BiLSTM Training & Evaluation**
 
 ```bash
-python src/live_bridge.py
+# Step 1: Preprocess data for LSTM
+python src/features/preprocess_lstm.py
+
+# Step 2: Train BiLSTM model
+python src/models/train_bilstm.py
+
+# Step 3: Evaluate model
+python src/models/evaluate_bilstm.py
+
+# Option 3: Standard LSTM Training
+python src/models/train_lstm.py
+python src/models/evaluate_lstm.py
 ```
-
-**Option 3: Test with Simulated Attack**
-
-```bash
-# Run IPS in one terminal
-python src/live_bridge.py
-
-# In another terminal, simulate attack traffic
-python test/attack_test.py
-```
-
-### First-Time Setup Checklist
-
-- [ ] **Check network interface:** `python test/check_interfaces.py`
-- [ ] **Verify models exist:** `ls models/rf_model_optimized.pkl`
-- [ ] **Test firewall permissions:** Run as Administrator/sudo
-- [ ] **Validate dependencies:** `pip check`
-- [ ] **Review whitelist:** Edit `.env` → `WHITELIST_IPS`
 
 ---
 
 ## 📊 Model Performance
 
-### Training Dataset: CICIDS 2017
+### Random Forest (Binary Classification)
 
-- **Total Samples:** 2,830,743 network flows
-- **Attack Types:** 7 categories (DDoS, PortScan, Web Attack, Infiltration, Botnet, Brute Force, DoS)
-- **Training Duration:** ~15 minutes (Dell XPS 15, i7-9750H, 16GB RAM)
-- **Model Size:** 4.2 MB (optimized for edge deployment)
+**Training Dataset:** CICIDS 2017 (2,830,743 flows)
 
-### Evaluation Metrics (Test Set)
+| Metric                  | Value  | Interpretation                                   |
+| ----------------------- | ------ | ------------------------------------------------ |
+| **Accuracy**            | 99.73% | Overall correctness                              |
+| **Precision**           | 97.87% | When predicting "attack", correct 97.87% of time |
+| **Recall**              | 99.90% | Catches 99.9% of all actual attacks              |
+| **F1-Score**            | 98.88% | Harmonic mean of precision & recall              |
+| **ROC-AUC**             | 0.9994 | Near-perfect discriminative ability              |
+| **False Negative Rate** | 0.10%  | Only 1 in 1000 attacks missed                    |
 
-| Metric                  | Value      | Interpretation                                          |
-| ----------------------- | ---------- | ------------------------------------------------------- |
-| **Accuracy**            | **99.73%** | Overall correctness                                     |
-| **Precision (Attack)**  | **97.87%** | When model says "attack", it's right 97.87% of the time |
-| **Recall (Attack)**     | **99.90%** | Catches 99.9% of all actual attacks                     |
-| **F1-Score**            | **98.88%** | Harmonic mean of precision & recall                     |
-| **ROC-AUC**             | **0.9994** | Near-perfect discriminative ability                     |
-| **False Negative Rate** | **0.10%**  | Only 1 in 1000 attacks missed                           |
-| **False Positive Rate** | **2.13%**  | ~21 false alarms per 1000 normal flows                  |
-
-### Confusion Matrix
+**Confusion Matrix:**
 
 ```
-                 Predicted
-               Normal  Attack
-Actual Normal   98.7%   1.3%   ← FP Rate: 2.13%
-      Attack    0.1%   99.9%   ← FN Rate: 0.10%
+                Predicted
+              Normal  Attack
+Actual Normal  98.7%   1.3%   ← FP: 2.13%
+      Attack   0.1%   99.9%   ← FN: 0.10%
 ```
 
-### Attack Type Detection Rates
+**Top 5 Features (by Importance):**
 
-| Attack Type      | Samples | Detection Rate |
-| ---------------- | ------- | -------------- |
-| **DDoS**         | 128,027 | 99.94%         |
-| **PortScan**     | 158,930 | 99.87%         |
-| **Web Attack**   | 2,180   | 98.12%         |
-| **Infiltration** | 36      | 97.22%         |
-| **Botnet**       | 1,966   | 99.44%         |
-| **Brute Force**  | 13,835  | 99.91%         |
-| **DoS**          | 252,672 | 99.96%         |
+1. Bwd Packet Length Std (14.2%)
+2. Packet Length Variance (11.8%)
+3. Subflow Fwd Bytes (9.3%)
+4. Total Length of Fwd Packets (7.6%)
+5. Flow Bytes/s (6.4%)
 
-### Top 20 Features (by Importance)
+### Decision Tree (Binary Classification)
 
-1. **Bwd Packet Length Std** (14.2%)
-2. **Packet Length Variance** (11.8%)
-3. **Subflow Fwd Bytes** (9.3%)
-4. **Total Length of Fwd Packets** (7.6%)
-5. **Flow Bytes/s** (6.4%)
-6. **Avg Bwd Segment Size** (5.9%)
-7. **Flow Duration** (5.2%)
-8. **Fwd Packet Length Mean** (4.8%)
-9. **Average Packet Size** (4.1%)
-10. **Bwd Packet Length Mean** (3.7%)
+**Training Dataset:** CICIDS 2017 (2,830,743 flows)
 
-_Full list in `src/config.py`_
+| Metric                  | Value  | Interpretation                                   |
+| ----------------------- | ------ | ------------------------------------------------ |
+| **Accuracy**            | 99.60% | Overall correctness                              |
+| **Precision**           | 99.61% | When predicting "attack", correct 99.61% of time |
+| **Recall**              | 98.08% | Catches 98.08% of all actual attacks             |
+| **F1-Score**            | 98.84% | Harmonic mean of precision & recall              |
+| **False Negative Rate** | 1.92%  | 936 attacks missed out of 48,877                 |
 
-### Why This Threshold (0.1077)?
+**Top Feature:** `Bwd Packet Length Std` (71.37% importance)
 
-```python
-# Standard ML approach (sklearn default):
-threshold = 0.5  # Predict "attack" if P(attack) > 50%
+**Configuration:**
 
-# Our security-first approach:
-threshold = 0.1077  # Predict "attack" if P(attack) > 10.77%
+- Max Depth: 10 levels
+- Total Nodes: 433
+- Criterion: Gini impurity
+- Random State: 42 (reproducible)
 
-# Trade-off:
-# ✅ Catches 99.9% of attacks (vs 95% at threshold=0.5)
-# ⚠️ Slightly more false alarms (2.13% vs 0.5%)
-# ✅ For security systems: Better safe than sorry!
-```
+**Visualizations:**
 
-**Mathematical Justification:**
+- Tree structure diagram (top 4 levels, 300 DPI)
+- Feature importance chart (top 10 features)
+- Confusion matrix heatmap
+- Decision rules export (text format)
 
-- Threshold optimized via Precision-Recall curve
-- Target: Maximize Recall ≥ 99.9% while maintaining Precision > 95%
-- See `src/models/randomforest.py` (lines 176-207) for implementation
+### BiLSTM (3-Class Classification)
+
+**Architecture (BiLSTM):**
+
+- Input: (batch_size, 10 timesteps, 20 features)
+- BiLSTM Layer 1: 128 units + BatchNorm + Dropout(0.3)
+- BiLSTM Layer 2: 64 units + BatchNorm + Dropout(0.3)
+- Dense: 32 units (ReLU) + Dropout(0.3)
+- Output: 3 units (Softmax)
+
+**Architecture (LSTM):**
+
+- Similar structure but uses unidirectional LSTM layers for lower latency.
+- Optimized for resource-constrained environments.
+
+**Training Configuration:**
+
+- Epochs: 50 (with early stopping)
+- Batch Size: 256
+- Optimizer: Adam (lr=0.001)
+- Loss: Sparse Categorical Crossentropy
+- Class Weights: Balanced (computed from training data)
+
+**Class Mapping:**
+
+- **Class 0 (Benign)**: Normal traffic
+- **Class 1 (Volumetric)**: DDoS, DoS, Botnet
+- **Class 2 (Semantic)**: PortScan, Web Attack, Brute Force, Infiltration
+
+**Performance:** ~98%+ accuracy on test set (see `reports/bilstm/final_classification_report.txt`)
 
 ---
 
-## 🔍 How It Works
+## 📁 Project Structure
 
-### Data Flow (Detailed)
-
-**Phase 1: Packet Capture (4 seconds)**
-
-```python
-packets = sniff(iface="Wi-Fi", timeout=4)  # Scapy
-wrpcap("temp_live.pcap", packets)          # Save to disk
+```
+networkdetection/
+├── 📂 data/
+│   ├── original_csv/              # Raw CICIDS 2017 dataset
+│   ├── processed_csv/             # Preprocessed for Random Forest
+│   │   └── ready_splits/          # Train/Val/Test splits
+│   ├── processed_lstm/            # Preprocessed for BiLSTM
+│   │   ├── X_train.npy           # Training sequences (N, 10, 20)
+│   │   ├── y_train.npy           # Training labels
+│   │   ├── X_test.npy            # Test sequences
+│   │   └── y_test.npy            # Test labels
+│   └── live_captured_traffic.csv  # Data harvesting output
+│
+├── 📂 models/
+│   ├── rf_optimized_model.pkl     # Random Forest (75 estimators)
+│   ├── scaler.pkl                 # MinMaxScaler for RF
+│   ├── threshold.txt              # RF decision boundary (0.1077)
+│   ├── threshold_config.json      # RF threshold metadata
+│   ├── dt_model.pkl               # Trained Decision Tree model
+│   ├── dt_rules.txt               # Decision Tree rules (text)
+│   ├── bilstm_best.keras          # Trained BiLSTM model
+│   ├── lstm_best.keras            # Trained LSTM model
+│   ├── scaler_lstm.pkl            # MinMaxScaler for BiLSTM/LSTM
+│   └── class_weights.json         # BiLSTM class weights
+│
+├── 📂 src/
+│   ├── live_bridge.py             # 🚀 Real-time IPS engine (RF)
+│   ├── config.py                  # Top 20 feature definitions
+│   │
+│   ├── 📁 capture/
+│   │   └── sniffer.py             # Scapy packet capture
+│   │
+│   ├── 📁 dashboard/
+│   │   └── app.py                 # Streamlit monitoring dashboard
+│   │
+│   ├── 📁 features/
+│   │   ├── preprocess.py          # RF preprocessing pipeline
+│   │   ├── preprocess_lstm.py     # BiLSTM preprocessing (sequences)
+│   │   └── resplit_data.py        # Data splitting utility
+│   │
+│   ├── 📁 models/
+│   │   ├── train_randomforest.py  # RF training script
+│   │   ├── train_dt.py            # Decision Tree training script
+│   │   ├── train_bilstm.py        # BiLSTM training script
+│   │   ├── train_lstm.py          # LSTM training script
+│   │   ├── evaluate_bilstm.py     # BiLSTM evaluation script
+│   │   ├── evaluate_lstm.py       # LSTM evaluation script
+│   │   ├── analyze_results.py     # RF model evaluation
+│   │   ├── analyze_thresholds.py  # Threshold optimization & risk scoring
+│   │   ├── stress_test.py         # Performance benchmarking
+│   │   └── top_20_features.json   # Feature importance rankings
+│   │
+│   └── 📁 utils/
+│       ├── db_manager.py          # SQLite operations
+│       ├── firewall_manager.py    # Firewall integration
+│       ├── visualize_dt.py        # Decision Tree visualizations
+│       ├── data_audit.py          # RF data quality checks
+│       ├── data_audit_lstm.py     # BiLSTM data quality checks
+│       ├── model_optimizer.py     # Threshold optimization
+│       ├── xai_engine.py          # Explainable AI utilities
+│       └── inspect_csv.py         # CSV inspection helper
+│
+├── 📂 reports/
+│   ├── figures/                   # RF visualizations
+│   ├── decisiontree/              # Decision Tree visualizations
+│   │   ├── dt_structure_top4_levels.png
+│   │   ├── dt_feature_importance.png
+│   │   ├── dt_confusion_matrix.png
+│   │   └── text_exports/decision_tree_rules.txt
+│   └── bilstm/                    # BiLSTM evaluation reports
+│       ├── final_classification_report.txt
+│       ├── final_confusion_matrix.png
+│       └── training_history/
+│
+├── 📂 test/
+│   ├── attack_test.py             # Simulated attack scenarios
+│   └── check_interfaces.py        # Network interface detector
+│
+├── requirements.txt               # Python dependencies
+├── .env.example                   # Environment template
+└── README.md                      # This file
 ```
 
-**Phase 2: Feature Extraction (2-5 seconds)**
+---
+
+## 💻 Usage
+
+### Random Forest: Real-Time IPS
+
+**Start Monitoring:**
 
 ```bash
-# CICFlowMeter CLI (Java subprocess)
-cicflowmeter -f temp_live.pcap -c temp_live.csv
-
-# Output: CSV with 78 bidirectional flow features
-# Examples: Flow Duration, Fwd Packets, Bwd Packets, IAT Mean, etc.
+python src/live_bridge.py
 ```
 
-**Phase 3: Preprocessing**
+**Console Output Example:**
 
-```python
-# 1. Load CSV
-df = pd.read_csv("temp_live.csv")
+```
+======================================================================
+🔧 LIVE DETECTOR INITIALIZATION
+======================================================================
+✅ Model Loaded: models/rf_optimized_model.pkl
+✅ Scaler Loaded: models/scaler.pkl
+✅ Threshold Loaded: 0.1077
+✅ Top Features: 20 columns
+======================================================================
 
-# 2. Column alignment (CICFlowMeter → Training schema)
-df.rename(columns=COLUMN_RENAME_MAP, inplace=True)
+[2026-01-02 18:30:15] ✅ NORMAL
+  Src: 192.168.1.105 → Dst: 8.8.8.8
+  Confidence: 0.0234
 
-# 3. Filter to Top 20 features
-df_top20 = df[TOP_FEATURES]
-
-# 4. Scale features (0-1 normalization)
-scaler = joblib.load("models/scaler.pkl")  # Pre-fitted on training data
-X_scaled = scaler.transform(df_top20)
+[2026-01-02 18:30:20] 🚨 ATTACK DETECTED!
+  Src: 203.0.113.45 → Dst: 192.168.1.100
+  Confidence: 0.9876
+  🚫 IP blocked: 203.0.113.45
 ```
 
-**Phase 4: ML Inference**
+### BiLSTM: Training & Evaluation
 
-```python
-# Load model
-model = joblib.load("models/rf_model_optimized.pkl")
+**Step 1: Preprocess Data**
 
-# Predict probabilities (NOT binary labels!)
-probabilities = model.predict_proba(X_scaled)
-attack_prob = probabilities[:, 1]  # P(Class=Attack | features)
-
-# Apply custom threshold
-threshold = 0.1077
-predictions = (attack_prob >= threshold).astype(int)
+```bash
+python src/features/preprocess_lstm.py
 ```
 
-**Phase 5: Action & Logging**
+This creates:
 
-```python
-for idx, pred in enumerate(predictions):
-    if pred == 1:  # Attack detected
-        src_ip = df.iloc[idx]['Src IP']
+- `data/processed_lstm/X_train.npy` - Training sequences (N, 10, 20)
+- `data/processed_lstm/y_train.npy` - Training labels
+- `data/processed_lstm/X_test.npy` - Test sequences
+- `data/processed_lstm/y_test.npy` - Test labels
+- `models/scaler_lstm.pkl` - Fitted scaler
+- `models/class_weights.json` - Class weights
 
-        # 1. Block IP (OS firewall)
-        if src_ip not in WHITELIST_IPS:
-            block_ip(src_ip)
+**Step 2: Train Model**
 
-        # 2. Log to database
-        log_attack(src_ip, "BLOCKED", confidence=attack_prob[idx])
-
-        # 3. Harvest for retraining
-        log_to_csv(features, prediction, confidence)
+```bash
+python src/models/train_bilstm.py
 ```
 
-### Key Design Decisions
+Output:
 
-**Q: Why Random Forest instead of Deep Learning?**
+- `models/bilstm_best.keras` - Best model checkpoint
+- `reports/bilstm/training_history/` - Loss/accuracy plots
 
-- **Inference Speed:** 10ms vs 100ms+ for LSTM
-- **Interpretability:** Feature importance easily explained
-- **Training Efficiency:** 15 min vs 2+ hours
-- **Resource Constraints:** Works on edge devices (no GPU needed)
+**Step 3: Evaluate Model**
 
-**Q: Why Top 20 features instead of all 78?**
+```bash
+python src/models/evaluate_bilstm.py
+```
 
-- **Latency Reduction:** 3x faster inference
-- **Overfitting Prevention:** Less noise, better generalization
-- **Feature Importance:** Top 20 capture 92% of variance
+Generates:
 
-**Q: Why threshold 0.1077 instead of 0.5?**
+- `reports/bilstm/final_classification_report.txt`
+- `reports/bilstm/final_confusion_matrix.png`
 
-- **Security Priority:** Cost of missed attack >> cost of false alarm
-- **Recall Optimization:** 99.9% detection rate is critical
-- **Real-World Impact:** Better to block legit traffic temporarily than miss an APT
+**Example Classification Report:**
+
+```
+              precision    recall  f1-score   support
+
+      Benign     0.9850    0.9920    0.9885    150000
+  Volumetric     0.9780    0.9750    0.9765     80000
+    Semantic     0.9810    0.9790    0.9800     70000
+
+    accuracy                         0.9830    300000
+```
+
+### Dashboard Usage
+
+**Launch Dashboard:**
+
+```bash
+streamlit run src/dashboard/app.py
+```
+
+**Features:**
+
+- 📊 Real-time metrics (total events, blocked IPs)
+- 📈 Attack timeline chart
+- 🥧 Action distribution (blocked vs allowed)
+- 📋 Filterable event log
+- 🔓 IP unblock interface
 
 ---
 
@@ -449,532 +519,255 @@ for idx, pred in enumerate(predictions):
 ### Environment Variables (`.env`)
 
 ```env
-# ===== NETWORK CONFIGURATION =====
+# Network Interface
 NETWORK_INTERFACE=Wi-Fi
-# Find your interface: python test/check_interfaces.py
-# Windows: "Wi-Fi", "Ethernet", "Local Area Connection"
-# Linux: "eth0", "wlan0", "enp3s0"
+# Find yours: python test/check_interfaces.py
 
-# ===== SECURITY WHITELIST =====
-WHITELIST_IPS=192.168.1.1,127.0.0.1,8.8.8.8,1.1.1.1
-# Comma-separated, no spaces
-# Common additions: Your router, DNS servers, local devices
+# IP Whitelist (comma-separated, no spaces)
+WHITELIST_IPS=192.168.1.1,127.0.0.1,8.8.8.8
 
-# ===== DETECTION THRESHOLD =====
+# Random Forest Threshold (0.0 - 1.0)
 THRESHOLD=0.10774313582858071
-# Range: 0.0 - 1.0
-# Lower = More sensitive (catch more attacks, more false alarms)
-# Higher = Less sensitive (fewer false alarms, miss more attacks)
-# Default: 0.1077 (optimized for 99.9% recall)
-
-# ===== LOGGING =====
-LOG_LEVEL=INFO
-# Options: DEBUG, INFO, WARNING, ERROR
+# Lower = more sensitive, Higher = fewer false alarms
 ```
 
-### Threshold Tuning Guide
+### Random Forest Threshold Tuning
 
-| Threshold  | Recall | Precision | Use Case                                      |
-| ---------- | ------ | --------- | --------------------------------------------- |
-| **0.05**   | 99.95% | 92%       | **High-security environments** (banks, gov't) |
-| **0.1077** | 99.90% | 97.87%    | **Recommended (current)**                     |
-| **0.20**   | 99.5%  | 99%       | Balanced production                           |
-| **0.50**   | 95%    | 99.8%     | Low false alarm priority                      |
+| Threshold  | Recall | Precision | Use Case                     |
+| ---------- | ------ | --------- | ---------------------------- |
+| **0.05**   | 99.95% | 92%       | High-security (banks, gov't) |
+| **0.1077** | 99.90% | 97.87%    | **Recommended (current)**    |
+| **0.20**   | 99.5%  | 99%       | Balanced production          |
+| **0.50**   | 95%    | 99.8%     | Low false alarm priority     |
 
-**How to change:**
+**Change Threshold:**
 
-1. Edit `models/threshold.txt` → Change the value
+1. Edit `models/threshold.txt` → Change value
 2. Or edit `.env` → `THRESHOLD=0.20`
 3. Restart `live_bridge.py`
 
-**Test your threshold:**
+### BiLSTM Hyperparameters
 
-```bash
-python src/models/model_optimizer.py --threshold 0.15 --evaluate
-```
-
-### Feature Selection (`src/config.py`)
-
-**Current Top 20:**
+Edit `src/models/train_bilstm.py`:
 
 ```python
-TOP_FEATURES = [
-    "Bwd Packet Length Std",
-    "Packet Length Variance",
-    "Subflow Fwd Bytes",
-    "Total Length of Fwd Packets",
-    "Flow Bytes/s",
-    "Avg Bwd Segment Size",
-    "Flow Duration",
-    "Fwd Packet Length Mean",
-    "Average Packet Size",
-    "Bwd Packet Length Mean",
-    "Init_Win_bytes_forward",
-    "Subflow Fwd Packets",
-    "Total Fwd Packets",
-    "Fwd IAT Mean",
-    "Total Backward Packets",
-    "Flow IAT Mean",
-    "Flow IAT Min",
-    "Fwd IAT Min",
-    "Init_Win_bytes_backward",
-    "ACK Flag Count"
-]
+EPOCHS = 50
+BATCH_SIZE = 256
+LEARNING_RATE = 0.001
+LSTM_UNITS_1 = 128
+LSTM_UNITS_2 = 64
+DROPOUT_RATE = 0.3
+WINDOW_SIZE = 10  # Sequence length
 ```
 
-**To modify:**
+### Class Mapping (BiLSTM)
 
-1. Edit `src/config.py`
-2. Retrain model: `python src/models/randomforest.py`
-3. Feature importance analysis: `python src/models/analyze_results.py`
+Edit `src/utils/classes_map.json`:
 
-### Firewall Integration
-
-**Windows (automatic detection):**
-
-```powershell
-# System uses: netsh advfirewall firewall add rule
-# Requires: Administrator privileges
-```
-
-**Linux (iptables):**
-
-```bash
-# System uses: iptables -A INPUT -s <IP> -j DROP
-# Requires: sudo privileges
-```
-
-**Custom firewall:**
-Edit `src/utils/firewall_manager.py` → `block_ip()` function
-
----
-
-## 💻 Usage
-
-### Basic Operations
-
-**Start IPS monitoring:**
-
-```bash
-python src/live_bridge.py
-```
-
-**Console output example:**
-
-```
-======================================================================
-🔧 LIVE DETECTOR INITIALIZATION
-======================================================================
-✅ Model Loaded: models/rf_model_optimized.pkl
-   Model Type: RandomForestClassifier
-✅ Scaler Loaded: models/scaler.pkl
-✅ Threshold Loaded: 0.1077 (from models/threshold.txt)
-✅ Top Features: 20 columns
-✅ Data Harvesting Active: data/live_captured_traffic.csv
-======================================================================
-
-🛡️  SİSTEM BAŞLATILDI | Arayüz: Wi-Fi
-
-📡 Ağ Dinleniyor: Wi-Fi
-⏹️  Durdurmak için CTRL+C yapın...
-
-[2025-12-14 15:42:13.245] ✅ NORMAL
-  Src: 192.168.1.105  → Dst: 8.8.8.8
-  Fwd Length:     512.00 bytes | Flow Duration:   0.125000 sec
-  Prediction: 0 | Confidence: 0.0234
-
-[2025-12-14 15:42:18.891] 🚨 ATTACK
-  Src: 203.0.113.45   → Dst: 192.168.1.100
-  Fwd Length:   65535.00 bytes | Flow Duration: 120.000000 sec
-  Prediction: 1 | Confidence: 0.9876
-
-🚨 [15:42:18] TEHDİT ALGILANDI! Kaynak IP: 203.0.113.45
-   Güven Skoru: 98.76%
-   🚫 IP engellendi: 203.0.113.45
-```
-
-### Dashboard Usage
-
-**Launch dashboard:**
-
-```bash
-streamlit run src/dashboard/app.py
-```
-
-**Features:**
-
-- **📊 Metrics Cards:** Total events, blocked IPs, last attack
-- **📈 Attack Timeline:** Real-time chart (updates every 5 sec)
-- **🥧 Action Distribution:** Pie chart (blocked vs allowed)
-- **📋 Event Log:** Filterable table with search
-- **🔓 IP Management:** Unblock interface
-
-**Unblock an IP:**
-
-1. Navigate to sidebar
-2. Enter IP in "Engeli Kaldırılacak IP" field
-3. Click "Unblock IP"
-4. Check console for confirmation
-
-### Data Harvesting & Retraining
-
-**View harvested data:**
-
-```bash
-# Check file size
-ls -lh data/live_captured_traffic.csv
-
-# Preview first 10 rows
-head -n 10 data/live_captured_traffic.csv
-
-# Inspect with Python
-python src/utils/inspect_csv.py data/live_captured_traffic.csv 100
-```
-
-**Retrain with new data:**
-
-```python
-# 1. Load harvested data
-import pandas as pd
-live_df = pd.read_csv("data/live_captured_traffic.csv")
-
-# 2. Filter high-confidence samples
-confident = live_df[
-    (live_df['Confidence_Score'] > 0.95) |
-    (live_df['Confidence_Score'] < 0.05)
-]
-
-# 3. Manual labeling (or use semi-supervised learning)
-# ... Label ambiguous samples ...
-
-# 4. Merge with original training data
-train_df = pd.read_csv("data/processed_csv/ready_splits/train.csv")
-new_train = pd.concat([train_df, labeled_live])
-
-# 5. Retrain
-python src/models/randomforest.py --data new_train.csv
-```
-
-### Testing & Validation
-
-**Simulate attack traffic:**
-
-```bash
-python test/attack_test.py
-```
-
-**Run stress test:**
-
-```bash
-python src/models/stress_test.py
-
-# Output:
-# ⚡ Throughput: 1,234 predictions/sec
-# 📊 Latency (avg): 8.1 ms
-# 💾 Memory Usage: 245 MB
-```
-
-**Analyze model performance:**
-
-```bash
-python src/models/analyze_results.py
-
-# Generates:
-# - reports/figures/confusion_matrix.png
-# - reports/figures/roc_curve.png
-# - reports/figures/feature_importance.png
-# - reports/missed_attacks_report.csv
-```
-
-**Data quality audit:**
-
-```bash
-python src/utils/data_audit.py
-
-# Checks:
-# ✅ No data leakage between train/val/test
-# ✅ Class balance: 80% Normal, 20% Attack
-# ✅ No missing values
-# ✅ Feature correlation < 0.95
+```json
+{
+  "BENIGN": 0,
+  "DDoS": 1,
+  "DoS": 1,
+  "Bot": 1,
+  "PortScan": 2,
+  "Web Attack": 2,
+  "Brute Force": 2,
+  "Infiltration": 2
+}
 ```
 
 ---
 
 ## 🛠️ Development
 
-### Project Setup for Contributors
+### Training Random Forest
 
 ```bash
-# Clone repo
-git clone https://github.com/betuldanismaz/Network_Anomaly_Detection.git
-cd Network_Anomaly_Detection/networkdetection
-
-# Create dev environment
-python -m venv venv_dev
-source venv_dev/bin/activate  # Linux/Mac
-.\venv_dev\Scripts\Activate.ps1  # Windows
-
-# Install with dev dependencies
-pip install -r requirements.txt
-pip install pytest black flake8 jupyter
-
-# Run tests (if available)
-pytest test/
-
-# Format code
-black src/
+python src/models/train_randomforest.py
 ```
 
-### Code Structure Guidelines
+Outputs:
 
-**Adding a new attack type:**
+- `models/rf_optimized_model.pkl`
+- `models/scaler.pkl`
+- `models/threshold.txt`
+- `reports/figures/confusion_matrix.png`
 
-1. **Update preprocessing:**
-
-```python
-# src/features/preprocess.py
-ATTACK_LABELS = {
-    'BENIGN': 0,
-    'DDoS': 1,
-    'PortScan': 1,
-    'NewAttackType': 1  # Add here
-}
-```
-
-2. **Retrain model:**
+### Training Decision Tree
 
 ```bash
-python src/models/randomforest.py
+# Train the model
+python src/models/train_dt.py
+
+# Generate visualizations
+python src/utils/visualize_dt.py
 ```
 
-3. **Update dashboard labels:**
+Outputs:
 
-```python
-# src/dashboard/app.py
-ATTACK_TYPE_COLORS = {
-    'DDoS': 'red',
-    'PortScan': 'orange',
-    'NewAttackType': 'purple'  # Add here
-}
-```
+- `models/dt_model.pkl` - Trained Decision Tree model
+- `models/dt_rules.txt` - Human-readable decision rules
+- `reports/decisiontree/dt_structure_top4_levels.png` - Tree diagram
+- `reports/decisiontree/dt_feature_importance.png` - Feature importance chart
+- `reports/decisiontree/dt_confusion_matrix.png` - Confusion matrix heatmap
 
-**Adding a new feature:**
-
-1. **Modify feature list:**
-
-```python
-# src/config.py
-TOP_FEATURES = [
-    # ... existing features ...
-    "Your New Feature",
-]
-```
-
-2. **Update CICFlowMeter output:**
-
-```python
-# src/live_bridge.py - COLUMN_RENAME_MAP
-COLUMN_RENAME_MAP = {
-    "your_new_feature": "Your New Feature",
-}
-```
-
-3. **Retrain with new feature set:**
+### Training BiLSTM
 
 ```bash
-python src/models/randomforest.py --features_updated
+# 1. Preprocess data
+python src/features/preprocess_lstm.py
+
+# 2. Train model
+python src/models/train_bilstm.py
+
+# 3. Evaluate
+python src/models/evaluate_bilstm.py
 ```
 
-### Performance Optimization Tips
-
-**Reduce latency:**
-
-```python
-# Option 1: Reduce capture window
-packets = sniff(iface=INTERFACE, timeout=2)  # Default: 4
-
-# Option 2: Batch processing
-packets = sniff(iface=INTERFACE, count=100)  # Process fixed count
-
-# Option 3: Async feature extraction
-from concurrent.futures import ThreadPoolExecutor
-executor.submit(extract_features, pcap_file)
-```
-
-**Scale to multiple interfaces:**
-
-```python
-interfaces = ["Wi-Fi", "Ethernet"]
-threads = [Thread(target=monitor_interface, args=(iface,))
-           for iface in interfaces]
-```
-
-### Debugging
-
-**Enable verbose logging:**
-
-```python
-# src/live_bridge.py (line 84)
-WIRESHARK_VERBOSE = True  # Detailed packet logs
-```
-
-**Check model predictions:**
-
-```python
-import joblib
-import pandas as pd
-
-model = joblib.load("models/rf_model_optimized.pkl")
-scaler = joblib.load("models/scaler.pkl")
-
-# Load sample
-df = pd.read_csv("test_data/test.csv", nrows=1)
-X = df[TOP_FEATURES]
-X_scaled = scaler.transform(X)
-
-# Debug prediction
-proba = model.predict_proba(X_scaled)
-print(f"P(Normal) = {proba[0, 0]:.4f}")
-print(f"P(Attack) = {proba[0, 1]:.4f}")
-print(f"Decision: {'ATTACK' if proba[0, 1] >= 0.1077 else 'NORMAL'}")
-```
-
-**Inspect database:**
+### Training LSTM (Unidirectional)
 
 ```bash
-sqlite3 alerts.db
-> SELECT * FROM attacks ORDER BY timestamp DESC LIMIT 10;
-> .exit
+# Train model
+python src/models/train_lstm.py
+
+# Evaluate
+python src/models/evaluate_lstm.py
 ```
 
----
+### Threshold Analysis & Risk Scoring
 
-## 🤝 Contributing
+Analyze prediction confidence to determine optimal thresholds for 5-level risk scoring:
 
-Contributions are welcome! Follow these guidelines:
+```bash
+python src/models/analyze_thresholds.py
+```
 
-### Contribution Process
+**Outputs:**
 
-1. **Fork the repository**
-2. **Create a feature branch:**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes:**
-   - Follow PEP 8 style guide
-   - Add docstrings to functions
-   - Update README if needed
-4. **Test your changes:**
-   ```bash
-   python -m pytest test/
-   ```
-5. **Commit with clear messages:**
-   ```bash
-   git commit -m "feat: Add XGBoost model support"
-   ```
-6. **Push to your fork:**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-7. **Open a Pull Request**
+- `reports/bilstm/threshold_analysis.png`
+- Precision/Recall metrics for custom thresholds
+- Suggested risk levels (Critical, High, Medium, Low, Minimal)
 
-### Priority Areas for Contribution
+### Data Quality Audits
 
-| Area                       | Description                                  | Difficulty |
-| -------------------------- | -------------------------------------------- | ---------- |
-| **New ML Models**          | Implement XGBoost, LightGBM, Neural Networks | 🟡 Medium  |
-| **Real-time Alerting**     | Add email, Slack, Discord notifications      | 🟢 Easy    |
-| **Docker Support**         | Create Dockerfile + docker-compose.yml       | 🟢 Easy    |
-| **Distributed Deployment** | Support for Kafka, Redis, multi-node         | 🔴 Hard    |
-| **Advanced XAI**           | SHAP force plots, LIME integration           | 🟡 Medium  |
-| **Mobile App**             | React Native monitoring dashboard            | 🔴 Hard    |
-| **IPv6 Support**           | Extend to IPv6 addresses                     | 🟡 Medium  |
-| **Cloud Integration**      | AWS/Azure deployment guides                  | 🟢 Easy    |
+**Random Forest:**
 
-### Code Review Checklist
+```bash
+python src/utils/data_audit.py
+```
 
-- [ ] Code follows PEP 8 style
-- [ ] Functions have docstrings
-- [ ] No hardcoded paths (use `os.path.join`)
-- [ ] Error handling implemented
-- [ ] Logging added for debugging
-- [ ] No sensitive data in commits
-- [ ] README updated if needed
-- [ ] Tests pass locally
+Checks:
+
+- No data leakage between splits
+- Class balance
+- Missing values
+- Feature correlation
+
+**BiLSTM:**
+
+```bash
+python src/utils/data_audit_lstm.py
+```
+
+Checks:
+
+- Sequence shapes
+- NaN/Inf values
+- Scaling verification
+- Class distribution
+
+### Testing
+
+**Simulate Attack:**
+
+```bash
+python test/attack_test.py
+```
+
+**Stress Test:**
+
+```bash
+python src/models/stress_test.py
+```
+
+Output:
+
+- ⚡ Throughput: predictions/sec
+- 📊 Latency: average ms
+- 💾 Memory usage
 
 ---
 
 ## 📦 Dependencies
 
-### Core Libraries
-
 ```python
-# Machine Learning
-scikit-learn==1.3.0      # Random Forest, scaling, metrics
-joblib==1.3.2            # Model serialization
+# Core ML
+scikit-learn==1.7.2
+tensorflow
+joblib
 
 # Data Processing
-pandas==2.0.3            # DataFrame operations
-numpy==1.24.3            # Numerical computing
+numpy
+pandas
 
 # Network & Security
-scapy==2.5.0             # Packet capture
-cicflowmeter==0.1.8      # Flow feature extraction
+scapy
+cicflowmeter
 
 # Visualization
-matplotlib==3.7.2        # Static plots
-seaborn==0.12.2          # Statistical visualization
-plotly==5.15.0           # Interactive charts
+matplotlib
+seaborn
+plotly
 
 # Dashboard
-streamlit==1.25.0        # Web UI framework
+streamlit
 
 # Utilities
-python-dotenv==1.0.0     # Environment variables
+python-dotenv
 ```
 
-### Optional Dependencies
-
-```python
-# Deep Learning (for LSTM model)
-tensorflow==2.13.0       # Neural networks
-
-# Explainable AI
-shap==0.42.1             # SHAP values for interpretability
-
-# Advanced Optimization
-optuna==3.3.0            # Hyperparameter tuning
-```
-
-**Install all:**
+**Install:**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Install minimal (no ML training):**
+---
 
-```bash
-pip install scapy pandas numpy joblib scikit-learn streamlit python-dotenv
-```
+## 🔍 How It Works
+
+### Random Forest Pipeline
+
+1. **Capture** (4s) → Scapy sniffs packets
+2. **Extract** (2-5s) → CICFlowMeter generates 78 features
+3. **Preprocess** → Select top 20 features, scale (0-1)
+4. **Predict** → RF outputs probability, apply threshold (0.1077)
+5. **Act** → Block IP if attack detected, log to DB
+
+### BiLSTM Pipeline
+
+1. **Preprocess** → Load CSVs, map labels (0/1/2)
+2. **Sequence** → Create sliding windows (10 timesteps)
+3. **Scale** → MinMaxScaler (0-1) fitted on training data
+4. **Train** → 2 BiLSTM layers + BatchNorm + Dropout
+5. **Evaluate** → Generate classification report, confusion matrix
+
+### Why Dual Models?
+
+| Scenario              | Best Model    | Reason                         |
+| --------------------- | ------------- | ------------------------------ |
+| Real-time blocking    | Random Forest | 6-9s latency, immediate action |
+| Pattern analysis      | BiLSTM        | Captures temporal dependencies |
+| Attack categorization | BiLSTM        | 3-class granularity            |
+| Resource-constrained  | Random Forest | No GPU needed                  |
+| Offline forensics     | BiLSTM        | Deep pattern recognition       |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License**.
-
-```
-MIT License
-
-Copyright (c) 2025 Betul Danismaz
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software...
-```
+MIT License - Copyright (c) 2026 Betul Danismaz
 
 See [LICENSE](LICENSE) for full text.
 
@@ -985,35 +778,32 @@ See [LICENSE](LICENSE) for full text.
 ### Datasets
 
 - **[CICIDS 2017](https://www.unb.ca/cic/datasets/ids-2017.html)** - Canadian Institute for Cybersecurity
-  - 2.8M labeled network flows
-  - 7 attack categories
-  - Real-world enterprise traffic patterns
 
 ### Tools & Libraries
 
-- **[Scapy](https://scapy.net/)** - Packet manipulation framework
-- **[CICFlowMeter](https://github.com/ahlashkari/CICFlowMeter)** - Network flow feature extraction
-- **[scikit-learn](https://scikit-learn.org/)** - Machine learning toolkit
+- **[Scapy](https://scapy.net/)** - Packet manipulation
+- **[CICFlowMeter](https://github.com/ahlashkari/CICFlowMeter)** - Flow feature extraction
+- **[scikit-learn](https://scikit-learn.org/)** - Machine learning
+- **[TensorFlow](https://www.tensorflow.org/)** - Deep learning
 - **[Streamlit](https://streamlit.io/)** - Dashboard framework
-
-### Inspiration
-
-- Research papers on ML-based intrusion detection
-- NIDS/NIPS architectures (Snort, Suricata, Zeek)
-- MITRE ATT&CK Framework for threat modeling
 
 ---
 
 ## 📧 Contact & Support
 
+<<<<<<< HEAD
 **Authors:** Betul Danismaz , Mustafa Emre Bıyık
-**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
+=======
+**Authors:** Betul Danismaz, Mustafa Emre Bıyık
+
+> > > > > > > b0560fb0a3056f28cbacb9eb2a814adec9794912
+> > > > > > > **Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 
 ---
 
 <div align="center">
 
-## ⚡ Powered by Machine Learning | Secured by Automation | Monitored in Real-Time
+## ⚡ Dual-Model Architecture | Real-Time Detection | Temporal Analysis
 
 **Star ⭐ this repo if you find it useful!**
 
