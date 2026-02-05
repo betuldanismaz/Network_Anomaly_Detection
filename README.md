@@ -13,6 +13,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS          |
 | **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
 | **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Temporal Analysis      |
+| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | ~98%+    | High      | High   | Lightweight Temporal   |
 
 ---
 
@@ -36,7 +37,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 | Feature                           | Description                                                  |
 | --------------------------------- | ------------------------------------------------------------ |
-| **Dual-Model Architecture**       | Random Forest (real-time) + BiLSTM (temporal analysis)       |
+| **Dual-Model Architecture**       | Random Forest (real-time) + BiLSTM/LSTM (temporal analysis)  |
 | **Real-Time Detection**           | 4-second packet capture windows with immediate analysis      |
 | **3-Class Attack Classification** | Benign, Volumetric (DDoS), Semantic (Port Scan, Web Attacks) |
 | **Automated Firewall Response**   | OS-level IP blocking (Windows/Linux)                         |
@@ -50,9 +51,9 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 **1. Multi-Model Approach**
 
 - **Random Forest**: Fast binary classification (6-9s latency) for immediate threat response
-- **Decision Tree**: Highly interpretable model for understanding decision logic
-- **BiLSTM**: Deep temporal analysis for sophisticated attack pattern recognition
-- **Complementary Strengths**: Speed + Interpretability + Accuracy combined
+  | **Decision Tree** | Highly interpretable model for understanding decision logic
+  | **BiLSTM/LSTM** | Deep temporal analysis for sophisticated attack pattern recognition
+  | **Complementary Strengths** | Speed + Interpretability + Accuracy combined
 
 **2. Production-Ready Design**
 
@@ -122,7 +123,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Latency**       | 6-9 seconds               | Batch processing                                  |
 | **Use Case**      | Real-time blocking        | Offline analysis, pattern detection               |
 | **Training Time** | ~15 minutes               | ~2-3 hours (50 epochs)                            |
-| **Model Size**    | 16.7 MB                   | 3.9 MB                                            |
+| **Model Size**    | 16.7 MB                   | 3.9 MB (BiLSTM) / ~2 MB (LSTM)                    |
 | **Preprocessing** | `preprocess.py`           | `preprocess_lstm.py`                              |
 | **Scaler**        | `scaler.pkl`              | `scaler_lstm.pkl`                                 |
 
@@ -134,7 +135,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Feature Extraction**   | CICFlowMeter (Java)         | 78 bidirectional flow features             |
 | **Preprocessing**        | Pandas + scikit-learn       | Scaling, feature selection, sequencing     |
 | **RF Model**             | scikit-learn RandomForest   | Binary classification (75 estimators)      |
-| **BiLSTM Model**         | TensorFlow/Keras            | 3-class sequential classification          |
+| **BiLSTM/LSTM Model**    | TensorFlow/Keras            | 3-class sequential classification          |
 | **Firewall Integration** | Windows Firewall / iptables | OS-level IP blocking                       |
 | **Database**             | SQLite                      | Attack event logging                       |
 | **Dashboard**            | Streamlit                   | Real-time monitoring UI                    |
@@ -211,6 +212,10 @@ python src/models/train_bilstm.py
 
 # Step 3: Evaluate model
 python src/models/evaluate_bilstm.py
+
+# Option 3: Standard LSTM Training
+python src/models/train_lstm.py
+python src/models/evaluate_lstm.py
 ```
 
 ---
@@ -277,13 +282,18 @@ Actual Normal  98.7%   1.3%   ← FP: 2.13%
 
 ### BiLSTM (3-Class Classification)
 
-**Architecture:**
+**Architecture (BiLSTM):**
 
 - Input: (batch_size, 10 timesteps, 20 features)
 - BiLSTM Layer 1: 128 units + BatchNorm + Dropout(0.3)
 - BiLSTM Layer 2: 64 units + BatchNorm + Dropout(0.3)
 - Dense: 32 units (ReLU) + Dropout(0.3)
 - Output: 3 units (Softmax)
+
+**Architecture (LSTM):**
+
+- Similar structure but uses unidirectional LSTM layers for lower latency.
+- Optimized for resource-constrained environments.
 
 **Training Configuration:**
 
@@ -326,7 +336,8 @@ networkdetection/
 │   ├── dt_model.pkl               # Trained Decision Tree model
 │   ├── dt_rules.txt               # Decision Tree rules (text)
 │   ├── bilstm_best.keras          # Trained BiLSTM model
-│   ├── scaler_lstm.pkl            # MinMaxScaler for BiLSTM
+│   ├── lstm_best.keras            # Trained LSTM model
+│   ├── scaler_lstm.pkl            # MinMaxScaler for BiLSTM/LSTM
 │   └── class_weights.json         # BiLSTM class weights
 │
 ├── 📂 src/
@@ -348,9 +359,11 @@ networkdetection/
 │   │   ├── train_randomforest.py  # RF training script
 │   │   ├── train_dt.py            # Decision Tree training script
 │   │   ├── train_bilstm.py        # BiLSTM training script
+│   │   ├── train_lstm.py          # LSTM training script
 │   │   ├── evaluate_bilstm.py     # BiLSTM evaluation script
+│   │   ├── evaluate_lstm.py       # LSTM evaluation script
 │   │   ├── analyze_results.py     # RF model evaluation
-│   │   ├── analyze_thresholds.py  # Threshold optimization
+│   │   ├── analyze_thresholds.py  # Threshold optimization & risk scoring
 │   │   ├── stress_test.py         # Performance benchmarking
 │   │   └── top_20_features.json   # Feature importance rankings
 │   │
@@ -598,6 +611,30 @@ python src/models/train_bilstm.py
 # 3. Evaluate
 python src/models/evaluate_bilstm.py
 ```
+
+### Training LSTM (Unidirectional)
+
+```bash
+# Train model
+python src/models/train_lstm.py
+
+# Evaluate
+python src/models/evaluate_lstm.py
+```
+
+### Threshold Analysis & Risk Scoring
+
+Analyze prediction confidence to determine optimal thresholds for 5-level risk scoring:
+
+```bash
+python src/models/analyze_thresholds.py
+```
+
+**Outputs:**
+
+- `reports/bilstm/threshold_analysis.png`
+- Precision/Recall metrics for custom thresholds
+- Suggested risk levels (Critical, High, Medium, Low, Minimal)
 
 ### Data Quality Audits
 
