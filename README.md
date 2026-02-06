@@ -14,6 +14,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
 | **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | Temporal Analysis      |
 | **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | Lightweight Temporal   |
+| **CatBoost**      | Binary (Optimized via PyCaret)       | ~99.8%   | 99.7%     | 99.8%  | High-Performance Bench |
 
 ---
 
@@ -21,6 +22,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 - [Features](#-features)
 - [Architecture](#-architecture)
+- [🔬 Experiments & AutoML](#-experiments--automl)
 - [Quick Start](#-quick-start)
 - [Model Performance](#-model-performance)
 - [Project Structure](#-project-structure)
@@ -40,6 +42,7 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Dual-Model Architecture**       | Random Forest (real-time) + BiLSTM/LSTM (temporal analysis)  |
 | **Real-Time Detection**           | 4-second packet capture windows with immediate analysis      |
 | **3-Class Attack Classification** | Benign, Volumetric (DDoS), Semantic (Port Scan, Web Attacks) |
+| **AutoML Optimization**           | PyCaret integration for model selection and tuning           |
 | **Automated Firewall Response**   | OS-level IP blocking (Windows/Linux)                         |
 | **Live Dashboard**                | Streamlit-based monitoring with real-time statistics         |
 | **Data Harvesting**               | Continuous learning pipeline for model retraining            |
@@ -47,7 +50,6 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 | **Custom Thresholding**           | Security-first decision boundaries (0.1077 for RF)           |
 
 ### 🎯 What Makes This Special
-
 
 1. **Security-First ML Design**
    - **99.90% Recall** → Only 0.1% of attacks slip through
@@ -153,6 +155,23 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 ---
 
+## 🔬 Experiments & AutoML
+
+We use **PyCaret** to rigorously benchmark and optimize our machine learning models. The experiments are located in `experiments/` and provide insights into model selection.
+
+### Key Findings
+
+- **CatBoost** emerged as a top performer with excellent robustness and speed.
+- **PyCaret Setup**: The `experiments/pycaret_setup.ipynb` notebook handles the setup, comparison, and tuning of various models.
+- **Visualizations**: ROC-AUC curves, Confusion Matrices, and Feature Importance plots are generated in `experiments/results/`.
+
+### Experiment Artifacts
+
+- `experiments/catboost_info/`: Logs and training data for the CatBoost model.
+- `experiments/results/`: Generated plots for model evaluation.
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -209,7 +228,6 @@ python src/live_bridge.py
 # Terminal 2: Launch dashboard
 streamlit run src/dashboard/app.py
 ```
-
 
 **Option 2: BiLSTM Training & Evaluation**
 
@@ -337,6 +355,12 @@ networkdetection/
 │   │   ├── X_test.npy            # Test sequences
 │   │   └── y_test.npy            # Test labels
 │   └── live_captured_traffic.csv  # Data harvesting output
+│
+├── 📂 experiments/                # 🔬 NEW: AutoML & Experiments
+│   ├── pycaret_setup.ipynb        # PyCaret experiment notebook
+│   ├── logs.log                   # Experiment logs
+│   ├── catboost_info/             # CatBoost training artifacts
+│   └── results/                   # Generated evaluation plots
 │
 ├── 📂 models/
 │   ├── rf_optimized_model.pkl     # Random Forest (75 estimators)
@@ -704,6 +728,10 @@ scikit-learn==1.7.2
 tensorflow
 joblib
 
+# AutoML
+pycaret
+catboost
+
 # Data Processing
 numpy
 pandas
@@ -787,7 +815,6 @@ See [LICENSE](LICENSE) for full text.
 ---
 
 ## 📧 Contact & Support
-
 
 **Authors:** Betul Danismaz, Mustafa Emre Bıyık
 
