@@ -10,3 +10,4 @@ joblib
 plotly
 python-dotenv
 cicflowmeter
+pycaret
