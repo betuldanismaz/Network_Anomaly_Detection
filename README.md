@@ -1,6 +1,6 @@
 # 🛡️ Network Intrusion Detection System (NIDS)
 
-A production-ready Network Intrusion Detection System featuring **multiple machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification, Decision Tree for interpretable analysis, and BiLSTM for temporal pattern analysis with 3-class attack categorization.
+A production-ready Network Intrusion Detection System featuring **multiple machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification, XGBoost for GPU-accelerated high-performance detection, Decision Tree for interpretable analysis, and BiLSTM for temporal pattern analysis with 3-class attack categorization.
 
 **🎯 Key Capabilities:** Real-time Detection | Automated Firewall Response | Live Monitoring Dashboard | Multi-Model Architecture
 
@@ -8,13 +8,14 @@ A production-ready Network Intrusion Detection System featuring **multiple machi
 
 ## 📊 Quick Stats
 
-| Model             | Task                                 | Accuracy | Precision | Recall | Use Case               |
-| ----------------- | ------------------------------------ | -------- | --------- | ------ | ---------------------- |
-| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | Real-time IPS          |
-| **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | Interpretable Analysis |
-| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | Temporal Analysis      |
-| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | Lightweight Temporal   |
-| **CatBoost**      | Binary (Optimized via PyCaret)       | ~99.8%   | 99.7%     | 99.8%  | High-Performance Bench |
+| Model             | Task                                 | Accuracy | Precision | Recall | F1-Score | Use Case               |
+| ----------------- | ------------------------------------ | -------- | --------- | ------ | -------- | ---------------------- |
+| **XGBoost**       | Binary (Normal/Attack)               | 99.82%   | 99.66%    | 99.28% | 99.47%   | GPU-Accelerated Prod   |
+| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | 98.88%   | Real-time IPS          |
+| **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | 98.84%   | Interpretable Analysis |
+| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | 97.80%   | Temporal Analysis      |
+| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | 98.16%   | Lightweight Temporal   |
+| **CatBoost**      | Binary (Optimized via PyCaret)       | ~99.8%   | 99.7%     | 99.8%  | ~99.8%   | High-Performance Bench |
 
 ---
 
@@ -308,6 +309,64 @@ Actual Normal  98.7%   1.3%   ← FP: 2.13%
 - Confusion matrix heatmap
 - Decision rules export (text format)
 
+### XGBoost (Binary Classification - GPU Accelerated)
+
+**Training Dataset:** CICIDS 2017 (1,866,407 flows)
+
+| Metric                | Value               | Interpretation                                   |
+| --------------------- | ------------------- | ------------------------------------------------ |
+| **Accuracy**          | 99.82%              | Overall correctness                              |
+| **Precision**         | 99.66%              | When predicting "attack", correct 99.66% of time |
+| **Recall**            | 99.28%              | Catches 99.28% of all actual attacks             |
+| **F1-Score**          | 99.47%              | Harmonic mean of precision & recall              |
+| **ROC-AUC**           | 1.0000              | **Perfect discriminative ability** ✨            |
+| **Inference Latency** | 0.0027 ms/sample    | Ultra-fast prediction speed                      |
+| **Throughput**        | 373,348 samples/sec | High-performance processing                      |
+
+**Confusion Matrix (Optimized Threshold = 0.84):**
+
+```
+                Predicted
+              Normal  Attack
+Actual Normal  99.93%  0.07%   ← FP: 164 out of 231,085
+      Attack   0.72%  99.28%   ← FN: 350 out of 48,877
+```
+
+**Training Performance:**
+
+- **Training Time**: 19.6 seconds (GPU-accelerated)
+- **Hardware**: CUDA-enabled GPU
+- **XGBoost Version**: 2.1.4
+- **Best Iteration**: 999 (out of 1000)
+- **Validation LogLoss**: 0.006969
+
+**Configuration:**
+
+- Estimators: 1000 trees
+- Max Depth: 7 levels
+- Learning Rate: 0.05
+- Subsample: 0.8
+- Column Sample: 0.8
+- Tree Method: `hist` (GPU-optimized)
+- Device: `cuda`
+- Scale Pos Weight: 4.73 (handles class imbalance)
+
+**Key Advantages:**
+
+- ⚡ **15-45x faster** than CPU training with GPU acceleration
+- 🎯 **Perfect ROC-AUC** (1.0000) - best discriminative performance
+- 🚀 **Sub-millisecond inference** - 0.0027 ms per sample
+- 💪 **Production-ready** - optimized threshold for maximum F1-score
+- 📊 **Balanced performance** - excellent precision AND recall
+
+**Visualizations:**
+
+- Confusion matrix comparison (baseline vs optimized threshold)
+- Feature importance (top 20 by gain)
+- Learning curve (validation LogLoss)
+- ROC curve (AUC = 1.0000)
+- Precision-Recall curve with optimal threshold marker
+
 ### BiLSTM (3-Class Classification)
 
 **Architecture (BiLSTM):**
@@ -367,6 +426,9 @@ networkdetection/
 │   ├── scaler.pkl                 # MinMaxScaler for RF
 │   ├── threshold.txt              # RF decision boundary (0.1077)
 │   ├── threshold_config.json      # RF threshold metadata
+│   ├── xgboost_model.pkl          # XGBoost model (1000 trees, GPU)
+│   ├── threshold_xgb.txt          # XGBoost decision boundary (0.84)
+│   ├── xgb_config.json            # XGBoost training metadata
 │   ├── dt_model.pkl               # Trained Decision Tree model
 │   ├── dt_rules.txt               # Decision Tree rules (text)
 │   ├── bilstm_best.keras          # Trained BiLSTM model
@@ -391,6 +453,7 @@ networkdetection/
 │   │
 │   ├── 📁 models/
 │   │   ├── train_randomforest.py  # RF training script
+│   │   ├── train_xgboost.py       # XGBoost training script (GPU)
 │   │   ├── train_dt.py            # Decision Tree training script
 │   │   ├── train_bilstm.py        # BiLSTM training script
 │   │   ├── train_lstm.py          # LSTM training script
@@ -413,6 +476,12 @@ networkdetection/
 │
 ├── 📂 reports/
 │   ├── figures/                   # RF visualizations
+│   ├── xgboost/                   # XGBoost visualizations
+│   │   ├── xgb_confusion_matrix.png
+│   │   ├── xgb_feature_importance.png
+│   │   ├── xgb_learning_curve.png
+│   │   ├── xgb_roc_curve.png
+│   │   └── xgb_precision_recall.png
 │   ├── decisiontree/              # Decision Tree visualizations
 │   │   ├── dt_structure_top4_levels.png
 │   │   ├── dt_feature_importance.png
@@ -615,6 +684,30 @@ Outputs:
 - `models/threshold.txt`
 - `reports/figures/confusion_matrix.png`
 
+### Training XGBoost
+
+**Requirements:** CUDA-enabled GPU (optional but recommended for 15-45x speedup)
+
+```bash
+python src/models/train_xgboost.py
+```
+
+**Training Time:**
+
+- With GPU: ~20 seconds
+- Without GPU: 5-15 minutes
+
+Outputs:
+
+- `models/xgboost_model.pkl` - Trained XGBoost model (4.49 MB)
+- `models/threshold_xgb.txt` - Optimized decision threshold (0.84)
+- `models/xgb_config.json` - Training configuration and metrics
+- `reports/figures/xgboost/xgb_confusion_matrix.png` - Baseline vs Optimized
+- `reports/figures/xgboost/xgb_feature_importance.png` - Top 20 features
+- `reports/figures/xgboost/xgb_learning_curve.png` - Validation LogLoss
+- `reports/figures/xgboost/xgb_roc_curve.png` - ROC curve (AUC=1.0)
+- `reports/figures/xgboost/xgb_precision_recall.png` - PR curve with optimal threshold
+
 ### Training Decision Tree
 
 ```bash
@@ -725,6 +818,7 @@ Output:
 ```python
 # Core ML
 scikit-learn==1.7.2
+xgboost==2.1.4  # GPU-accelerated gradient boosting
 tensorflow
 joblib
 
