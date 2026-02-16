@@ -24,7 +24,6 @@ ENV/
 /temp_live.pcap
 /src/temp_live.csv
 /src/temp_live.pcap
-*.pkl
 *.joblib
 
 # IDE / editor settings
