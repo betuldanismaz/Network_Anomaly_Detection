@@ -56,7 +56,7 @@ def render_charts(logs_df: pd.DataFrame):
         col_line.info("Saldırı frekansı için veri yok.")
     else:
         line_fig = px.line(line_df, x="timestamp", y="attacks", title="Saldırı Frekansı (1 dk)")
-        col_line.plotly_chart(line_fig, use_container_width=True)
+        col_line.plotly_chart(line_fig, width="stretch")
 
     pie_df = logs_df["action"].value_counts().reset_index()
     pie_df.columns = ["action", "count"]
@@ -64,7 +64,7 @@ def render_charts(logs_df: pd.DataFrame):
         col_pie.info("Eylem dağılımı için veri yok.")
     else:
         pie_fig = px.pie(pie_df, values="count", names="action", title="Blocked vs Allowed", hole=0.3)
-        col_pie.plotly_chart(pie_fig, use_container_width=True)
+        col_pie.plotly_chart(pie_fig, width="stretch")
 
 
 logs = load_logs()
@@ -75,11 +75,11 @@ st.subheader("Detaylı Loglar")
 if logs.empty:
     st.info("Henüz kayıt bulunamadı.")
 else:
-    st.dataframe(logs, width=st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15))
+    st.dataframe(logs)
 
 st.sidebar.header("Kontroller")
 auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
-refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15)
+refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15, key="refresh_rate_slider")
 
 ip_to_unblock = st.sidebar.text_input("Engeli Kaldırılacak IP")
 if st.sidebar.button("Unblock IP"):

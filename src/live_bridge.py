@@ -8,6 +8,7 @@ import subprocess
 import threading
 import queue
 import atexit
+import json
 from datetime import datetime
 from scapy.all import sniff, wrpcap, conf
 
@@ -16,6 +17,7 @@ import numpy as np
 import pandas as pd
 from scapy.all import sniff, wrpcap, rdpcap
 from dotenv import load_dotenv
+from confluent_kafka import Producer
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +26,7 @@ load_dotenv()
 # PATH SETUP
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(CURRENT_DIR, "..", "models", "rf_model_v1.pkl")
 SCALER_PATH = os.path.join(CURRENT_DIR, "..", "models", "scaler.pkl")
 sys.path.append(os.path.join(CURRENT_DIR, "utils"))
@@ -379,8 +382,9 @@ class TrafficLogger:
             }
 
 
-# Global TrafficLogger instance (initialized after model loading)
-TRAFFIC_LOGGER: TrafficLogger = None
+# Global Kafka Producer instance
+KAFKA_PRODUCER = None
+KAFKA_TOPIC = "network-traffic"
 
 COLUMN_RENAME_MAP = {
     "flow_duration": "Flow Duration",
@@ -522,47 +526,44 @@ def feature_extraction_and_predict():
     # Zorunlu sıralama ve sütun tamamlama
     features = features.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
 
-    # Kimlik sütunlarını model girişinden çıkar
+    # Kimlik sütunlarını özellik setinden çıkar (Kafka mesajında ayrı gönderilecek)
     model_features = features.drop(columns=LOG_ONLY_COLUMNS, errors="ignore")
 
+    # Kafka'ya gönderim: Her flow için ayrı mesaj
     try:
-        scaled_array = SCALER.transform(model_features)
-        X_scaled = pd.DataFrame(
-            scaled_array,
-            columns=model_features.columns,
-            index=model_features.index,
-        )
-        predictions = MODEL.predict(X_scaled)
-    except ValueError as exc:
-        print(f"⚠️ Ölçekleme/Tahmin hatası: {exc}")
-        return
-
-    attack_detected = False
-    for idx, pred in enumerate(predictions):
-        if pred != 1:
-            continue
-        attack_detected = True
-        ip_addr = src_ips.iloc[idx] if src_ips is not None else "Bilinmiyor"
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"\n🚨 [{timestamp}] TEHDİT ALGILANDI! Kaynak IP: {ip_addr}")
-        if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Bilinmiyor":
-            block_ip(ip_addr)
-            log_attack(ip_addr, "BLOCKED", "Attack Detected")
-        else:
-            print("   ✅ IP beyaz listede veya bilinmiyor, engellenmedi.")
-            log_attack(ip_addr, "ALLOWED", "Whitelisted")
-
-    if not attack_detected:
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"✅ [{timestamp}] Trafik Temiz - Güvenli ({len(predictions)} Akış)")
-        normal_indices = [i for i, pred in enumerate(predictions) if pred == 0][:5]
-        for idx in normal_indices:
-            ip_addr = (
-                src_ips.iloc[idx]
-                if (src_ips is not None and idx < len(src_ips))
-                else "Unknown/Local"
+        for idx in range(len(model_features)):
+            # Özellik vektörünü dictionary'e dönüştür
+            feature_dict = model_features.iloc[idx].to_dict()
+            
+            # Metadata ekle (IP, timestamp, vb.)
+            kafka_message = {
+                "timestamp": datetime.now().isoformat(),
+                "src_ip": src_ips.iloc[idx] if (src_ips is not None and idx < len(src_ips)) else "Unknown",
+                "dst_ip": features.iloc[idx].get("dst_ip", "Unknown") if "dst_ip" in features.columns else "Unknown",
+                "features": feature_dict,
+                "feature_count": len(feature_dict),
+                "producer_id": "live_bridge_v1"
+            }
+            
+            # JSON serialize ve Kafka'ya gönder
+            message_json = json.dumps(kafka_message)
+            KAFKA_PRODUCER.produce(
+                KAFKA_TOPIC,
+                value=message_json.encode('utf-8'),
+                callback=delivery_report
             )
-            log_attack(ip_addr, "NORMAL", "Clean Traffic")
+        
+        # Tüm mesajları flush et
+        KAFKA_PRODUCER.flush(timeout=10)
+        
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"✅ [{timestamp}] {len(model_features)} flow Kafka'ya gönderildi (Topic: {KAFKA_TOPIC})")
+        
+    except Exception as exc:
+        print(f"⚠️ Kafka gönderim hatası: {exc}")
+        import traceback
+        traceback.print_exc()
+        return
 
 
 
@@ -673,23 +674,30 @@ def prepare_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
 
     return working.reindex(columns=EXPECTED_FEATURES, fill_value=0)
 
-print("🛡️  AI NETWORK IPS - SİBER GÜVENLİK KALKANI")
+
+def delivery_report(err, msg):
+    """Kafka delivery callback - mesajın başarıyla gönderildiğini doğrular."""
+    if err is not None:
+        print(f"⚠️ Mesaj gönderimi başarısız: {err}")
+    # Başarılı gönderimler için sessiz mod (spam önleme)
+
+
+print("🛡️  AI NETWORK IPS - KAFKA PRODUCER MODE")
 print("=" * 60)
 
-if not (os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)):
-    print("❌ Model veya scaler bulunamadı. Önce eğitim pipeline'ını çalıştırın.")
-    sys.exit(1)
-
 try:
-    print("⏳ Modeller yükleniyor...", end="\r")
-    MODEL = joblib.load(MODEL_PATH)
-    SCALER = joblib.load(SCALER_PATH)
-    print("✅ Yapay Zeka Modeli (Random Forest) Aktif.        ")
-    
-    # Initialize TrafficLogger for data harvesting
-    TRAFFIC_LOGGER = TrafficLogger()
+    print("⏳ Kafka Producer başlatılıyor...", end="\r")
+    KAFKA_PRODUCER = Producer({
+        'bootstrap.servers': 'localhost:9092',
+        'client.id': 'network-ips-producer',
+        'acks': 'all',
+        'retries': 3,
+        'max.in.flight.requests.per.connection': 1
+    })
+    print("✅ Kafka Producer Aktif (localhost:9092).        ")
 except Exception as exc:
-    print(f"❌ Model yükleme hatası: {exc}")
+    print(f"❌ Kafka bağlantı hatası: {exc}")
+    print("⚠️  Docker Compose ile Kafka'yı başlattığınızdan emin olun: docker-compose up -d")
     sys.exit(1)
 
 if shutil.which("cicflowmeter") is None:
@@ -745,144 +753,33 @@ def run_cicflowmeter_api(pcap_file: str, csv_file: str):
     """Fallback runner that streams packets through FlowSession manually."""
     try:
         from cicflowmeter.flow_session import FlowSession
-    except ImportError as exc:  # pragma: no cover
+    except ImportError as exc:
         return False, f"FlowSession import edilemedi: {exc}"
 
     try:
         packets = rdpcap(pcap_file)
         if len(packets) == 0:
             return False, "PCAP dosyası boş"
-
-# Ağ Kartı Bulucu
-def get_active_interface():
-    for iface in conf.ifaces.values():
-        if iface.ip and iface.ip != "127.0.0.1" and iface.ip != "0.0.0.0":
-            if "Wi-Fi" in iface.name or "Wireless" in iface.name or "Ethernet" in iface.name:
-                return iface.name
-    return conf.iface # Bulamazsa varsayılanı dön
-
-INTERFACE = get_active_interface()
-TEMP_PCAP = "temp_live.pcap"
-TEMP_CSV = "temp_live.csv"
-WHITELIST_IPS = ["192.168.1.1", "127.0.0.1", "0.0.0.0", "8.8.8.8"] # Modem vs.
-
-print(f"\n🛡️  SİSTEM BAŞLATILDI | Arayüz: {INTERFACE}")
-
-# Model Yükle
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
-
-def feature_extraction_and_predict():
-    print("   ↳ ⚙️ Analiz...", end="\r")
-    
-    # 1. CICFlowMeter Çalıştır
-    cmd = f"cicflowmeter -f {TEMP_PCAP} -c {TEMP_CSV} > nul 2>&1"
-    os.system(cmd)
-    
-    if not os.path.exists(TEMP_CSV):
-        # Fallback: Python ile CSV üret (Eğer Java çalışmazsa)
-        try:
-            from cicflowmeter.flow_session import FlowSession
-            flow_session = FlowSession()
-            sniff(offline=TEMP_PCAP, prn=flow_session.on_packet, store=False)
-            flow_session.to_csv(TEMP_CSV)
-        except:
-            return
-
-    try:
-        df = pd.read_csv(TEMP_CSV)
-    except:
-        return
-
-    if df.empty: return
-
-    # IP Adreslerini Sakla
-    src_ips = df.get('Src IP', df.get('Source IP'))
-    dst_ips = df.get('Dst IP', df.get('Destination IP'))
-
-    # 2. SÜTUN EŞİTLEME (EN KRİTİK KISIM)
-    # Gelen veriyi modelin beklediği 78 sütuna zorluyoruz. Eksikleri 0 yapıyoruz.
-    # Önce sütun isimlerini temizle
-    df.columns = df.columns.str.strip()
-    
-    # Reindex ile sıralamayı ve sayıyı sabitle
-    # Not: Gelen CSV'deki isimler ile GOLD_STANDARD listesindeki isimler bazen farklı olabilir.
-    # Basitlik için sadece sayısal sütunları alıp, eksikleri dolduracağız.
-    
-    # Model için sadece sayısal veriyi hazırla
-    # Eğitimdeki feature isimleri ile buradakileri eşleştirmek zor olduğu için
-    # scaler'ın beklediği boyuta (78) getirmek için reindex kullanıyoruz.
-    features = df.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
-    
-    # Sonsuz değerleri temizle
-    features.replace([float('inf'), float('-inf')], 0, inplace=True)
-    features.fillna(0, inplace=True)
-
-    try:
-        scaled_array = SCALER.transform(features)
-        X_scaled = pd.DataFrame(
-            scaled_array,
-            columns=features.columns,
-            index=features.index,
-        )
-        predictions = MODEL.predict(X_scaled)
         
-        # Get probability scores for confidence logging
-        try:
-            probabilities = MODEL.predict_proba(X_scaled)
-        except AttributeError:
-            # Model doesn't support predict_proba, use predictions as fallback
-            probabilities = None
+        session = FlowSession()
+        for packet in packets:
+            session.on_packet_received(packet)
         
-        # === DATA HARVEST: Log all traffic to CSV ===
-        if TRAFFIC_LOGGER is not None:
-            TRAFFIC_LOGGER.log(features, predictions, probabilities)
-        
-    except ValueError as exc:
-        print(f"⚠️ Ölçekleme/Tahmin hatası: {exc}")
-        return
+        session.generate_session_class(csv_file)
+        return True, None
+    except Exception as exc:
+        return False, f"API hatası: {exc}"
 
-    attack_detected = False
-    for idx, pred in enumerate(predictions):
-        if pred != 1:
-            continue
-        attack_detected = True
-        ip_addr = src_ips.iloc[idx] if src_ips is not None else "Bilinmiyor"
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"\n🚨 [{timestamp}] TEHDİT ALGILANDI! Kaynak IP: {ip_addr}")
-        if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Bilinmiyor":
-            block_ip(ip_addr)
-            log_attack(ip_addr, "BLOCKED", "Attack Detected")
-        else:
-            print("   ✅ IP beyaz listede veya bilinmiyor, engellenmedi.")
-            log_attack(ip_addr, "ALLOWED", "Whitelisted")
-
-    if not attack_detected:
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"✅ [{timestamp}] Trafik Temiz - Güvenli ({len(predictions)} Akış)")
-        normal_indices = [i for i, pred in enumerate(predictions) if pred == 0][:5]
-        for idx in normal_indices:
-            if src_ips is not None and idx < len(src_ips):
-                ip_addr = src_ips.iloc[idx]
-            else:
-                if i < 2: # Sadece ilk 2 paketi kaydet, DB şişmesin
-                    log_attack(ip_src, "NORMAL", "Clean Traffic")
-
-        if not saldirgan_var_mi:
-            print(f"✅ Trafik Temiz ({len(predictions)} Akış)           ", end="\r")
-
-    except Exception as e:
-        # print(f"Hata: {e}")
-        pass
 
 def main_loop():
-    global TRAFFIC_LOGGER
+    global KAFKA_PRODUCER
     
     print(f"\n📡 Ağ Dinleniyor: {INTERFACE}")
+    print(f"📤 Kafka Topic: {KAFKA_TOPIC}")
     print("⏹️  Durdurmak için CTRL+C yapın...\n")
     
     iteration_count = 0
-    stats_interval = 10  # Show logger stats every N iterations
+    total_messages_sent = 0
 
     while True:
         try:
@@ -891,27 +788,24 @@ def main_loop():
             if len(packets) > 0:
                 wrpcap(TEMP_PCAP, packets)
                 feature_extraction_and_predict()
+                iteration_count += 1
             else:
                 print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
 
-            # Show logger stats periodically
-            iteration_count += 1
-            if iteration_count % stats_interval == 0 and TRAFFIC_LOGGER is not None:
-                stats = TRAFFIC_LOGGER.get_stats()
-                print(f"📊 [Data Harvest] Buffer: {stats['buffer_size']}/{HARVEST_BUFFER_SIZE} | Toplam Kayıt: {stats['total_rows']}")
+            # Periodic status update
+            if iteration_count > 0 and iteration_count % 10 == 0:
+                print(f"📊 [Producer Stats] {iteration_count} batch gönderildi ({KAFKA_TOPIC})")
 
-            # Disk temizliği geçici olarak kapatıldı (analiz için dosyalar korunsun)
-            # if os.path.exists(TEMP_PCAP):
-            #     os.remove(TEMP_PCAP)
-            # if os.path.exists(TEMP_CSV):
-            #     os.remove(TEMP_CSV)
         except KeyboardInterrupt:
             print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
-            # Ensure TrafficLogger flushes remaining data
-            if TRAFFIC_LOGGER is not None:
-                TRAFFIC_LOGGER.shutdown()
+            # Kafka Producer'ı temiz kapat
+            if KAFKA_PRODUCER is not None:
+                print("⏳ Kafka Producer kapatılıyor...")
+                KAFKA_PRODUCER.flush(timeout=5)
+                print("✅ Kafka Producer kapatıldı.")
             break
-        except:
+        except Exception as e:
+            print(f"⚠️ Ana döngü hatası: {e}")
             time.sleep(1)
 
 if __name__ == "__main__":
