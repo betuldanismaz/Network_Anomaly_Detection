@@ -78,6 +78,57 @@ else:
     st.dataframe(logs)
 
 st.sidebar.header("Kontroller")
+
+# ---------------------------------------------------------------------------
+# MODEL SELECTION
+# ---------------------------------------------------------------------------
+st.sidebar.subheader("🧠 Aktif Yapay Zeka Modeli")
+
+MODEL_MAPPING = {
+    "Random Forest": "rf_model_v1.pkl",
+    "Decision Tree": "dt_model.pkl",
+    "XGBoost": "xgboost_model.pkl",
+    "BiLSTM": "bilstm_model.keras"
+}
+
+# Read current active model
+ACTIVE_MODEL_PATH = os.path.join(PARENT_DIR, "data", "active_model.txt")
+os.makedirs(os.path.dirname(ACTIVE_MODEL_PATH), exist_ok=True)
+
+try:
+    if os.path.exists(ACTIVE_MODEL_PATH):
+        with open(ACTIVE_MODEL_PATH, "r") as f:
+            current_model_file = f.read().strip()
+        # Find the friendly name
+        current_model = next((k for k, v in MODEL_MAPPING.items() if v == current_model_file), "Random Forest")
+    else:
+        current_model = "Random Forest"
+        # Create default config
+        with open(ACTIVE_MODEL_PATH, "w") as f:
+            f.write(MODEL_MAPPING["Random Forest"])
+except Exception:
+    current_model = "Random Forest"
+
+selected_model = st.sidebar.selectbox(
+    "Model Seçin",
+    list(MODEL_MAPPING.keys()),
+    index=list(MODEL_MAPPING.keys()).index(current_model),
+    key="model_selector"
+)
+
+# Write to config file when selection changes
+if selected_model != current_model:
+    try:
+        with open(ACTIVE_MODEL_PATH, "w") as f:
+            f.write(MODEL_MAPPING[selected_model])
+        st.sidebar.success(f"✅ Model değiştirildi: {selected_model}")
+        st.sidebar.info("⏳ Consumer yeni modeli birkaç saniye içinde yükleyecek...")
+    except Exception as e:
+        st.sidebar.error(f"❌ Model yazma hatası: {e}")
+
+st.sidebar.caption(f"📊 Şu an aktif: **{selected_model}**")
+st.sidebar.markdown("---")
+
 auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True)
 refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15, key="refresh_rate_slider")
 

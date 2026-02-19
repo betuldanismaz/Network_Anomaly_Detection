@@ -1,0 +1,649 @@
+|--- Bwd Packet Length Std <= 0.18
+|   |--- Bwd Packets/s <= 0.00
+|   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |--- Fwd IAT Std <= 0.01
+|   |   |   |   |--- Idle Min <= 0.02
+|   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |--- Average Packet Size <= 0.08
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Packet Length Variance <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Packet Length Variance >  0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Average Packet Size >  0.08
+|   |   |   |   |   |   |   |--- Max Packet Length <= 0.02
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.01
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.01
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.03
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.03
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Max Packet Length >  0.02
+|   |   |   |   |   |   |   |   |--- Packet Length Mean <= 0.45
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Packet Length Mean >  0.45
+|   |   |   |   |   |   |   |   |   |--- Packet Length Mean <= 0.46
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Packet Length Mean >  0.46
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Idle Min >  0.02
+|   |   |   |   |   |--- Fwd IAT Max <= 0.53
+|   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.08
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.07
+|   |   |   |   |   |   |   |   |   |--- Idle Min <= 0.06
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Idle Min >  0.06
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.07
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.08
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.08
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.08
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.26
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.26
+|   |   |   |   |   |   |   |   |   |--- Idle Min <= 0.28
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Idle Min >  0.28
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |--- Idle Min <= 0.05
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Idle Min >  0.05
+|   |   |   |   |   |   |   |   |--- Idle Min <= 0.38
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Idle Min >  0.38
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Fwd IAT Max >  0.53
+|   |   |   |   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |   |   |   |--- Packet Length Mean <= 0.11
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.57
+|   |   |   |   |   |   |   |   |   |--- Packet Length Mean <= 0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Packet Length Mean >  0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.57
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Packet Length Mean >  0.11
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |--- Fwd IAT Std >  0.01
+|   |   |   |   |--- Fwd IAT Std <= 0.01
+|   |   |   |   |   |--- Fwd IAT Mean <= 0.01
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Fwd IAT Mean >  0.01
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Fwd IAT Std >  0.01
+|   |   |   |   |   |--- Idle Min <= 0.97
+|   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- Max Packet Length <= 0.00
+|   |   |   |   |   |   |   |   |--- Idle Min <= 0.05
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Idle Min >  0.05
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Max Packet Length >  0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Idle Min >  0.97
+|   |   |   |   |   |   |--- Fwd IAT Max <= 0.99
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Fwd IAT Max >  0.99
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |--- Total Fwd Packets >  0.00
+|   |   |   |--- Max Packet Length <= 0.00
+|   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |--- Max Packet Length <= 0.00
+|   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.72
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.72
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.97
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.97
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.09
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.09
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.80
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.80
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Max Packet Length >  0.00
+|   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |   |--- Packet Length Variance <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Packet Length Variance >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.01
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |--- Fwd IAT Std <= 0.31
+|   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.06
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.06
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.06
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.06
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Fwd IAT Std >  0.31
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |--- Max Packet Length >  0.00
+|   |   |   |   |--- Average Packet Size <= 0.25
+|   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Average Packet Size >  0.25
+|   |   |   |   |   |--- Packet Length Mean <= 0.29
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Packet Length Mean >  0.29
+|   |   |   |   |   |   |--- class: 0
+|   |--- Bwd Packets/s >  0.00
+|   |   |--- Avg Bwd Segment Size <= 0.00
+|   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |--- Packet Length Variance <= 0.00
+|   |   |   |   |   |   |--- Fwd IAT Max <= 0.64
+|   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.57
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.57
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Fwd IAT Max >  0.64
+|   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.50
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Fwd IAT Std >  0.50
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Packet Length Variance >  0.00
+|   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.00
+|   |   |   |   |   |   |   |--- Packet Length Mean <= 0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Packet Length Mean >  0.00
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.00
+|   |   |   |   |   |   |   |--- Idle Min <= 0.45
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Idle Min >  0.45
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Max Packet Length <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Max Packet Length >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |--- Total Backward Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Total Backward Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Bwd Packet Length Std >  0.00
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |--- Packet Length Mean <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Packet Length Variance <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Packet Length Variance >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Average Packet Size >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Packet Length Mean >  0.00
+|   |   |   |   |   |   |   |--- Max Packet Length <= 0.00
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.00
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Max Packet Length >  0.00
+|   |   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.14
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size >  0.14
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Total Backward Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Total Backward Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |--- Total Fwd Packets <= 0.03
+|   |   |   |   |   |   |--- Bwd Packet Length Max <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.07
+|   |   |   |   |   |   |   |   |--- Total Backward Packets <= 0.01
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Total Backward Packets >  0.01
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Fwd IAT Max >  0.07
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Bwd Packet Length Max >  0.00
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Total Fwd Packets >  0.03
+|   |   |   |   |   |   |--- class: 0
+|   |   |--- Avg Bwd Segment Size >  0.00
+|   |   |   |--- Bwd Packet Length Std <= 0.16
+|   |   |   |   |--- Total Backward Packets <= 0.00
+|   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.04
+|   |   |   |   |   |   |   |--- Packet Length Mean <= 0.00
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Packet Length Mean >  0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Bwd Packet Length Std >  0.04
+|   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.11
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.01
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.01
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.11
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.12
+|   |   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.01
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.01
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.01
+|   |   |   |   |   |   |   |   |   |--- Subflow Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Subflow Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.01
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.24
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.24
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.31
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Average Packet Size >  0.31
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Bwd Packet Length Std >  0.12
+|   |   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.12
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Bwd Packet Length Std >  0.12
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Fwd IAT Max >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Total Backward Packets >  0.00
+|   |   |   |   |   |--- Packet Length Mean <= 0.03
+|   |   |   |   |   |   |--- Fwd IAT Max <= 0.03
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.00
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Fwd IAT Max >  0.03
+|   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.01
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.01
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Packet Length Mean >  0.03
+|   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Average Packet Size <= 0.12
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Average Packet Size >  0.12
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Max Packet Length <= 0.08
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.25
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.25
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Max Packet Length >  0.08
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |--- Bwd Packet Length Std >  0.16
+|   |   |   |   |--- Average Packet Size <= 0.18
+|   |   |   |   |   |--- Idle Min <= 0.67
+|   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- Packet Length Variance <= 0.04
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Packet Length Variance >  0.04
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.23
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.16
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Std >  0.16
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.23
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size <= 0.23
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Avg Bwd Segment Size >  0.23
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std <= 0.05
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Std >  0.05
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Idle Min >  0.67
+|   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Average Packet Size >  0.18
+|   |   |   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.17
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.21
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.21
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Bwd Packet Length Std >  0.17
+|   |   |   |   |   |   |   |--- Packet Length Mean <= 0.31
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Packet Length Mean >  0.31
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |   |   |--- Fwd IAT Mean <= 0.14
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Fwd IAT Mean >  0.14
+|   |   |   |   |   |   |   |--- class: 1
+|--- Bwd Packet Length Std >  0.18
+|   |--- Packet Length Std <= 0.23
+|   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |--- Bwd Packet Length Std <= 0.22
+|   |   |   |   |--- Average Packet Size <= 0.11
+|   |   |   |   |   |--- Idle Min <= 0.10
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Idle Min >  0.10
+|   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Average Packet Size >  0.11
+|   |   |   |   |   |--- Fwd IAT Mean <= 0.03
+|   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.18
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Bwd Packet Length Std >  0.18
+|   |   |   |   |   |   |   |--- Total Backward Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Total Backward Packets >  0.00
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Fwd IAT Mean >  0.03
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |--- Bwd Packet Length Std >  0.22
+|   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |--- Total Backward Packets <= 0.00
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Total Backward Packets >  0.00
+|   |   |   |   |   |   |--- class: 1
+|   |   |--- Bwd Packets/s >  0.00
+|   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |--- Fwd IAT Max <= 0.04
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Fwd IAT Max >  0.04
+|   |   |   |   |   |--- class: 0
+|   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |--- Packet Length Mean <= 0.21
+|   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |--- Fwd IAT Max <= 0.04
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean <= 0.01
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |--- Fwd IAT Mean >  0.01
+|   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Fwd IAT Max >  0.04
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Packet Length Mean >  0.21
+|   |   |   |   |   |--- class: 1
+|   |--- Packet Length Std >  0.23
+|   |   |--- Total Backward Packets <= 0.00
+|   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |--- Fwd IAT Max <= 0.00
+|   |   |   |   |   |   |--- Bwd Packet Length Mean <= 0.28
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- Bwd Packet Length Mean >  0.28
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |--- Fwd IAT Max >  0.00
+|   |   |   |   |   |   |--- Idle Min <= 0.59
+|   |   |   |   |   |   |   |--- Total Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Std <= 0.24
+|   |   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |   |   |--- Bwd Packet Length Std >  0.24
+|   |   |   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |   |--- Total Fwd Packets >  0.00
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Idle Min >  0.59
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |--- Total Length of Bwd Packets <= 0.00
+|   |   |   |   |   |--- Subflow Bwd Bytes <= 0.00
+|   |   |   |   |   |   |--- Packet Length Variance <= 0.06
+|   |   |   |   |   |   |   |--- Packet Length Std <= 0.25
+|   |   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |   |--- Packet Length Std >  0.25
+|   |   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Packet Length Variance >  0.06
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Subflow Bwd Bytes >  0.00
+|   |   |   |   |   |   |--- Fwd IAT Std <= 0.18
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Fwd IAT Std >  0.18
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Total Length of Bwd Packets >  0.00
+|   |   |   |   |   |--- class: 0
+|   |   |--- Total Backward Packets >  0.00
+|   |   |   |--- Bwd Packet Length Mean <= 0.64
+|   |   |   |   |--- Fwd IAT Max <= 0.68
+|   |   |   |   |   |--- Average Packet Size <= 0.15
+|   |   |   |   |   |   |--- Total Length of Fwd Packets <= 0.00
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- Total Length of Fwd Packets >  0.00
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- Average Packet Size >  0.15
+|   |   |   |   |   |   |--- class: 0
+|   |   |   |   |--- Fwd IAT Max >  0.68
+|   |   |   |   |   |--- class: 1
+|   |   |   |--- Bwd Packet Length Mean >  0.64
+|   |   |   |   |--- Bwd Packets/s <= 0.00
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- Bwd Packets/s >  0.00
+|   |   |   |   |   |--- class: 0

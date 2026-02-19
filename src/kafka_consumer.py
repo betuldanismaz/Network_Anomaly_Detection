@@ -19,9 +19,11 @@ from confluent_kafka import Consumer, KafkaError
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_v1.pkl")
+MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_v1.pkl")  # Default, will be overridden
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
+SCALER_LSTM_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")  # For LSTM models
 CSV_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
+ACTIVE_MODEL_CONFIG = os.path.join(PROJECT_ROOT, "data", "active_model.txt")
 
 # Add utils to path for database logging
 sys.path.append(os.path.join(CURRENT_DIR, "utils"))
@@ -51,7 +53,7 @@ BOLD = '\033[1m'
 # ---------------------------------------------------------------------------
 # CONFIGURATION
 # ---------------------------------------------------------------------------
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+KAFKA_BOOTSTRAP_SERVERS = '127.0.0.1:9092'
 KAFKA_TOPIC = 'network-traffic'
 KAFKA_GROUP_ID = 'nids-consumer-group-v1'
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
@@ -64,6 +66,10 @@ EXPECTED_FEATURE_COUNT = 78
 # ---------------------------------------------------------------------------
 MODEL = None
 SCALER = None
+CURRENT_MODEL_NAME = "rf_model_v1.pkl"  # Track currently loaded model
+CURRENT_MODEL_TYPE = "sklearn"  # 'sklearn' or 'keras'
+LAST_CONFIG_CHECK = 0  # Timestamp of last config file check
+CONFIG_CHECK_INTERVAL = 5  # Check config file every 5 seconds
 
 # Statistics tracking
 STATS = {
@@ -91,34 +97,101 @@ def initialize_csv_file():
         print(f"{CYAN}ℹ️  Using existing CSV: {CSV_OUTPUT_PATH}{RESET}")
 
 
-def load_model_and_scaler():
-    """Load the trained Random Forest model and scaler."""
-    global MODEL, SCALER
+def load_model_and_scaler(model_filename=None):
+    """Load the ML model and scaler dynamically based on model type.
+    
+    Args:
+        model_filename: Name of model file (e.g., 'xgboost_model.pkl'). If None, reads from config.
+    """
+    global MODEL, SCALER, CURRENT_MODEL_NAME, CURRENT_MODEL_TYPE
+    
+    # If no filename provided, read from config file
+    if model_filename is None:
+        if os.path.exists(ACTIVE_MODEL_CONFIG):
+            try:
+                with open(ACTIVE_MODEL_CONFIG, 'r') as f:
+                    model_filename = f.read().strip()
+            except Exception:
+                model_filename = "rf_model_v1.pkl"  # Fallback default
+        else:
+            model_filename = "rf_model_v1.pkl"  # Default
+            # Create default config file
+            os.makedirs(os.path.dirname(ACTIVE_MODEL_CONFIG), exist_ok=True)
+            try:
+                with open(ACTIVE_MODEL_CONFIG, 'w') as f:
+                    f.write(model_filename)
+            except Exception:
+                pass
     
     print(f"\n{CYAN}{'='*60}{RESET}")
     print(f"{BOLD}🔧 Loading ML Model & Scaler...{RESET}")
     print(f"{CYAN}{'='*60}{RESET}")
+    print(f"{CYAN}   Target Model: {model_filename}{RESET}")
     
-    # Check if files exist
-    if not os.path.exists(MODEL_PATH):
+    # Build model path
+    model_path = os.path.join(PROJECT_ROOT, "models", model_filename)
+    
+    # Check if model file exists
+    if not os.path.exists(model_path):
         print(f"{RED}❌ CRITICAL ERROR: Model file not found!{RESET}")
-        print(f"   Expected path: {MODEL_PATH}")
-        print(f"   Please run training script: python src/models/train_rf.py")
+        print(f"   Expected path: {model_path}")
+        print(f"   Available models in models/ directory:")
+        try:
+            model_files = [f for f in os.listdir(os.path.join(PROJECT_ROOT, "models")) 
+                          if f.endswith(('.pkl', '.keras', '.h5'))]
+            for mf in model_files:
+                print(f"      - {mf}")
+        except Exception:
+            pass
         sys.exit(1)
     
-    if not os.path.exists(SCALER_PATH):
-        print(f"{RED}❌ CRITICAL ERROR: Scaler file not found!{RESET}")
-        print(f"   Expected path: {SCALER_PATH}")
-        print(f"   Please ensure scaler.pkl is in models/ directory")
-        sys.exit(1)
+    # Determine model type based on file extension
+    is_keras_model = model_filename.endswith(('.keras', '.h5'))
     
     try:
-        MODEL = joblib.load(MODEL_PATH)
-        SCALER = joblib.load(SCALER_PATH)
-        print(f"{GREEN}✅ Random Forest Model loaded successfully{RESET}")
-        print(f"{GREEN}✅ StandardScaler loaded successfully{RESET}")
-        print(f"{CYAN}   Model type: {type(MODEL).__name__}{RESET}")
+        if is_keras_model:
+            # Load Keras/TensorFlow model
+            try:
+                from tensorflow.keras.models import load_model as keras_load_model
+            except ImportError:
+                print(f"{RED}❌ ERROR: TensorFlow not installed!{RESET}")
+                print(f"   Install with: pip install tensorflow")
+                sys.exit(1)
+            
+            MODEL = keras_load_model(model_path)
+            CURRENT_MODEL_TYPE = "keras"
+            print(f"{GREEN}✅ Keras/LSTM Model loaded successfully{RESET}")
+            print(f"{CYAN}   Model type: LSTM/BiLSTM{RESET}")
+            
+            # Try to load LSTM scaler if available, otherwise use standard scaler
+            if os.path.exists(SCALER_LSTM_PATH):
+                SCALER = joblib.load(SCALER_LSTM_PATH)
+                print(f"{GREEN}✅ LSTM Scaler loaded{RESET}")
+            elif os.path.exists(SCALER_PATH):
+                SCALER = joblib.load(SCALER_PATH)
+                print(f"{GREEN}✅ Standard Scaler loaded{RESET}")
+            else:
+                print(f"{YELLOW}⚠️  WARNING: No scaler found, predictions may be inaccurate{RESET}")
+                SCALER = None
+        else:
+            # Load scikit-learn model (pkl)
+            MODEL = joblib.load(model_path)
+            CURRENT_MODEL_TYPE = "sklearn"
+            print(f"{GREEN}✅ Scikit-learn Model loaded successfully{RESET}")
+            print(f"{CYAN}   Model type: {type(MODEL).__name__}{RESET}")
+            
+            # Load standard scaler
+            if not os.path.exists(SCALER_PATH):
+                print(f"{RED}❌ CRITICAL ERROR: Scaler file not found!{RESET}")
+                print(f"   Expected path: {SCALER_PATH}")
+                sys.exit(1)
+            
+            SCALER = joblib.load(SCALER_PATH)
+            print(f"{GREEN}✅ StandardScaler loaded successfully{RESET}")
+        
+        CURRENT_MODEL_NAME = model_filename
         print(f"{CYAN}   Features expected: {EXPECTED_FEATURE_COUNT}{RESET}\n")
+        
     except Exception as exc:
         print(f"{RED}❌ CRITICAL ERROR: Failed to load model/scaler!{RESET}")
         print(f"   Error: {exc}")
@@ -188,6 +261,12 @@ def process_message(message_value):
         # Features dict has column names as keys, need to maintain order
         features_df = pd.DataFrame([features_dict])
         
+        # Align features to match exactly what the scaler/model expects
+        if hasattr(SCALER, 'feature_names_in_'):
+            expected_features = SCALER.feature_names_in_
+            # Reindex dataframe: keeps matching columns, adds missing ones with 0.0, drops extra ones
+            features_df = features_df.reindex(columns=expected_features, fill_value=0.0)
+        
         # Handle any missing or extra columns (align with scaler expectations)
         # The scaler was fitted on specific columns, so we need to match that order
         try:
@@ -208,16 +287,35 @@ def process_message(message_value):
                 columns=features_df.columns
             )
         
-        # 4. MAKE PREDICTION
-        prediction = MODEL.predict(features_scaled_df)[0]
-        
-        # Get confidence score (probability of attack)
-        try:
-            probabilities = MODEL.predict_proba(features_scaled_df)[0]
-            confidence_score = float(probabilities[1])  # Probability of class 1 (attack)
-        except AttributeError:
-            # Model doesn't support predict_proba
-            confidence_score = float(prediction)
+        # 4. MAKE PREDICTION (handle different model types)
+        if CURRENT_MODEL_TYPE == "keras":
+            # LSTM models expect 3D input: (samples, timesteps, features)
+            # Reshape from (1, 78) to (1, 1, 78)
+            features_for_prediction = features_scaled.reshape((features_scaled.shape[0], 1, features_scaled.shape[1]))
+            
+            # Keras model returns probabilities directly
+            prediction_proba = MODEL.predict(features_for_prediction, verbose=0)[0]
+            
+            # For binary classification, threshold at 0.5
+            if len(prediction_proba) == 1:
+                # Single output neuron (sigmoid)
+                confidence_score = float(prediction_proba[0])
+                prediction = 1 if confidence_score > 0.5 else 0
+            else:
+                # Multiple output neurons (softmax) - take argmax
+                prediction = int(np.argmax(prediction_proba))
+                confidence_score = float(prediction_proba[prediction])
+        else:
+            # Scikit-learn models (RF, DT, XGB) use 2D input
+            prediction = MODEL.predict(features_scaled_df)[0]
+            
+            # Get confidence score (probability of attack)
+            try:
+                probabilities = MODEL.predict_proba(features_scaled_df)[0]
+                confidence_score = float(probabilities[1])  # Probability of class 1 (attack)
+            except AttributeError:
+                # Model doesn't support predict_proba
+                confidence_score = float(prediction)
         
         # 5. DETERMINE ACTION
         is_attack = (prediction == 1)
@@ -230,7 +328,7 @@ def process_message(message_value):
             "Dst_IP": dst_ip,
             "Predicted_Label": int(prediction),
             "Confidence_Score": round(confidence_score, 4),
-            "Model_Used": "RandomForest",
+            "Model_Used": CURRENT_MODEL_NAME.replace('.pkl', '').replace('.keras', ''),
             "Processing_Time_Ms": round(processing_time_ms, 2)
         }
         
@@ -304,6 +402,42 @@ def print_statistics():
     print(f"{CYAN}{'='*60}{RESET}\n")
 
 
+def check_and_reload_model():
+    """Check if model config has changed and reload if necessary."""
+    global LAST_CONFIG_CHECK, CURRENT_MODEL_NAME
+    
+    current_time = time.time()
+    
+    # Only check every CONFIG_CHECK_INTERVAL seconds
+    if current_time - LAST_CONFIG_CHECK < CONFIG_CHECK_INTERVAL:
+        return
+    
+    LAST_CONFIG_CHECK = current_time
+    
+    # Read current config
+    if not os.path.exists(ACTIVE_MODEL_CONFIG):
+        return
+    
+    try:
+        with open(ACTIVE_MODEL_CONFIG, 'r') as f:
+            requested_model = f.read().strip()
+        
+        # Check if model changed
+        if requested_model != CURRENT_MODEL_NAME:
+            print(f"\n{YELLOW}{'='*60}{RESET}")
+            print(f"{BOLD}{YELLOW}🔄 MODEL SWITCH DETECTED!{RESET}")
+            print(f"{YELLOW}   Current: {CURRENT_MODEL_NAME}{RESET}")
+            print(f"{YELLOW}   New:     {requested_model}{RESET}")
+            print(f"{YELLOW}{'='*60}{RESET}")
+            
+            # Reload model
+            load_model_and_scaler(requested_model)
+            
+            print(f"{GREEN}✅ Model switch complete! Now using: {CURRENT_MODEL_NAME}{RESET}\n")
+    except Exception as e:
+        print(f"{RED}⚠️  Error checking model config: {e}{RESET}")
+
+
 def main():
     """Main consumer loop."""
     print(f"\n{BOLD}{CYAN}╔{'═'*58}╗{RESET}")
@@ -316,7 +450,8 @@ def main():
     consumer = create_consumer()
     
     print(f"{GREEN}{BOLD}🚀 Consumer is now ACTIVE and listening for messages...{RESET}")
-    print(f"{YELLOW}⏹️  Press CTRL+C to stop{RESET}\n")
+    print(f"{YELLOW}⏹️  Press CTRL+C to stop{RESET}")
+    print(f"{CYAN}💡 Model can be changed dynamically via Dashboard{RESET}\n")
     print(f"{CYAN}{'─'*60}{RESET}\n")
     
     message_count = 0
@@ -324,6 +459,9 @@ def main():
     
     try:
         while True:
+            # Check if model config changed (every 5 seconds)
+            check_and_reload_model()
+            
             # Poll for messages
             msg = consumer.poll(timeout=1.0)
             
