@@ -1,0 +1,59 @@
+======================================================================
+LSTM MODEL - CLASSIFICATION REPORT
+Network Intrusion Detection System
+======================================================================
+
+Generated: 2026-02-05 21:27:29
+Model: LSTM (Unidirectional)
+
+Overall Metrics:
+--------------------------------------------------
+Accuracy: 0.9815 (98.15%)
+
+Per-Class Metrics:
+--------------------------------------------------
+
+Benign (Class 0):
+  Precision: 0.9923 (99.23%)
+  Recall:    0.9846 (98.46%)
+  F1-Score:  0.9884 (98.84%)
+  Support:   454,567.0 samples
+
+Volumetric (Class 1):
+  Precision: 0.9362 (93.62%)
+  Recall:    0.9761 (97.61%)
+  F1-Score:  0.9558 (95.58%)
+  Support:   76,130.0 samples
+
+Semantic (Class 2):
+  Precision: 0.9453 (94.53%)
+  Recall:    0.9533 (95.33%)
+  F1-Score:  0.9493 (94.93%)
+  Support:   35,383.0 samples
+
+==================================================
+Aggregated Metrics:
+--------------------------------------------------
+
+Macro Average:
+  Precision: 0.9579
+  Recall:    0.9713
+  F1-Score:  0.9645
+
+Weighted Average:
+  Precision: 0.9818
+  Recall:    0.9815
+  F1-Score:  0.9816
+
+==================================================
+Confusion Matrix:
+--------------------------------------------------
+
+              Predicted
+            Benign  Volumetric    Semantic
+--------------------------------------------------
+    Benign    447,558       5,058       1,951
+Volumetric      1,816      74,313           1
+  Semantic      1,649           4      33,730
+
+======================================================================

@@ -19,9 +19,11 @@ ENV/
 /.eggs/
 
 
-# Model/runtime artifacts
-/alerts.db
-*.pkl
+# Temporary runtime files (recreated each run)
+/temp_live.csv
+/temp_live.pcap
+/src/temp_live.csv
+/src/temp_live.pcap
 *.joblib
 
 # IDE / editor settings

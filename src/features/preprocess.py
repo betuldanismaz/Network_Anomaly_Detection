@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
 import os
+import sys
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config import TOP_FEATURES
 
 def process_full_pipeline():
     print("\n🚀 STARTING DATA PREPROCESSING PIPELINE (CIC-IDS2017)")
@@ -12,7 +16,8 @@ def process_full_pipeline():
     # 1. DYNAMIC PATHING
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
-    base_path = os.path.join(project_root, "data", "processed_csv")
+    # raw source CSVs moved to data/original_csv
+    base_path = os.getenv('ORIGINAL_CSV_DIR') or os.path.join(project_root, "data", "original_csv")
     
     file_list = [
         "Monday-WorkingHours.pcap_ISCX.csv",
@@ -70,7 +75,25 @@ def process_full_pipeline():
     full_data.dropna(inplace=True)
     print(f"   Dropped {before_drop - full_data.shape[0]} rows containing NaN/Inf.")
 
-    # 5. CONVERT TO FLOAT32 (Step D - Moved BEFORE Deduplication)
+    # 5. FEATURE SELECTION (MOVED BEFORE DEDUPLICATION - CRITICAL!)
+    # We select features FIRST, then deduplicate on the SELECTED features only.
+    # This prevents false duplicates when reducing from 77 to 20 features.
+    print(f"📉 Selecting Features: {len(TOP_FEATURES)} features will be selected...")
+    
+    # Keep only TOP_FEATURES and 'Label' columns from the current dataset
+    cols_to_keep = TOP_FEATURES + ['Label']
+    
+    # Select only columns that exist in the dataset to avoid errors
+    existing_cols = [c for c in cols_to_keep if c in full_data.columns]
+    
+    if len(existing_cols) < len(cols_to_keep):
+        missing = set(cols_to_keep) - set(existing_cols)
+        print(f"⚠️ WARNING: Some features were not found in the dataset: {missing}")
+    
+    full_data = full_data[existing_cols]
+    print(f"   Shape after selection: {full_data.shape}")
+
+    # 6. CONVERT TO FLOAT32 (Step D - Moved BEFORE Deduplication)
     # We convert to float32 BEFORE removing duplicates. 
     # This ensures that values that are distinct in float64 but identical in float32 
     # (due to precision loss) are treated as duplicates and removed.
@@ -78,8 +101,8 @@ def process_full_pipeline():
     float_cols = full_data.select_dtypes(include=['float64']).columns
     full_data[float_cols] = full_data[float_cols].astype('float32')
 
-    # 6. DROP DUPLICATES (Step E - CRITICAL FIX)
-    print("🔄 Removing duplicates (Data Leakage Prevention)...")
+    # 7. DROP DUPLICATES (Step E - CRITICAL FIX - NOW ON SELECTED FEATURES ONLY!)
+    print("🔄 Removing duplicates (Data Leakage Prevention - on selected features)...")
     # We deduplicate based on FEATURE columns only. 
     # This removes:
     # 1. Exact duplicates (Same features, Same label)
@@ -90,13 +113,21 @@ def process_full_pipeline():
     full_data.drop_duplicates(subset=feature_cols, keep='first', inplace=True)
     print(f"   Removed {before_dedup - full_data.shape[0]} duplicate rows.")
     print(f"   Cleaned Data Shape: {full_data.shape}")
+    
+    # Additional aggressive deduplication check
+    print("🔍 Running aggressive deduplication check...")
+    before_aggressive = full_data.shape[0]
+    full_data = full_data.drop_duplicates(subset=feature_cols, keep='first')
+    full_data = full_data.reset_index(drop=True)
+    print(f"   Removed additional {before_aggressive - full_data.shape[0]} duplicates.")
+    print(f"   Final Data Shape after all cleaning: {full_data.shape}")
 
-    # 7. ENCODE LABELS (Step F)
+    # 8. ENCODE LABELS (Step F)
     print("🏷️ Encoding Labels (0: BENIGN, 1: ATTACK)...")
     y = full_data['Label'].apply(lambda x: 0 if x == 'BENIGN' else 1)
     X = full_data.drop(['Label'], axis=1)
 
-    # 8. STRATIFIED SPLIT
+    # 9. STRATIFIED SPLIT
     print("✂️ Splitting Data (70% Train, 15% Val, 15% Test)...")
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=0.30, random_state=42, stratify=y
@@ -109,7 +140,7 @@ def process_full_pipeline():
     print(f"   Val Shape:   {X_val.shape}")
     print(f"   Test Shape:  {X_test.shape}")
 
-    # 9. SCALING (MinMax)
+    # 10. SCALING (MinMax)
     print("⚖️ Scaling Features (MinMaxScaler)...")
     scaler = MinMaxScaler()
     
@@ -131,8 +162,11 @@ def process_full_pipeline():
     X_val = pd.DataFrame(X_val_scaled, columns=columns)
     X_test = pd.DataFrame(X_test_scaled, columns=columns)
 
-    # 10. SAVE TO DISK
-    save_dir = os.path.join(base_path, "ready_splits")
+    # 11. SAVE TO DISK
+    # save processed splits into processed_randomforest directory
+    save_dir = os.getenv('PROCESSED_RANDOMFOREST_DIR') or os.path.join(project_root, "data", "processed_randomforest")
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 

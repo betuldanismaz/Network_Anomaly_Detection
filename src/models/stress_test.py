@@ -11,8 +11,9 @@ def stress_test_model():
     # 1. Yolları Ayarla
     base_dir = os.path.dirname(os.path.abspath(__file__))
     root = os.path.dirname(os.path.dirname(base_dir))
-    model_path = os.path.join(root, "models", "rf_model_v1.pkl")
-    data_path = os.path.join(root, "data", "processed_csv", "ready_splits")
+    # Allow overrides via env vars
+    model_path = os.getenv('RF_MODEL_PATH') or os.path.join(root, "models", "rf_model_v1.pkl")
+    data_path = os.getenv('PROCESSED_CSV_DIR') or os.path.join(root, "data", "processed_randomforest")
 
     print("🔥 STRES TESTİ BAŞLIYOR (Performans Analizi)...")
 
@@ -67,7 +68,9 @@ def stress_test_model():
     plt.axvline(x=0.5, color='red', linestyle='--', label='Karar Sınırı (0.5)')
     plt.legend()
     
-    save_path = os.path.join(root, "reports", "figures", "confidence_dist.png")
+    save_path = os.getenv('REPORTS_FIGURES_DIR') or os.path.join(root, "reports", "figures")
+    os.makedirs(save_path, exist_ok=True)
+    save_path = os.path.join(save_path, "confidence_dist.png")
     plt.savefig(save_path)
     print(f"📊 Güven grafiği kaydedildi: {save_path}")
     

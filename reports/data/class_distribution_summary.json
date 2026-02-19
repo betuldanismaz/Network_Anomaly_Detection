@@ -1,0 +1,11 @@
+{
+  "total_rows": 2830743,
+  "class_counts": {
+    "0": 2273097,
+    "1": 380699,
+    "2": 176947
+  },
+  "unknown_counts": {},
+  "imbalance_ratio": 12.846202535222412,
+  "plot_path": "D:\\Projects\\networkdetection\\networkdetection\\reports\\figures\\class_distribution_3class.png"
+}
