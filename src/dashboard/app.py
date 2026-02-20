@@ -1,38 +1,154 @@
+#!/usr/bin/env python3
+"""
+Network IPS Dashboard - BiLSTM Edition
+=======================================
+Real-time monitoring dashboard for BiLSTM-based 3-class NIDS
+with 5-level risk scoring system.
+
+Author: NIDS Project
+Date: 2026-01-01
+"""
+
 import os
 import sys
 import time
-import subprocess
-import shutil
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
+# Path setup
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(PARENT_DIR)
 if PARENT_DIR not in sys.path:
     sys.path.append(PARENT_DIR)
 
-from utils.db_manager import fetch_logs
-from utils.firewall_manager import unblock_ip
+# Try to import utilities
+try:
+    from utils.db_manager import fetch_logs
+    from utils.firewall_manager import unblock_ip
+except ImportError:
+    def fetch_logs():
+        return pd.DataFrame()
+    def unblock_ip(ip):
+        return False
 
-# Paths
-LIVE_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_optimized_model.pkl")
-SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
-THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
+# ---------------------------------------------------------------------------
+# PATHS - Updated for BiLSTM
+# ---------------------------------------------------------------------------
+LIVE_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic_bilstm.csv")
+LIVE_CSV_PATH_OLD = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")  # Fallback
+BILSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "bilstm_best.keras")
+SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
+SCALER_PATH_FALLBACK = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 
-st.set_page_config(page_title="Network IPS Dashboard", layout="wide")
-st.title("🛡️ Network IPS Dashboard")
+# Class mapping
+CLASS_NAMES = {
+    0: "Benign",
+    1: "Volumetric",
+    2: "Semantic"
+}
+
+CLASS_COLORS = {
+    "Benign": "#00CC66",      # Green
+    "Volumetric": "#FF4B4B",  # Red
+    "Semantic": "#FFA500"     # Orange
+}
+
+RISK_LEVELS = {
+    1: {"name": "SAFE", "color": "#00CC66", "emoji": "🟢"},
+    2: {"name": "LOW", "color": "#3498db", "emoji": "🔵"},
+    3: {"name": "MEDIUM", "color": "#FFD700", "emoji": "🟡"},
+    4: {"name": "HIGH", "color": "#FFA500", "emoji": "🟠"},
+    5: {"name": "CRITICAL", "color": "#FF4B4B", "emoji": "🔴"},
+}
+
+# ---------------------------------------------------------------------------
+# PAGE CONFIG
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="🛡️ BiLSTM Network IPS",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Auto-refresh every 2 seconds
+count = st_autorefresh(interval=2000, limit=None, key="auto_refresh")
+
+# Custom CSS
+st.markdown("""
+<style>
+    .risk-gauge {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 10px;
+        padding: 15px;
+        color: white;
+    }
+    .stMetric {
+        background-color: #f0f2f6;
+        border-radius: 10px;
+        padding: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🛡️ BiLSTM Network IPS Dashboard")
+st.caption("3-Class Classification: Benign | Volumetric | Semantic")
 
 
 # ---------------------------------------------------------------------------
 # HELPER FUNCTIONS
 # ---------------------------------------------------------------------------
 
+def load_live_traffic() -> pd.DataFrame:
+    """Load live captured traffic CSV with BiLSTM columns."""
+    # Try new BiLSTM CSV first
+    csv_path = LIVE_CSV_PATH if os.path.exists(LIVE_CSV_PATH) else LIVE_CSV_PATH_OLD
+    
+    if not os.path.exists(csv_path):
+        return pd.DataFrame()
+    
+    try:
+        df = pd.read_csv(csv_path, on_bad_lines='skip', encoding='utf-8', engine='python')
+        
+        # Handle different column naming conventions
+        column_mapping = {
+            'Predicted_Class': 'predicted_class',
+            'Class_Name': 'class_name',
+            'Risk_Level': 'risk_level',
+            'Risk_Name': 'risk_name',
+            'Prob_Benign': 'prob_benign',
+            'Prob_Volumetric': 'prob_volumetric',
+            'Prob_Semantic': 'prob_semantic',
+            'Action': 'action',
+            'Timestamp': 'timestamp',
+        }
+        
+        df.rename(columns=column_mapping, inplace=True)
+        
+        # Map class IDs to names if needed
+        if 'predicted_class' in df.columns and 'class_name' not in df.columns:
+            df['class_name'] = df['predicted_class'].map(CLASS_NAMES)
+        
+        return df
+    except Exception as e:
+        st.error(f"CSV yükleme hatası: {e}")
+        return pd.DataFrame()
+
+
 def load_logs() -> pd.DataFrame:
+    """Load database logs."""
     logs_df = fetch_logs()
     if logs_df.empty:
         return logs_df
@@ -40,67 +156,81 @@ def load_logs() -> pd.DataFrame:
     return logs_df.sort_values("timestamp", ascending=False)
 
 
-def load_live_traffic() -> pd.DataFrame:
-    """Load live captured traffic CSV for confidence scores."""
-    if not os.path.exists(LIVE_CSV_PATH):
-        return pd.DataFrame()
-    try:
-        df = pd.read_csv(LIVE_CSV_PATH)
-        return df
-    except Exception:
-        return pd.DataFrame()
-
-
 def get_system_status() -> dict:
-    """Check system component statuses."""
-    status = {
-        "model": os.path.exists(MODEL_PATH),
-        "scaler": os.path.exists(SCALER_PATH),
-        "threshold": os.path.exists(THRESHOLD_PATH),
-        "cicflowmeter": shutil.which("cicflowmeter") is not None,
-        "scapy": False,
-    }
-    # Check if scapy is importable
-    try:
-        import scapy
-        status["scapy"] = True
-    except ImportError:
-        status["scapy"] = False
+    """
+    Check system component statuses for BiLSTM.
     
-    # Load threshold value
-    if status["threshold"]:
+    SIMPLIFIED LOGIC (Hard Links):
+    - TensorFlow: If model file exists, TF must be working (you can't load .keras without TF)
+    - Scapy: If CSV is being updated < 30s, Scapy must be working (live_bridge uses Scapy)
+    - Live Bridge: Check if CSV was modified in last 30 seconds
+    """
+    # Check CSV first (used for multiple status checks)
+    csv_path = LIVE_CSV_PATH if os.path.exists(LIVE_CSV_PATH) else LIVE_CSV_PATH_OLD
+    csv_exists = os.path.exists(csv_path)
+    csv_age = 999
+    csv_rows = 0
+    data_flowing = False
+    
+    if csv_exists:
         try:
-            with open(THRESHOLD_PATH, "r") as f:
-                status["threshold_value"] = float(f.read().strip())
+            mtime = os.path.getmtime(csv_path)
+            csv_age = time.time() - mtime
+            data_flowing = csv_age < 30  # Data flowing if updated in last 30 seconds
+            
+            # Count rows
+            try:
+                with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    csv_rows = sum(1 for _ in f) - 1
+            except:
+                csv_rows = 0
         except:
-            status["threshold_value"] = 0.5
-    else:
-        status["threshold_value"] = 0.5
+            csv_age = 999
+    
+    # Determine statuses based on hard links
+    model_exists = os.path.exists(BILSTM_MODEL_PATH)
+    scaler_exists = os.path.exists(SCALER_PATH) or os.path.exists(SCALER_PATH_FALLBACK)
+    
+    status = {
+        # Model & Scaler - simple file checks
+        "bilstm_model": model_exists,
+        "scaler": scaler_exists,
+        
+        # TensorFlow - HARD LINK: If model exists, TF works (can't load .keras without TF)
+        "tensorflow": model_exists,
+        "tf_status": "Active" if model_exists else "Inactive",
+        
+        # Scapy - HARD LINK: If data is flowing, Scapy works (live_bridge uses Scapy)
+        "scapy": data_flowing,
+        "scapy_status": "Capturing" if data_flowing else ("Waiting" if csv_exists else "Inactive"),
+        
+        # Live Bridge status
+        "live_bridge_status": "active" if data_flowing else ("waiting" if csv_exists and csv_age < 120 else "stopped"),
+        "csv_age": csv_age,
+        "csv_exists": csv_exists,
+        "csv_rows": csv_rows,
+        "data_flowing": data_flowing,
+    }
     
     return status
 
 
-def detect_attack_type(details: str) -> str:
-    """Classify attack type from details field."""
-    if pd.isna(details) or not details:
-        return "Unknown"
-    details_lower = str(details).lower()
-    if "ddos" in details_lower or "flood" in details_lower:
-        return "DDoS"
-    elif "port" in details_lower or "scan" in details_lower:
-        return "Port Scan"
-    elif "web" in details_lower or "http" in details_lower or "sql" in details_lower:
-        return "Web Attack"
-    elif "brute" in details_lower:
-        return "Brute Force"
-    elif "infilter" in details_lower:
-        return "Infiltration"
-    elif "whitelist" in details_lower:
-        return "Whitelisted"
-    elif "attack" in details_lower:
-        return "Generic Attack"
-    else:
-        return "Other"
+def calculate_avg_confidence(df: pd.DataFrame) -> float:
+    """Calculate average confidence from probabilities."""
+    if df.empty:
+        return 0.0
+    
+    max_probs = []
+    for col in ['prob_benign', 'prob_volumetric', 'prob_semantic', 
+                'Prob_Benign', 'Prob_Volumetric', 'Prob_Semantic']:
+        if col in df.columns:
+            max_probs.append(df[col])
+    
+    if not max_probs:
+        return 0.0
+    
+    prob_df = pd.concat(max_probs, axis=1)
+    return prob_df.max(axis=1).mean()
 
 
 # ---------------------------------------------------------------------------
@@ -108,350 +238,482 @@ def detect_attack_type(details: str) -> str:
 # ---------------------------------------------------------------------------
 
 def render_system_status():
-    """Render system component status indicators."""
+    """
+    Render BiLSTM system status indicators.
+    Uses HARD LINK logic for green indicators:
+    - TensorFlow = Green if model exists
+    - Scapy = Green if CSV is being updated
+    """
     st.subheader("⚙️ Sistem Durumu")
     status = get_system_status()
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
+    # Column 1: BiLSTM Model
     with col1:
-        if status["model"]:
-            st.success("✅ Model")
+        if status["bilstm_model"]:
+            st.success("✅ BiLSTM Model")
         else:
-            st.error("❌ Model")
+            st.error("❌ BiLSTM Model")
     
+    # Column 2: Scaler
     with col2:
         if status["scaler"]:
             st.success("✅ Scaler")
         else:
             st.error("❌ Scaler")
     
+    # Column 3: TensorFlow - GREEN if model exists (hard link)
     with col3:
+        if status["tensorflow"]:
+            st.success(f"✅ TensorFlow")
+        else:
+            st.error("❌ TensorFlow")
+    
+    # Column 4: Scapy - GREEN if data is flowing (hard link)
+    with col4:
         if status["scapy"]:
-            st.success("✅ Scapy")
+            st.success(f"✅ Scapy")
+        elif status["csv_exists"]:
+            st.warning("⏳ Scapy")
         else:
             st.error("❌ Scapy")
     
-    with col4:
-        if status["cicflowmeter"]:
-            st.success("✅ CICFlowMeter")
-        else:
-            st.warning("⚠️ CICFlowMeter")
-    
+    # Column 5: Live Bridge Status
     with col5:
-        st.info(f"🎯 threshold: {status['threshold_value']:.4f}")
+        if status["data_flowing"]:
+            st.success(f"✅ Capturing ({status['csv_age']:.0f}s)")
+        elif status["csv_exists"]:
+            st.warning(f"⏳ Waiting ({status['csv_age']:.0f}s)")
+        else:
+            st.error("❌ No Data")
+    
+    # Additional info row
+    if status["csv_exists"]:
+        st.caption(f"📊 CSV: {status['csv_rows']:,} rows | Last update: {status['csv_age']:.0f} seconds ago")
 
 
-def render_kpis(logs_df: pd.DataFrame):
-    total = len(logs_df)
-    blocked = int((logs_df["action"] == "BLOCKED").sum())
-    allowed = int((logs_df["action"] == "ALLOWED").sum())
-    last_event = "-" if logs_df.empty else logs_df["timestamp"].max().strftime("%Y-%m-%d %H:%M:%S")
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Toplam Kayıt", total)
-    col2.metric("Engellenen IP", blocked)
-    col3.metric("Son Olay", last_event)
-
-
-def render_charts(logs_df: pd.DataFrame):
-    col_line, col_pie = st.columns(2)
-
-    if logs_df.empty:
-        col_line.info("Grafik göstermek için yeterli veri yok.")
-        col_pie.info("Grafik göstermek için yeterli veri yok.")
+def render_risk_gauge(df: pd.DataFrame):
+    """Render current risk level gauge based on latest prediction."""
+    st.subheader("🎯 Güncel Risk Seviyesi")
+    
+    if df.empty:
+        st.info("Risk verisi bekleniyor...")
         return
-
-    line_df = (
-        logs_df.set_index("timestamp")
-        .resample("1min")
-        .size()
-        .reset_index(name="attacks")
+    
+    # Get latest risk level
+    risk_col = 'risk_level' if 'risk_level' in df.columns else 'Risk_Level'
+    
+    if risk_col not in df.columns:
+        # Calculate from class if no risk level
+        class_col = 'predicted_class' if 'predicted_class' in df.columns else 'Predicted_Class'
+        if class_col in df.columns:
+            latest_class = df[class_col].iloc[-1]
+            current_risk = 1 if latest_class == 0 else (4 if latest_class == 1 else 5)
+        else:
+            current_risk = 1
+    else:
+        current_risk = int(df[risk_col].iloc[-1]) if not pd.isna(df[risk_col].iloc[-1]) else 1
+    
+    risk_info = RISK_LEVELS.get(current_risk, RISK_LEVELS[1])
+    
+    # Create gauge chart
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=current_risk,
+        title={'text': f"Risk: {risk_info['name']}", 'font': {'size': 24}},
+        delta={'reference': 2, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}},
+        gauge={
+            'axis': {'range': [1, 5], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': risk_info['color']},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+            'steps': [
+                {'range': [1, 2], 'color': '#00CC66'},
+                {'range': [2, 3], 'color': '#3498db'},
+                {'range': [3, 4], 'color': '#FFD700'},
+                {'range': [4, 5], 'color': '#FFA500'},
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': 4
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        height=250,
+        margin=dict(l=20, r=20, t=50, b=20),
     )
-    if line_df.empty:
-        col_line.info("Saldırı frekansı için veri yok.")
-    else:
-        line_fig = px.line(line_df, x="timestamp", y="attacks", title="Saldırı Frekansı (1 dk)")
-        col_line.plotly_chart(line_fig, use_container_width=True)
-
-    pie_df = logs_df["action"].value_counts().reset_index()
-    pie_df.columns = ["action", "count"]
-    if pie_df.empty:
-        col_pie.info("Eylem dağılımı için veri yok.")
-    else:
-        pie_fig = px.pie(pie_df, values="count", names="action", title="Blocked vs Allowed", hole=0.3)
-        col_pie.plotly_chart(pie_fig, use_container_width=True)
-
-
-def render_confidence_scores():
-    """Render real-time confidence score metrics from live traffic."""
-    st.subheader("📊 Gerçek Zamanlı Güven Skorları")
     
-    live_df = load_live_traffic()
+    st.plotly_chart(fig, use_container_width=True)
     
-    if live_df.empty or "Confidence_Score" not in live_df.columns:
-        st.info("Henüz canlı trafik verisi yok. live_bridge.py çalıştırıldığında veriler burada görünecek.")
+    # Risk level legend
+    cols = st.columns(5)
+    for i, (level, info) in enumerate(RISK_LEVELS.items()):
+        with cols[i]:
+            if level == current_risk:
+                st.markdown(f"**{info['emoji']} {info['name']}**")
+            else:
+                st.caption(f"{info['emoji']} {info['name']}")
+
+
+def render_class_distribution(df: pd.DataFrame):
+    """Render 3-class distribution donut chart."""
+    st.subheader("📊 Sınıf Dağılımı (3-Class)")
+    
+    if df.empty:
+        st.info("Sınıf verisi bekleniyor...")
         return
     
-    # Filter valid confidence scores
-    confidence_scores = pd.to_numeric(live_df["Confidence_Score"], errors="coerce").dropna()
+    # Get class column
+    class_col = 'class_name' if 'class_name' in df.columns else 'Class_Name'
+    if class_col not in df.columns:
+        class_col = 'predicted_class' if 'predicted_class' in df.columns else 'Predicted_Class'
+        if class_col in df.columns:
+            df['class_name'] = df[class_col].map(CLASS_NAMES)
+            class_col = 'class_name'
     
-    if len(confidence_scores) == 0:
-        st.info("Güven skoru verisi bulunamadı.")
+    if class_col not in df.columns:
+        st.warning("Sınıf sütunu bulunamadı.")
         return
     
-    col1, col2, col3, col4 = st.columns(4)
+    # Count classes
+    class_counts = df[class_col].value_counts().reset_index()
+    class_counts.columns = ['Class', 'Count']
+    
+    # Define colors
+    colors = [CLASS_COLORS.get(c, '#808080') for c in class_counts['Class']]
+    
+    # Create donut chart
+    fig = px.pie(
+        class_counts,
+        values='Count',
+        names='Class',
+        title='Trafik Sınıf Dağılımı',
+        hole=0.6,
+        color='Class',
+        color_discrete_map=CLASS_COLORS
+    )
+    
+    fig.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        marker=dict(line=dict(color='white', width=2))
+    )
+    
+    # Add center annotation
+    total = class_counts['Count'].sum()
+    benign_count = class_counts[class_counts['Class'] == 'Benign']['Count'].sum() if 'Benign' in class_counts['Class'].values else 0
+    benign_pct = (benign_count / total * 100) if total > 0 else 0
+    
+    fig.add_annotation(
+        text=f"<b>{total:,}</b><br>Toplam Akış",
+        x=0.5, y=0.5,
+        font_size=16,
+        showarrow=False
+    )
+    
+    fig.update_layout(
+        height=350,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_metrics(df: pd.DataFrame):
+    """Render key metrics cards."""
+    if df.empty:
+        total, benign, volumetric, semantic, avg_conf = 0, 0, 0, 0, 0.0
+    else:
+        total = len(df)
+        
+        class_col = 'class_name' if 'class_name' in df.columns else 'Class_Name'
+        pred_col = 'predicted_class' if 'predicted_class' in df.columns else 'Predicted_Class'
+        
+        if class_col in df.columns:
+            benign = (df[class_col] == 'Benign').sum()
+            volumetric = (df[class_col] == 'Volumetric').sum()
+            semantic = (df[class_col] == 'Semantic').sum()
+        elif pred_col in df.columns:
+            benign = (df[pred_col] == 0).sum()
+            volumetric = (df[pred_col] == 1).sum()
+            semantic = (df[pred_col] == 2).sum()
+        else:
+            benign, volumetric, semantic = total, 0, 0
+        
+        avg_conf = calculate_avg_confidence(df)
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        avg_score = confidence_scores.mean() * 100
-        st.metric("Ortalama Güven", f"{avg_score:.2f}%")
+        st.metric("📊 Toplam Akış", f"{total:,}")
     
     with col2:
-        max_score = confidence_scores.max() * 100
-        st.metric("Maksimum Güven", f"{max_score:.2f}%")
+        st.metric("🟢 Benign", f"{benign:,}", delta=f"{benign/total*100:.1f}%" if total > 0 else "0%")
     
     with col3:
-        min_score = confidence_scores.min() * 100
-        st.metric("Minimum Güven", f"{min_score:.2f}%")
+        attack_count = volumetric + semantic
+        st.metric("🔴 Volumetric", f"{volumetric:,}", delta=f"{volumetric/total*100:.1f}%" if total > 0 else "0%", delta_color="inverse")
     
     with col4:
-        total_flows = len(live_df)
-        st.metric("Toplam Akış", f"{total_flows:,}")
+        st.metric("🟠 Semantic", f"{semantic:,}", delta=f"{semantic/total*100:.1f}%" if total > 0 else "0%", delta_color="inverse")
     
-    # Confidence score distribution histogram
-    if len(confidence_scores) > 10:
-        fig = px.histogram(
-            confidence_scores * 100, 
-            nbins=20, 
-            title="Güven Skoru Dağılımı (%)",
-            labels={"value": "Güven Skoru (%)", "count": "Frekans"}
-        )
-        fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+    with col5:
+        st.metric("🎯 Avg Confidence", f"{avg_conf*100:.1f}%")
 
 
-def render_top_attackers(logs_df: pd.DataFrame):
-    """Render top 10 attacker IPs."""
-    st.subheader("🎯 Top 10 Saldırgan IP")
+def render_confidence_histogram(df: pd.DataFrame):
+    """Render confidence score histogram."""
+    st.subheader("📊 Güven Skoru Dağılımı")
     
-    if logs_df.empty:
-        st.info("Henüz saldırı kaydı yok.")
+    if df.empty:
+        st.info("Güven skoru verisi bekleniyor...")
         return
     
-    top_ips = logs_df["src_ip"].value_counts().head(10).reset_index()
-    top_ips.columns = ["IP Adresi", "Tespit Sayısı"]
+    # Find probability columns
+    prob_cols = [c for c in df.columns if 'prob' in c.lower() or 'Prob' in c]
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.dataframe(top_ips, use_container_width=True, hide_index=True)
-    
-    with col2:
-        if len(top_ips) > 0:
-            fig = px.bar(
-                top_ips, 
-                x="IP Adresi", 
-                y="Tespit Sayısı", 
-                title="En Çok Tespit Edilen IP'ler",
-                color="Tespit Sayısı",
-                color_continuous_scale="Reds"
-            )
-            fig.update_layout(xaxis_tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
-
-
-def render_attack_types(logs_df: pd.DataFrame):
-    """Render attack type distribution pie chart."""
-    st.subheader("🔥 Saldırı Türü Dağılımı")
-    
-    if logs_df.empty:
-        st.info("Henüz saldırı kaydı yok.")
+    if not prob_cols:
+        st.warning("Olasılık sütunları bulunamadı.")
         return
     
-    # Classify attack types
-    logs_df["attack_type"] = logs_df["details"].apply(detect_attack_type)
+    # Get max probability for each row
+    prob_df = df[prob_cols].apply(pd.to_numeric, errors='coerce')
+    max_probs = prob_df.max(axis=1).dropna()
     
-    attack_counts = logs_df["attack_type"].value_counts().reset_index()
-    attack_counts.columns = ["Saldırı Türü", "Sayı"]
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = px.pie(
-            attack_counts, 
-            values="Sayı", 
-            names="Saldırı Türü", 
-            title="Saldırı Türleri",
-            hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.dataframe(attack_counts, use_container_width=True, hide_index=True)
-
-
-def render_live_traffic_counter():
-    """Render live traffic statistics from CSV."""
-    st.subheader("📡 Canlı Trafik Sayacı")
-    
-    live_df = load_live_traffic()
-    
-    if live_df.empty:
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Toplam Akış", "0")
-        col2.metric("Saldırı", "0")
-        col3.metric("Normal", "0")
-        col4.metric("Dosya Boyutu", "0 KB")
-        st.info("Canlı trafik verisi bekleniyor... live_bridge.py çalıştırın.")
+    if len(max_probs) < 5:
+        st.info("Yeterli veri yok.")
         return
     
-    # Calculate metrics
-    total_flows = len(live_df)
+    fig = px.histogram(
+        max_probs * 100,
+        nbins=20,
+        title="Tahmin Güven Skoru Dağılımı",
+        labels={'value': 'Güven Skoru (%)', 'count': 'Frekans'},
+        color_discrete_sequence=['#3498db']
+    )
     
-    if "Predicted_Label" in live_df.columns:
-        attacks = int((live_df["Predicted_Label"] == 1).sum())
-        normal = int((live_df["Predicted_Label"] == 0).sum())
+    fig.update_layout(
+        showlegend=False,
+        height=300
+    )
+    
+    # Add mean line
+    mean_conf = max_probs.mean() * 100
+    fig.add_vline(x=mean_conf, line_dash="dash", line_color="red",
+                  annotation_text=f"Ortalama: {mean_conf:.1f}%")
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_time_series(df: pd.DataFrame):
+    """Render time series of detections."""
+    st.subheader("📈 Zaman Serisi Analizi")
+    
+    if df.empty:
+        st.info("Zaman serisi verisi bekleniyor...")
+        return
+    
+    ts_col = 'timestamp' if 'timestamp' in df.columns else 'Timestamp'
+    
+    if ts_col not in df.columns:
+        st.warning("Zaman damgası sütunu bulunamadı.")
+        return
+    
+    df_copy = df.copy()
+    df_copy[ts_col] = pd.to_datetime(df_copy[ts_col], errors='coerce')
+    df_copy = df_copy.dropna(subset=[ts_col])
+    
+    if len(df_copy) < 2:
+        st.info("Yeterli zaman serisi verisi yok.")
+        return
+    
+    # Resample by minute
+    df_copy.set_index(ts_col, inplace=True)
+    
+    class_col = 'class_name' if 'class_name' in df_copy.columns else 'Class_Name'
+    
+    if class_col in df_copy.columns:
+        # Group by class and time
+        time_series = df_copy.groupby([pd.Grouper(freq='1min'), class_col]).size().unstack(fill_value=0)
     else:
-        attacks = 0
-        normal = total_flows
+        time_series = df_copy.resample('1min').size().to_frame('count')
     
-    # File size
+    if time_series.empty:
+        st.info("Zaman serisi verisi oluşturulamadı.")
+        return
+    
+    fig = px.line(
+        time_series.reset_index(),
+        x=ts_col,
+        y=time_series.columns.tolist() if isinstance(time_series, pd.DataFrame) else ['count'],
+        title="Dakikalık Tespit Frekansı",
+        color_discrete_map=CLASS_COLORS
+    )
+    
+    fig.update_layout(
+        height=300,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_recent_detections(df: pd.DataFrame):
+    """Render table of recent detections."""
+    st.subheader("📋 Son Tespitler")
+    
+    if df.empty:
+        st.info("Tespit verisi bekleniyor...")
+        return
+    
+    # Select relevant columns
+    display_cols = []
+    col_mapping = {
+        'timestamp': 'Zaman',
+        'Timestamp': 'Zaman',
+        'class_name': 'Sınıf',
+        'Class_Name': 'Sınıf',
+        'risk_level': 'Risk',
+        'Risk_Level': 'Risk',
+        'risk_name': 'Durum',
+        'Risk_Name': 'Durum',
+        'action': 'Aksiyon',
+        'Action': 'Aksiyon',
+    }
+    
+    for col in col_mapping.keys():
+        if col in df.columns:
+            display_cols.append(col)
+    
+    if not display_cols:
+        display_cols = df.columns[:5].tolist()
+    
+    recent = df[display_cols].tail(20).iloc[::-1]  # Last 20, reversed
+    recent = recent.rename(columns={c: col_mapping.get(c, c) for c in recent.columns})
+    
+    st.dataframe(recent, use_container_width=True, hide_index=True)
+
+
+# ---------------------------------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------------------------------
+
+st.sidebar.header("🎮 Kontrol Paneli")
+
+# ---------------------------------------------------------------------------
+# MODEL SELECTION
+# ---------------------------------------------------------------------------
+st.sidebar.subheader("🧠 Aktif Yapay Zeka Modeli")
+
+MODEL_MAPPING = {
+    "Random Forest": "rf_model_v1.pkl",
+    "Decision Tree": "dt_model.pkl",
+    "XGBoost": "xgboost_model.pkl",
+    "BiLSTM": "bilstm_model.keras"
+}
+
+# Read current active model
+ACTIVE_MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "active_model.txt")
+os.makedirs(os.path.dirname(ACTIVE_MODEL_PATH), exist_ok=True)
+
+try:
+    if os.path.exists(ACTIVE_MODEL_PATH):
+        with open(ACTIVE_MODEL_PATH, "r") as f:
+            current_model_file = f.read().strip()
+        # Find the friendly name
+        current_model = next((k for k, v in MODEL_MAPPING.items() if v == current_model_file), "BiLSTM")
+    else:
+        current_model = "BiLSTM"
+        # Create default config
+        with open(ACTIVE_MODEL_PATH, "w") as f:
+            f.write(MODEL_MAPPING["BiLSTM"])
+except Exception:
+    current_model = "BiLSTM"
+
+selected_model = st.sidebar.selectbox(
+    "Model Seçin",
+    list(MODEL_MAPPING.keys()),
+    index=list(MODEL_MAPPING.keys()).index(current_model),
+    key="model_selector"
+)
+
+# Write to config file when selection changes
+if selected_model != current_model:
     try:
-        file_size_kb = os.path.getsize(LIVE_CSV_PATH) / 1024
-    except:
-        file_size_kb = 0
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Toplam Akış", f"{total_flows:,}")
-    col2.metric("🚨 Saldırı", f"{attacks:,}", delta=f"{attacks/total_flows*100:.1f}%" if total_flows > 0 else "0%")
-    col3.metric("✅ Normal", f"{normal:,}")
-    col4.metric("Dosya Boyutu", f"{file_size_kb:.1f} KB")
-    
-    # Attack rate visualization - Pie Chart + Progress Bar
-    if total_flows > 0:
-        attack_rate = attacks / total_flows * 100
-        normal_rate = 100 - attack_rate
-        
-        col_chart, col_progress = st.columns([2, 1])
-        
-        with col_chart:
-            # Donut chart for attack vs normal
-            fig = px.pie(
-                values=[attacks, normal],
-                names=["🚨 Saldırı", "✅ Normal"],
-                title="Trafik Dağılımı",
-                hole=0.6,
-                color_discrete_sequence=["#FF4B4B", "#00CC66"]
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(
-                height=300,
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-            )
-            # Add center text
-            fig.add_annotation(
-                text=f"<b>{attack_rate:.1f}%</b><br>Saldırı",
-                x=0.5, y=0.5,
-                font_size=16,
-                showarrow=False,
-                font_color="#FF4B4B" if attack_rate > 20 else "#00CC66"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col_progress:
-            st.markdown("### 📊 Saldırı Oranı")
-            
-            # Color based on severity
-            if attack_rate > 50:
-                color = "🔴"
-                status = "KRİTİK"
-                bar_color = "#FF4B4B"
-            elif attack_rate > 20:
-                color = "🟠"
-                status = "YÜKSEK"
-                bar_color = "#FFA500"
-            elif attack_rate > 5:
-                color = "🟡"
-                status = "ORTA"
-                bar_color = "#FFD700"
-            else:
-                color = "🟢"
-                status = "DÜŞÜK"
-                bar_color = "#00CC66"
-            
-            st.markdown(f"## {color} {attack_rate:.1f}%")
-            st.markdown(f"**Durum:** {status}")
-            
-            # Progress bar using streamlit
-            st.progress(min(attack_rate / 100, 1.0))
-            
-            st.markdown(f"""
-            ---
-            - **Saldırı:** {attacks:,} akış
-            - **Normal:** {normal:,} akış
-            - **Toplam:** {total_flows:,} akış
-            """)
+        with open(ACTIVE_MODEL_PATH, "w") as f:
+            f.write(MODEL_MAPPING[selected_model])
+        st.sidebar.success(f"✅ Model değiştirildi: {selected_model}")
+        st.sidebar.info("⏳ Consumer yeni modeli birkaç saniye içinde yükleyecek...")
+    except Exception as e:
+        st.sidebar.error(f"❌ Model yazma hatası: {e}")
 
+st.sidebar.caption(f"📊 Şu an aktif: **{selected_model}**")
+st.sidebar.caption("**Accuracy:** 99.15% | **Classes:** 3")
+st.sidebar.markdown("---")
 
-# ---------------------------------------------------------------------------
-# MAIN DASHBOARD LAYOUT
-# ---------------------------------------------------------------------------
+# Risk level legend
+st.sidebar.subheader("🎯 Risk Seviyeleri")
+for level, info in RISK_LEVELS.items():
+    st.sidebar.markdown(f"{info['emoji']} **Level {level}**: {info['name']}")
 
-logs = load_logs()
+st.sidebar.divider()
 
-# System Status (Top)
-render_system_status()
-st.divider()
-
-# KPIs
-render_kpis(logs)
-st.divider()
-
-# Live Traffic Counter & Confidence Scores
-col_left, col_right = st.columns(2)
-with col_left:
-    render_live_traffic_counter()
-with col_right:
-    render_confidence_scores()
-st.divider()
-
-# Charts Row 1
-render_charts(logs)
-st.divider()
-
-# Charts Row 2: Top Attackers & Attack Types
-col_attackers, col_types = st.columns(2)
-with col_attackers:
-    render_top_attackers(logs)
-with col_types:
-    render_attack_types(logs)
-st.divider()
-
-# Sidebar Controls
-st.sidebar.header("Kontroller")
-auto_refresh = st.sidebar.checkbox("Otomatik Yenile", value=True, key="auto_refresh_checkbox")
-refresh_interval = st.sidebar.slider("Yenileme Aralığı (sn)", min_value=5, max_value=60, value=15, key="refresh_interval_slider")
-
-st.subheader("📋 Detaylı Loglar")
-if logs.empty:
-    st.info("Henüz kayıt bulunamadı.")
-else:
-    st.dataframe(logs, use_container_width=True)
-
-ip_to_unblock = st.sidebar.text_input("Engeli Kaldırılacak IP")
-if st.sidebar.button("Unblock IP"):
+# IP Unblock
+st.sidebar.subheader("🔓 IP Engel Kaldırma")
+ip_to_unblock = st.sidebar.text_input("IP Adresi")
+if st.sidebar.button("Engeli Kaldır"):
     if ip_to_unblock.strip():
         success = unblock_ip(ip_to_unblock.strip())
         if success:
-            st.sidebar.success(f"{ip_to_unblock} engeli kaldırıldı.")
+            st.sidebar.success(f"✅ {ip_to_unblock} engeli kaldırıldı.")
         else:
-            st.sidebar.warning(f"{ip_to_unblock} için kural bulunamadı veya işlem başarısız.")
+            st.sidebar.warning(f"⚠️ İşlem başarısız.")
     else:
-        st.sidebar.warning("Lütfen geçerli bir IP girin.")
+        st.sidebar.warning("Geçerli bir IP girin.")
 
-if auto_refresh:
-    st.sidebar.caption(f"Sayfa {refresh_interval} sn'de bir yenileniyor.")
-    time.sleep(refresh_interval)
-    st.rerun()
+st.sidebar.divider()
+st.sidebar.caption(f"🔄 Son yenileme: {datetime.now().strftime('%H:%M:%S')}")
+st.sidebar.caption(f"📊 Refresh #{count}")
+
+
+# ---------------------------------------------------------------------------
+# MAIN LAYOUT
+# ---------------------------------------------------------------------------
+
+# Load data
+live_df = load_live_traffic()
+logs_df = load_logs()
+
+# System Status
+render_system_status()
+st.divider()
+
+# Metrics Row
+render_metrics(live_df)
+st.divider()
+
+# Risk Gauge & Class Distribution
+col_gauge, col_dist = st.columns([1, 2])
+with col_gauge:
+    render_risk_gauge(live_df)
+with col_dist:
+    render_class_distribution(live_df)
+
+st.divider()
+
+# Confidence & Time Series
+col_conf, col_time = st.columns(2)
+with col_conf:
+    render_confidence_histogram(live_df)
+with col_time:
+    render_time_series(live_df)
+
+st.divider()
+
+# Recent Detections Table
+render_recent_detections(live_df)

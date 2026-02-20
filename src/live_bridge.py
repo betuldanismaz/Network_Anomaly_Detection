@@ -1,14 +1,5 @@
-#!/usr/bin/env python3
-"""
-Live IPS Bridge - BiLSTM Model with 5-Level Risk Scoring
-=========================================================
-Captures traffic, extracts CICFlowMeter features, and detects attacks using
-BiLSTM time-series model with sliding window and multi-level risk assessment.
-
-Author: NIDS Project
-Date: 2026-01-01
-"""
-
+import pandas as pd
+import joblib
 import os
 import sys
 import time
@@ -17,20 +8,16 @@ import subprocess
 import threading
 import queue
 import atexit
+import json
 from datetime import datetime
-from collections import deque
-from typing import Tuple, Optional, Dict, Any
+from scapy.all import sniff, wrpcap, conf
 
 import joblib
 import numpy as np
 import pandas as pd
-from scapy.all import sniff, wrpcap, rdpcap, conf
+from scapy.all import sniff, wrpcap, rdpcap
 from dotenv import load_dotenv
-
-# TensorFlow imports
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TF warnings
-import tensorflow as tf
-from tensorflow.keras import models
+from confluent_kafka import Producer
 
 # Load environment variables
 load_dotenv()
@@ -39,149 +26,148 @@ load_dotenv()
 # PATH SETUP
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-
-# BiLSTM Model Paths
-BILSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "bilstm_best.keras")
-SCALER_LSTM_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
-SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")  # Fallback
-
-# Import Top 20 Features from config
-try:
-    from config import TOP_FEATURES
-    print(f"✅ TOP_FEATURES loaded from config.py ({len(TOP_FEATURES)} features)")
-except ImportError:
-    print("⚠️ config.py not found! Using fallback Top 20 features.")
-    TOP_FEATURES = [
-        "Flow Duration", "Total Fwd Packets", "Total Backward Packets",
-        "Total Length of Fwd Packets", "Total Length of Bwd Packets",
-        "Fwd Packet Length Max", "Fwd Packet Length Min", "Fwd Packet Length Mean",
-        "Bwd Packet Length Max", "Bwd Packet Length Min", "Flow Bytes/s",
-        "Flow Packets/s", "Flow IAT Mean", "Fwd IAT Total", "Bwd IAT Total",
-        "Fwd PSH Flags", "Fwd Header Length", "Fwd Packets/s", "Min Packet Length",
-        "Average Packet Size"
-    ]
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(CURRENT_DIR, "..", "models", "rf_model_v1.pkl")
+SCALER_PATH = os.path.join(CURRENT_DIR, "..", "models", "scaler.pkl")
+sys.path.append(os.path.join(CURRENT_DIR, "utils"))
 
 # Utils Import
 try:
-    from utils.firewall_manager import block_ip
-    from utils.db_manager import log_attack
+    from firewall_manager import block_ip
+    from db_manager import log_attack
 except ImportError:
-    print("⚠️ UYARI: firewall_manager/db_manager bulunamadı, dummy fonksiyonlar kullanılıyor.")
-    def block_ip(ip_address):
-        print(f"   [Simülasyon] {ip_address} engellenecekti.")
-        return False
     def log_attack(*_args, **_kwargs):
         pass
 
 # ---------------------------------------------------------------------------
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
-INTERFACE = os.getenv("NETWORK_INTERFACE", "")
+# Scapy interface name must match show_interfaces() output exactly.
+INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
-WHITELIST_IPS = os.getenv(
-    "WHITELIST_IPS",
-    "192.168.1.1,127.0.0.1,0.0.0.0,localhost,8.8.8.8",
-).split(",")
-
-# Wireshark Verification Mode
-WIRESHARK_VERBOSE = True
-
-# BiLSTM Configuration
-SEQUENCE_LENGTH = 10  # Sliding window size
-NUM_FEATURES = 20     # Top 20 features
-
-# ---------------------------------------------------------------------------
-# 5-LEVEL RISK SCORING SYSTEM
-# ---------------------------------------------------------------------------
-RISK_LEVELS = {
-    1: {"name": "SAFE",     "color": "🟢", "action": "ALLOW",  "description": "Normal Traffic"},
-    2: {"name": "LOW",      "color": "🔵", "action": "ALLOW",  "description": "Minor Anomaly"},
-    3: {"name": "MEDIUM",   "color": "🟡", "action": "ALERT",  "description": "Suspicious Activity"},
-    4: {"name": "HIGH",     "color": "🟠", "action": "BLOCK",  "description": "Likely Attack"},
-    5: {"name": "CRITICAL", "color": "🔴", "action": "BLOCK",  "description": "Confirmed Attack"},
-}
-
-# Class names mapping
-CLASS_NAMES = {
-    0: "Benign",
-    1: "Volumetric",
-    2: "Semantic"
-}
-
+WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
 DROP_COLS = [
-    "Flow ID", "Source IP", "Src IP", "src_ip", "dst_ip",
-    "Source Port", "Src Port", "src_port", "dst_port",
-    "Destination IP", "Dest IP", "Destination Port", "Dest Port",
-    "Timestamp", "timestamp", "Date", "protocol", "Flow_ID",
-    "SimillarHTTP", "Label",
+    "Flow ID",
+    "Source IP",
+    "Src IP",
+    "src_ip",
+    "dst_ip",
+    "Source Port",
+    "Src Port",
+    "src_port",
+    "dst_port",
+    "Destination IP",
+    "Dest IP",
+    "Destination Port",
+    "Dest Port",
+    "Timestamp",
+    "timestamp",
+    "Date",
+    "protocol",
+    "Flow_ID",
+    "SimillarHTTP",
+    "Label",
 ]
 
 # ---------------------------------------------------------------------------
-# DATA HARVEST CONFIG
+# DATA HARVEST - TRAFFIC LOGGER
 # ---------------------------------------------------------------------------
-HARVEST_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic_bilstm.csv")
-HARVEST_BUFFER_SIZE = 25
-HARVEST_FLUSH_INTERVAL = 30.0
+HARVEST_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
+HARVEST_BUFFER_SIZE = 25  # Number of rows to buffer before writing to disk
+HARVEST_FLUSH_INTERVAL = 30.0  # Force flush every N seconds even if buffer not full
+
+# Training data schema (78 features) - must match exactly with model training columns
+TRAINING_FEATURE_COLUMNS = [
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Fwd Avg Bytes/Bulk",
+    "Fwd Avg Packets/Bulk",
+    "Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk",
+    "Bwd Avg Packets/Bulk",
+    "Bwd Avg Bulk Rate",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min",
+]
 
 
-def calculate_risk_level(probabilities: np.ndarray) -> Tuple[int, str, str, int]:
+class TrafficLogger:
     """
-    Calculate 5-level risk score from prediction probabilities.
-    
-    Args:
-        probabilities: Array of shape [Prob_Benign, Prob_Volumetric, Prob_Semantic]
-    
-    Returns:
-        Tuple of (risk_level, risk_name, action, predicted_class)
-    """
-    prob_benign = probabilities[0]
-    prob_volumetric = probabilities[1]
-    prob_semantic = probabilities[2]
-    
-    # Get predicted class
-    predicted_class = int(np.argmax(probabilities))
-    max_confidence = float(np.max(probabilities))
-    
-    # Benign Traffic Assessment
-    if predicted_class == 0:  # Benign
-        if prob_benign > 0.60:
-            return 1, "SAFE", "ALLOW", predicted_class
-        else:
-            return 2, "LOW", "ALLOW", predicted_class
-    
-    # Attack Traffic Assessment (Volumetric or Semantic)
-    elif predicted_class == 1:  # Volumetric Attack
-        if prob_volumetric >= 0.90:
-            return 5, "CRITICAL", "BLOCK", predicted_class
-        elif prob_volumetric >= 0.70:
-            return 4, "HIGH", "BLOCK", predicted_class
-        elif prob_volumetric >= 0.50:
-            return 3, "MEDIUM", "ALERT", predicted_class
-        else:
-            return 2, "LOW", "ALLOW", predicted_class
-    
-    else:  # Semantic Attack (class 2)
-        if prob_semantic >= 0.85:
-            return 5, "CRITICAL", "BLOCK", predicted_class
-        elif prob_semantic >= 0.70:
-            return 4, "HIGH", "BLOCK", predicted_class
-        elif prob_semantic >= 0.50:
-            return 3, "MEDIUM", "ALERT", predicted_class
-        else:
-            return 2, "LOW", "ALLOW", predicted_class
-
-
-class BiLSTMDetector:
-    """
-    Live IDS/IPS using BiLSTM model with sliding window and 5-level risk scoring.
+    Thread-safe traffic logger with buffered writes for minimal latency impact.
     
     Features:
-    - Loads BiLSTM model trained for 3-class classification
-    - Uses sliding window buffer for time-series prediction
-    - Implements 5-level risk scoring system
-    - Thread-safe traffic data harvesting
+    - Buffers rows in memory to reduce disk I/O frequency
+    - Uses a separate writer thread to avoid blocking the main sniffing loop
+    - Auto-flushes on buffer full or time interval
+    - Graceful shutdown with atexit hook
     """
     
     def __init__(
@@ -190,65 +176,34 @@ class BiLSTMDetector:
         buffer_size: int = HARVEST_BUFFER_SIZE,
         flush_interval: float = HARVEST_FLUSH_INTERVAL,
     ):
-        print("\n" + "="*70)
-        print("🧠 BiLSTM DETECTOR INITIALIZATION")
-        print("="*70)
-        
-        # 1. Load BiLSTM Model
-        if not os.path.exists(BILSTM_MODEL_PATH):
-            raise FileNotFoundError(f"❌ BiLSTM Model not found: {BILSTM_MODEL_PATH}")
-        
-        self.model = models.load_model(BILSTM_MODEL_PATH)
-        print(f"✅ BiLSTM Model Loaded: {BILSTM_MODEL_PATH}")
-        print(f"   Input Shape: {self.model.input_shape}")
-        print(f"   Output Shape: {self.model.output_shape}")
-        
-        # 2. Load Scaler
-        scaler_path = SCALER_LSTM_PATH if os.path.exists(SCALER_LSTM_PATH) else SCALER_PATH
-        if not os.path.exists(scaler_path):
-            raise FileNotFoundError(f"❌ Scaler not found: {scaler_path}")
-        
-        self.scaler = joblib.load(scaler_path)
-        print(f"✅ Scaler Loaded: {scaler_path}")
-        
-        # 3. Store Top Features
-        self.top_features = TOP_FEATURES
-        print(f"✅ Top Features: {len(self.top_features)} columns")
-        
-        # 4. Initialize Sliding Window Buffer
-        self.sequence_buffer: deque = deque(maxlen=SEQUENCE_LENGTH)
-        self.ip_buffer: deque = deque(maxlen=SEQUENCE_LENGTH)  # Track IPs
-        print(f"✅ Sliding Window: {SEQUENCE_LENGTH} time steps")
-        
-        # 5. Traffic Logger Setup
         self.csv_path = csv_path
         self.buffer_size = buffer_size
         self.flush_interval = flush_interval
         
+        # Thread-safe queue for passing data to writer thread
         self._queue: queue.Queue = queue.Queue()
         self._buffer: list = []
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._last_flush_time = time.time()
         
-        # CSV columns: Timestamp + Top20 Features + Risk columns
-        self._csv_columns = (
-            ["Timestamp"] + self.top_features + 
-            ["Predicted_Class", "Class_Name", "Risk_Level", "Risk_Name", "Action", 
-             "Prob_Benign", "Prob_Volumetric", "Prob_Semantic"]
-        )
+        # CSV header columns: Timestamp + 78 features + Predicted_Label + Confidence_Score
+        self._csv_columns = ["Timestamp"] + TRAINING_FEATURE_COLUMNS + ["Predicted_Label", "Confidence_Score"]
         
+        # Ensure data directory exists
         os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+        
+        # Initialize CSV file with header if it doesn't exist
         self._initialize_csv()
         
-        # Start background writer thread
+        # Start the background writer thread
         self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True, name="TrafficLoggerWriter")
         self._writer_thread.start()
         
+        # Register shutdown hook to flush remaining data
         atexit.register(self.shutdown)
         
-        print(f"✅ Data Harvesting Active: {self.csv_path}")
-        print("="*70 + "\n")
+        print(f"📊 [TrafficLogger] Data harvesting aktif -> {self.csv_path}")
     
     def _initialize_csv(self):
         """Create CSV file with header if it doesn't exist."""
@@ -256,204 +211,92 @@ class BiLSTMDetector:
             try:
                 header_df = pd.DataFrame(columns=self._csv_columns)
                 header_df.to_csv(self.csv_path, index=False)
-                print(f"   ↳ New CSV created ({len(self._csv_columns)} columns)")
+                print(f"   ↳ Yeni CSV dosyası oluşturuldu ({len(self._csv_columns)} sütun)")
             except Exception as e:
-                print(f"⚠️ CSV initialization error: {e}")
+                print(f"⚠️ [TrafficLogger] CSV başlatma hatası: {e}")
         else:
+            # Validate existing file has correct columns
             try:
                 existing_df = pd.read_csv(self.csv_path, nrows=0)
                 if list(existing_df.columns) != self._csv_columns:
-                    print(f"⚠️ CSV schema mismatch, backing up...")
+                    print(f"⚠️ [TrafficLogger] Mevcut CSV şeması uyumsuz, yedekleniyor...")
                     backup_path = self.csv_path.replace(".csv", f"_backup_{int(time.time())}.csv")
                     shutil.move(self.csv_path, backup_path)
                     self._initialize_csv()
             except Exception:
-                pass
-    
-    def add_to_buffer(self, scaled_features: np.ndarray, src_ip: str = "Unknown"):
-        """Add scaled features to the sliding window buffer."""
-        self.sequence_buffer.append(scaled_features)
-        self.ip_buffer.append(src_ip)
-    
-    def is_buffer_ready(self) -> bool:
-        """Check if buffer has enough data for prediction."""
-        return len(self.sequence_buffer) >= SEQUENCE_LENGTH
-    
-    def get_sequence(self) -> np.ndarray:
-        """Get current sequence from buffer as numpy array."""
-        if not self.is_buffer_ready():
-            return None
-        return np.array(list(self.sequence_buffer)).reshape(1, SEQUENCE_LENGTH, NUM_FEATURES)
-    
-    def predict(self, sequence: np.ndarray) -> Tuple[np.ndarray, int, str, str]:
-        """
-        Make prediction using BiLSTM model.
-        
-        Args:
-            sequence: Numpy array of shape (1, 10, 20)
-        
-        Returns:
-            Tuple of (probabilities, risk_level, risk_name, action)
-        """
-        if sequence is None:
-            return None, 1, "INITIALIZING", "ALLOW"
-        
-        # Predict
-        probabilities = self.model.predict(sequence, verbose=0)[0]
-        
-        # Calculate risk level
-        risk_level, risk_name, action, predicted_class = calculate_risk_level(probabilities)
-        
-        return probabilities, risk_level, risk_name, action, predicted_class
-    
-    def process_and_predict(
-        self, 
-        features_df: pd.DataFrame, 
-        src_ips=None, 
-        dst_ips=None, 
-        original_df=None
-    ) -> Tuple[Optional[np.ndarray], Optional[Dict[str, Any]]]:
-        """
-        Core prediction logic with sliding window and risk assessment.
-        
-        Args:
-            features_df: Processed features aligned to TOP_FEATURES
-            src_ips: Source IP addresses
-            dst_ips: Destination IP addresses
-            original_df: Original DataFrame for metric extraction
-        
-        Returns:
-            Tuple of (predictions, result_info)
-        """
-        if features_df.empty:
-            return None, None
-        
-        # 1. Filter to TOP_FEATURES only (Top 20)
-        aligned_features = features_df.reindex(columns=self.top_features, fill_value=0)
-        
-        results = []
-        
-        for idx in range(len(aligned_features)):
-            try:
-                # Extract single row features
-                row_features = aligned_features.iloc[idx].values.reshape(1, -1)
-                
-                # Scale features
-                scaled_features = self.scaler.transform(row_features)[0]
-                
-                # Get source IP
-                src_ip = str(src_ips.iloc[idx]) if src_ips is not None and idx < len(src_ips) else "Unknown"
-                dst_ip = str(dst_ips.iloc[idx]) if dst_ips is not None and idx < len(dst_ips) else "Unknown"
-                
-                # Add to sliding window buffer
-                self.add_to_buffer(scaled_features, src_ip)
-                
-                # Check if buffer is ready
-                if not self.is_buffer_ready():
-                    # Not enough data yet
-                    result = {
-                        'src_ip': src_ip,
-                        'dst_ip': dst_ip,
-                        'predicted_class': -1,
-                        'class_name': 'Initializing',
-                        'risk_level': 0,
-                        'risk_name': 'INIT',
-                        'action': 'BUFFER',
-                        'probabilities': np.array([0.0, 0.0, 0.0]),
-                        'buffer_size': len(self.sequence_buffer)
-                    }
-                    results.append(result)
-                    print(f"⏳ Buffer filling: {len(self.sequence_buffer)}/{SEQUENCE_LENGTH}", end="\r")
-                    continue
-                
-                # Get sequence and predict
-                sequence = self.get_sequence()
-                probabilities, risk_level, risk_name, action, predicted_class = self.predict(sequence)
-                
-                result = {
-                    'src_ip': src_ip,
-                    'dst_ip': dst_ip,
-                    'predicted_class': predicted_class,
-                    'class_name': CLASS_NAMES.get(predicted_class, 'Unknown'),
-                    'risk_level': risk_level,
-                    'risk_name': risk_name,
-                    'action': action,
-                    'probabilities': probabilities,
-                    'buffer_size': len(self.sequence_buffer)
-                }
-                results.append(result)
-                
-                # Log to console with color-coded output
-                self._log_prediction(result, dst_ip, original_df, idx)
-                
-            except Exception as e:
-                print(f"⚠️ Prediction error for row {idx}: {e}")
-                continue
-        
-        return results, None
-    
-    def _log_prediction(self, result: Dict, dst_ip: str, original_df: pd.DataFrame, idx: int):
-        """Log prediction with color-coded risk level."""
-        risk_info = RISK_LEVELS.get(result['risk_level'], RISK_LEVELS[1])
-        color = risk_info['color']
-        
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        probs = result['probabilities']
-        
-        # Format output based on risk level
-        if result['risk_level'] >= 4:  # HIGH or CRITICAL
-            print(f"\n{color} [{timestamp}] {result['risk_name']} RISK - {result['action']}")
-            print(f"   Class: {result['class_name']} | Src: {result['src_ip']} → Dst: {dst_ip}")
-            print(f"   Confidence: B:{probs[0]:.2%} V:{probs[1]:.2%} S:{probs[2]:.2%}")
-            print("-" * 60)
-        elif result['risk_level'] == 3:  # MEDIUM
-            print(f"{color} [{timestamp}] {result['risk_name']}: {result['class_name']} | {result['src_ip']}")
-        else:  # SAFE or LOW
-            print(f"{color} [{timestamp}] {result['risk_name']} | {result['class_name']}", end="\r")
+                pass  # File might be empty or corrupted, will be overwritten
     
     def log(
         self,
         features_df: pd.DataFrame,
-        results: list,
+        predictions: np.ndarray,
+        probabilities: np.ndarray = None,
+        debug: bool = False,
     ):
-        """Queue feature data with predictions for async logging."""
-        if features_df.empty or not results:
+        """
+        Queue feature data with predictions for async logging.
+        
+        Args:
+            features_df: DataFrame with 78 feature columns (already scaled or raw)
+            predictions: Array of 0/1 predictions
+            probabilities: Optional array of confidence scores (attack probability)
+            debug: If True, print column alignment diagnostics
+        """
+        if features_df.empty:
             return
         
         try:
             timestamp = datetime.now().isoformat()
-            aligned_features = features_df.reindex(columns=self.top_features, fill_value=0)
             
-            for idx, result in enumerate(results):
-                if result['predicted_class'] == -1:  # Skip initializing entries
-                    continue
-                    
+            # === COLUMN ALIGNMENT DEBUGGING ===
+            if debug or not hasattr(self, '_alignment_checked'):
+                input_cols = set(features_df.columns)
+                expected_cols = set(TRAINING_FEATURE_COLUMNS)
+                
+                missing_cols = expected_cols - input_cols
+                extra_cols = input_cols - expected_cols
+                
+                print(f"\n🔍 [TrafficLogger] Column Alignment Check:")
+                print(f"   Input columns:    {len(features_df.columns)}")
+                print(f"   Expected columns: {len(TRAINING_FEATURE_COLUMNS)}")
+                
+                if missing_cols:
+                    print(f"   ⚠️ MISSING ({len(missing_cols)}): {list(missing_cols)[:5]}{'...' if len(missing_cols) > 5 else ''}")
+                if extra_cols:
+                    print(f"   ⚠️ EXTRA ({len(extra_cols)}): {list(extra_cols)[:5]}{'...' if len(extra_cols) > 5 else ''}")
+                
+                if not missing_cols and not extra_cols:
+                    print(f"   ✅ Perfect match! All 78 columns aligned.")
+                else:
+                    print(f"   ℹ️ Missing columns will be filled with 0, extra columns ignored.")
+                
+                self._alignment_checked = True
+            
+            # Ensure features are in correct column order
+            aligned_features = features_df.reindex(columns=TRAINING_FEATURE_COLUMNS, fill_value=0)
+            
+            for idx in range(len(aligned_features)):
                 row_data = {
                     "Timestamp": timestamp,
-                    "Predicted_Class": result['predicted_class'],
-                    "Class_Name": result['class_name'],
-                    "Risk_Level": result['risk_level'],
-                    "Risk_Name": result['risk_name'],
-                    "Action": result['action'],
-                    "Prob_Benign": float(result['probabilities'][0]),
-                    "Prob_Volumetric": float(result['probabilities'][1]),
-                    "Prob_Semantic": float(result['probabilities'][2]),
+                    "Predicted_Label": int(predictions[idx]),
+                    "Confidence_Score": float(probabilities[idx, 1]) if probabilities is not None else float(predictions[idx]),
                 }
+                # Add all 78 features
+                for col in TRAINING_FEATURE_COLUMNS:
+                    row_data[col] = aligned_features.iloc[idx][col]
                 
-                # Add Top 20 features
-                if idx < len(aligned_features):
-                    for col in self.top_features:
-                        row_data[col] = aligned_features.iloc[idx][col]
-                
+                # Put row in queue (non-blocking)
                 self._queue.put(row_data, block=False)
-                
         except Exception as e:
-            print(f"⚠️ Logging error: {e}")
+            print(f"⚠️ [TrafficLogger] Log hatası: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _writer_loop(self):
         """Background thread that processes queue and writes to CSV."""
         while not self._stop_event.is_set():
             try:
+                # Try to get item from queue with timeout
                 try:
                     row = self._queue.get(timeout=1.0)
                     with self._lock:
@@ -462,9 +305,10 @@ class BiLSTMDetector:
                 except queue.Empty:
                     pass
                 
+                # Check if we should flush
                 should_flush = False
                 with self._lock:
-                    buffer_full = len(self._buffer) >= self.buffer_size
+                    buffer_full = len(self._buffer) >= self.buffer_size  # buffer size is 25
                     time_elapsed = (time.time() - self._last_flush_time) >= self.flush_interval
                     should_flush = (buffer_full or time_elapsed) and len(self._buffer) > 0
                 
@@ -472,7 +316,7 @@ class BiLSTMDetector:
                     self._flush_buffer()
                     
             except Exception as e:
-                print(f"⚠️ Writer thread error: {e}")
+                print(f"⚠️ [TrafficLogger] Writer thread hatası: {e}")
                 time.sleep(1)
     
     def _flush_buffer(self):
@@ -488,9 +332,10 @@ class BiLSTMDetector:
         try:
             df = pd.DataFrame(rows_to_write, columns=self._csv_columns)
             df.to_csv(self.csv_path, mode='a', header=False, index=False)
-            print(f"💾 Saved {len(rows_to_write)} rows (Total: {self._get_total_rows()})")
+            print(f"💾 [TrafficLogger] {len(rows_to_write)} satır kaydedildi (Toplam: {self._get_total_rows()})")
         except Exception as e:
-            print(f"⚠️ Flush error: {e}")
+            print(f"⚠️ [TrafficLogger] Flush hatası: {e}")
+            # Put rows back in queue for retry
             with self._lock:
                 self._buffer.extend(rows_to_write)
     
@@ -499,16 +344,17 @@ class BiLSTMDetector:
         try:
             if os.path.exists(self.csv_path):
                 with open(self.csv_path, 'r', encoding='utf-8') as f:
-                    return sum(1 for _ in f) - 1
+                    return sum(1 for _ in f) - 1  # Subtract header
         except Exception:
             pass
         return 0
     
     def shutdown(self):
-        """Gracefully shutdown the detector."""
-        print("\n🔄 Shutting down, flushing buffer...")
+        """Gracefully shutdown the logger, flushing remaining data."""
+        print("\n🔄 [TrafficLogger] Kapanıyor, buffer temizleniyor...")
         self._stop_event.set()
         
+        # Drain the queue
         while not self._queue.empty():
             try:
                 row = self._queue.get_nowait()
@@ -517,28 +363,29 @@ class BiLSTMDetector:
             except queue.Empty:
                 break
         
+        # Final flush
         self._flush_buffer()
         
         if self._writer_thread.is_alive():
             self._writer_thread.join(timeout=5.0)
         
-        print(f"✅ All data saved -> {self.csv_path}")
+        print(f"✅ [TrafficLogger] Tüm veriler kaydedildi -> {self.csv_path}")
     
     def get_stats(self) -> dict:
-        """Return current detector statistics."""
+        """Return current logger statistics."""
         with self._lock:
             return {
                 "buffer_size": len(self._buffer),
                 "queue_size": self._queue.qsize(),
-                "sequence_buffer_size": len(self.sequence_buffer),
                 "total_rows": self._get_total_rows(),
                 "csv_path": self.csv_path,
             }
 
 
-# ---------------------------------------------------------------------------
-# COLUMN RENAME MAP (CICFlowMeter -> Training Schema)
-# ---------------------------------------------------------------------------
+# Global Kafka Producer instance
+KAFKA_PRODUCER = None
+KAFKA_TOPIC = "network-traffic"
+
 COLUMN_RENAME_MAP = {
     "flow_duration": "Flow Duration",
     "tot_fwd_pkts": "Total Fwd Packets",
@@ -548,65 +395,329 @@ COLUMN_RENAME_MAP = {
     "fwd_pkt_len_max": "Fwd Packet Length Max",
     "fwd_pkt_len_min": "Fwd Packet Length Min",
     "fwd_pkt_len_mean": "Fwd Packet Length Mean",
+    "fwd_pkt_len_std": "Fwd Packet Length Std",
     "bwd_pkt_len_max": "Bwd Packet Length Max",
     "bwd_pkt_len_min": "Bwd Packet Length Min",
+    "bwd_pkt_len_mean": "Bwd Packet Length Mean",
+    "bwd_pkt_len_std": "Bwd Packet Length Std",
     "flow_byts_s": "Flow Bytes/s",
     "flow_pkts_s": "Flow Packets/s",
     "flow_iat_mean": "Flow IAT Mean",
+    "flow_iat_std": "Flow IAT Std",
+    "flow_iat_max": "Flow IAT Max",
+    "flow_iat_min": "Flow IAT Min",
     "fwd_iat_tot": "Fwd IAT Total",
+    "fwd_iat_mean": "Fwd IAT Mean",
+    "fwd_iat_std": "Fwd IAT Std",
+    "fwd_iat_max": "Fwd IAT Max",
+    "fwd_iat_min": "Fwd IAT Min",
     "bwd_iat_tot": "Bwd IAT Total",
+    "bwd_iat_mean": "Bwd IAT Mean",
+    "bwd_iat_std": "Bwd IAT Std",
+    "bwd_iat_max": "Bwd IAT Max",
+    "bwd_iat_min": "Bwd IAT Min",
     "fwd_psh_flags": "Fwd PSH Flags",
+    "bwd_psh_flags": "Bwd PSH Flags",
+    "fwd_urg_flags": "Fwd URG Flags",
+    "bwd_urg_flags": "Bwd URG Flags",
     "fwd_header_len": "Fwd Header Length",
+    "bwd_header_len": "Bwd Header Length",
     "fwd_pkts_s": "Fwd Packets/s",
+    "bwd_pkts_s": "Bwd Packets/s",
     "pkt_len_min": "Min Packet Length",
+    "pkt_len_max": "Max Packet Length",
+    "pkt_len_mean": "Packet Length Mean",
+    "pkt_len_std": "Packet Length Std",
+    "pkt_len_var": "Packet Length Variance",
+    "fin_flag_cnt": "FIN Flag Count",
+    "syn_flag_cnt": "SYN Flag Count",
+    "rst_flag_cnt": "RST Flag Count",
+    "psh_flag_cnt": "PSH Flag Count",
+    "ack_flag_cnt": "ACK Flag Count",
+    "urg_flag_cnt": "URG Flag Count",
+    "cwr_flag_count": "CWE Flag Count",
+    "ece_flag_cnt": "ECE Flag Count",
+    "down_up_ratio": "Down/Up Ratio",
     "pkt_size_avg": "Average Packet Size",
+    "fwd_seg_size_avg": "Avg Fwd Segment Size",
+    "bwd_seg_size_avg": "Avg Bwd Segment Size",
+    "fwd_byts_b_avg": "Fwd Avg Bytes/Bulk",
+    "fwd_pkts_b_avg": "Fwd Avg Packets/Bulk",
+    "fwd_blk_rate_avg": "Fwd Avg Bulk Rate",
+    "bwd_byts_b_avg": "Bwd Avg Bytes/Bulk",
+    "bwd_pkts_b_avg": "Bwd Avg Packets/Bulk",
+    "bwd_blk_rate_avg": "Bwd Avg Bulk Rate",
+    "subflow_fwd_pkts": "Subflow Fwd Packets",
+    "subflow_fwd_byts": "Subflow Fwd Bytes",
+    "subflow_bwd_pkts": "Subflow Bwd Packets",
+    "subflow_bwd_byts": "Subflow Bwd Bytes",
+    "init_fwd_win_byts": "Init_Win_bytes_forward",
+    "init_bwd_win_byts": "Init_Win_bytes_backward",
+    "fwd_act_data_pkts": "act_data_pkt_fwd",
+    "fwd_seg_size_min": "min_seg_size_forward",
+    "active_mean": "Active Mean",
+    "active_std": "Active Std",
+    "active_max": "Active Max",
+    "active_min": "Active Min",
+    "idle_mean": "Idle Mean",
+    "idle_std": "Idle Std",
+    "idle_max": "Idle Max",
+    "idle_min": "Idle Min",
 }
 
-ALT_CIC_RENAME_MAP = {
-    "Tot Fwd Pkts": "Total Fwd Packets",
-    "Tot Bwd Pkts": "Total Backward Packets",
-    "TotLen Fwd Pkts": "Total Length of Fwd Packets",
-    "TotLen Bwd Pkts": "Total Length of Bwd Packets",
-    "Fwd Pkt Len Max": "Fwd Packet Length Max",
-    "Fwd Pkt Len Min": "Fwd Packet Length Min",
-    "Fwd Pkt Len Mean": "Fwd Packet Length Mean",
-    "Bwd Pkt Len Max": "Bwd Packet Length Max",
-    "Bwd Pkt Len Min": "Bwd Packet Length Min",
-    "Flow Byts/s": "Flow Bytes/s",
-    "Flow Pkts/s": "Flow Packets/s",
-    "Flow IAT Mean": "Flow IAT Mean",
-    "Fwd IAT Tot": "Fwd IAT Total",
-    "Bwd IAT Tot": "Bwd IAT Total",
-    "Fwd PSH Flags": "Fwd PSH Flags",
-    "Fwd Header Len": "Fwd Header Length",
-    "Fwd Pkts/s": "Fwd Packets/s",
-    "Pkt Len Min": "Min Packet Length",
-    "Pkt Size Avg": "Average Packet Size",
-}
+def feature_extraction_and_predict():
+    """
+    Extract features from PCAP and send to Kafka.
+    Uses cicflowmeter CLI with fallback to dummy features if extraction fails.
+    """
+    GOLD_STANDARD_FEATURES = [
+        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
+        "flow_duration", "flow_byts_s", "flow_pkts_s", "fwd_pkts_s", "bwd_pkts_s",
+        "tot_fwd_pkts", "tot_bwd_pkts", "totlen_fwd_pkts", "totlen_bwd_pkts",
+        "fwd_pkt_len_max", "fwd_pkt_len_min", "fwd_pkt_len_mean", "fwd_pkt_len_std",
+        "bwd_pkt_len_max", "bwd_pkt_len_min", "bwd_pkt_len_mean", "bwd_pkt_len_std",
+        "pkt_len_max", "pkt_len_min", "pkt_len_mean", "pkt_len_std", "pkt_len_var",
+        "fwd_header_len", "bwd_header_len", "fwd_seg_size_min", "fwd_act_data_pkts",
+        "flow_iat_mean", "flow_iat_max", "flow_iat_min", "flow_iat_std",
+        "fwd_iat_tot", "fwd_iat_max", "fwd_iat_min", "fwd_iat_mean", "fwd_iat_std",
+        "bwd_iat_tot", "bwd_iat_max", "bwd_iat_min", "bwd_iat_mean", "bwd_iat_std",
+        "fwd_psh_flags", "bwd_psh_flags", "fwd_urg_flags", "bwd_urg_flags",
+        "fin_flag_cnt", "syn_flag_cnt", "rst_flag_cnt", "psh_flag_cnt",
+        "ack_flag_cnt", "urg_flag_cnt", "ece_flag_cnt", "down_up_ratio",
+        "pkt_size_avg", "init_fwd_win_byts", "init_bwd_win_byts",
+        "active_max", "active_min", "active_mean", "active_std",
+        "idle_max", "idle_min", "idle_mean", "idle_std",
+        "fwd_byts_b_avg", "fwd_pkts_b_avg", "bwd_byts_b_avg", "bwd_pkts_b_avg",
+        "fwd_blk_rate_avg", "bwd_blk_rate_avg", "fwd_seg_size_avg", "bwd_seg_size_avg",
+        "cwr_flag_count", "subflow_fwd_pkts", "subflow_bwd_pkts",
+        "subflow_fwd_byts", "subflow_bwd_byts",
+    ]
+    LOG_ONLY_COLUMNS = [
+        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
+    ]
+
+    print("   ↳ ⚙️ Analiz ediliyor...", end="\r")
+
+    # Try cicflowmeter CLI
+    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
+    
+    if not cli_ok:
+        print(f"   ⚠️ CICFlowMeter CLI failed: {cli_err[:100]}")
+        print(f"   🔄 Falling back to DUMMY FEATURES to keep pipeline alive...")
+        
+        # Generate dummy features to test pipeline
+        df = generate_dummy_features(packet_count=1)
+        print(f"   💡 Generated {len(df)} dummy flow(s) with 0-filled features")
+    else:
+        # CLI succeeded, try to read CSV
+        if not os.path.exists(TEMP_CSV):
+            print("   ⚠️ CSV file missing despite CLI success")
+            print("   🔄 Falling back to DUMMY FEATURES...")
+            df = generate_dummy_features(packet_count=1)
+        else:
+            try:
+                df = pd.read_csv(TEMP_CSV)
+                if df.empty:
+                    print("   ⚠️ CSV is empty")
+                    print("   🔄 Falling back to DUMMY FEATURES...")
+                    df = generate_dummy_features(packet_count=1)
+                else:
+                    print(f"   ✅ Parsed {len(df)} flow(s) from CSV", end="\r")
+            except Exception as exc:
+                print(f"   ⚠️ CSV read error: {exc}")
+                print("   🔄 Falling back to DUMMY FEATURES...")
+                df = generate_dummy_features(packet_count=1)
+
+    # Clean and normalize column names
+    df.columns = df.columns.str.strip()
+    src_ips = extract_source_ips(df)
+
+    # Prepare features
+    features = prepare_feature_frame(df)
+    features.replace([float("inf"), float("-inf")], 0, inplace=True)
+    features.fillna(0, inplace=True)
+
+    # Ensure correct column alignment
+    features = features.reindex(columns=GOLD_STANDARD_FEATURES, fill_value=0)
+
+    # Remove metadata columns for model input
+    model_features = features.drop(columns=LOG_ONLY_COLUMNS, errors="ignore")
+
+    # Send to Kafka: One message per flow
+    try:
+        for idx in range(len(model_features)):
+            # Convert feature vector to dictionary
+            feature_dict = model_features.iloc[idx].to_dict()
+            
+            # Add metadata (IP, timestamp, etc.)
+            kafka_message = {
+                "timestamp": datetime.now().isoformat(),
+                "src_ip": src_ips.iloc[idx] if (src_ips is not None and idx < len(src_ips)) else "0.0.0.0",
+                "dst_ip": features.iloc[idx].get("dst_ip", "0.0.0.0") if "dst_ip" in features.columns else "0.0.0.0",
+                "features": feature_dict,
+                "feature_count": len(feature_dict),
+                "producer_id": "live_bridge_v1"
+            }
+            
+            # JSON serialize and send to Kafka
+            message_json = json.dumps(kafka_message, default=str)
+            KAFKA_PRODUCER.produce(
+                KAFKA_TOPIC,
+                value=message_json.encode('utf-8'),
+                callback=delivery_report
+            )
+        
+        # Flush all messages
+        KAFKA_PRODUCER.flush(timeout=10)
+        
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"✅ [{timestamp}] {len(model_features)} flow(s) sent to Kafka (Topic: {KAFKA_TOPIC})           ")
+        
+    except Exception as exc:
+        print(f"⚠️ Kafka send error: {exc}")
+        import traceback
+        traceback.print_exc()
+        return
+
+
+
+
+EXPECTED_FEATURES = [
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Fwd Avg Bytes/Bulk",
+    "Fwd Avg Packets/Bulk",
+    "Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk",
+    "Bwd Avg Packets/Bulk",
+    "Bwd Avg Bulk Rate",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min",
+]
+
+print("\n" + "=" * 60)
+
+def extract_source_ips(df: pd.DataFrame):
+    """Return whichever source IP column exists."""
+    for candidate in ("Src IP", "Source IP", "src_ip"):
+        if candidate in df.columns:
+            return df[candidate]
+    return None
 
 
 def prepare_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename CICFlowMeter columns and align them with Top 20 features."""
+    """Rename CICFlowMeter columns and align them with training schema."""
     working = df.copy()
     working.columns = working.columns.str.strip()
     working.drop(columns=DROP_COLS, errors="ignore", inplace=True)
-    
-    # Apply rename mappings
-    working.rename(columns=ALT_CIC_RENAME_MAP, inplace=True)
     working.rename(columns=COLUMN_RENAME_MAP, inplace=True)
-    
-    # Fill missing columns with 0
-    for col in TOP_FEATURES:
-        if col not in working.columns:
-            working[col] = 0
-    
-    return working.reindex(columns=TOP_FEATURES, fill_value=0)
+
+    if "Fwd Header Length" in working.columns and "Fwd Header Length.1" not in working.columns:
+        working["Fwd Header Length.1"] = working["Fwd Header Length"]
+
+    missing_cols = [col for col in EXPECTED_FEATURES if col not in working.columns]
+    for col in missing_cols:
+        working[col] = 0
+
+    return working.reindex(columns=EXPECTED_FEATURES, fill_value=0)
 
 
-# ---------------------------------------------------------------------------
-# GLOBAL DETECTOR INSTANCE
-# ---------------------------------------------------------------------------
-DETECTOR: BiLSTMDetector = None
+def delivery_report(err, msg):
+    """Kafka delivery callback - mesajın başarıyla gönderildiğini doğrular."""
+    if err is not None:
+        print(f"⚠️ Mesaj gönderimi başarısız: {err}")
+    # Başarılı gönderimler için sessiz mod (spam önleme)
+
+
+print("🛡️  AI NETWORK IPS - KAFKA PRODUCER MODE")
+print("=" * 60)
+
+try:
+    print("⏳ Kafka Producer başlatılıyor...", end="\r")
+    KAFKA_PRODUCER = Producer({
+        'bootstrap.servers': '127.0.0.1:9092',
+        'client.id': 'network-ips-producer',
+        'acks': 'all',
+        'retries': 3,
+        'max.in.flight.requests.per.connection': 1
+    })
+    print("✅ Kafka Producer Aktif (127.0.0.1:9092).        ")
+except Exception as exc:
+    print(f"❌ Kafka bağlantı hatası: {exc}")
+    print("⚠️  Docker Compose ile Kafka'yı başlattığınızdan emin olun: docker-compose up -d")
+    sys.exit(1)
+
+if shutil.which("cicflowmeter") is None:
+    print("\n⚠️  WARNING: 'cicflowmeter' CLI not found (pip install cicflowmeter)")
+    print("   System will use DUMMY FEATURES if feature extraction fails.")
+    print("   For production use, install cicflowmeter properly.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -614,299 +725,138 @@ DETECTOR: BiLSTMDetector = None
 # ---------------------------------------------------------------------------
 
 def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
-    """Run cicflowmeter CLI and return (success, error_message)."""
-    cmd = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
+    """
+    Run cicflowmeter CLI via subprocess and return (success, error_message).
+    Avoids using the Python API to prevent version compatibility issues.
+    """
+    # Try method 1: python -m cicflowmeter (more reliable on Windows)
+    cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
     
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
-    except FileNotFoundError:
-        return False, "cicflowmeter CLI not found"
+    except subprocess.TimeoutExpired:
+        return False, "CICFlowMeter CLI timeout (90s exceeded)"
     except Exception as exc:
-        return False, str(exc)
+        return False, f"Subprocess error: {exc}"
 
     if result.returncode != 0:
-        err = result.stderr.strip() or result.stdout.strip() or f"CLI error {result.returncode}"
-        return False, err
+        # Method 2: Try direct cicflowmeter command (if installed globally)
+        if shutil.which("cicflowmeter"):
+            try:
+                cmd_direct = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
+                result = subprocess.run(cmd_direct, capture_output=True, text=True, timeout=90)
+            except Exception:
+                pass
+        
+        if result.returncode != 0:
+            err = result.stderr.strip() or result.stdout.strip() or f"CLI exit code {result.returncode}"
+            return False, err
 
+    # CICFlowMeter sometimes changes output filename (e.g., temp_live.pcap_Flow.csv)
     if not os.path.exists(csv_file):
+        # Common alternative name pattern: {pcap_name}_Flow.csv
         base_name = os.path.splitext(pcap_file)[0]
         alt_name = f"{base_name}_Flow.csv"
         
         if os.path.exists(alt_name):
             try:
                 shutil.move(alt_name, csv_file)
-            except OSError:
-                pass
+                return True, None
+            except OSError as e:
+                return False, f"File rename failed: {e}"
         else:
-            return False, "CSV file not found after CLI execution"
+            # Check for other possible output files in current directory
+            possible_files = [f for f in os.listdir('.') if f.endswith('_Flow.csv') or f.endswith('.csv')]
+            if possible_files:
+                return False, f"CSV not found. Possible files: {possible_files}"
+            return False, "CLI ran but no CSV file was generated"
 
     return True, None
 
 
-def run_cicflowmeter_api(pcap_file: str, csv_file: str):
-    """Simplified fallback: Creates basic flow features from packets."""
-    try:
-        packets = rdpcap(pcap_file)
-        if len(packets) == 0:
-            return False, "PCAP file is empty"
-        
-        flows = {}
-        first_timestamps = {}
-        last_timestamps = {}
-        
-        for pkt in packets:
-            if not (pkt.haslayer('IP') and (pkt.haslayer('TCP') or pkt.haslayer('UDP'))):
-                continue
-            
-            src_ip = pkt['IP'].src
-            dst_ip = pkt['IP'].dst
-            src_port = pkt['TCP'].sport if pkt.haslayer('TCP') else pkt['UDP'].sport
-            dst_port = pkt['TCP'].dport if pkt.haslayer('TCP') else pkt['UDP'].dport
-            protocol = pkt['IP'].proto
-            
-            flow_key = (src_ip, dst_ip, src_port, dst_port, protocol)
-            timestamp = float(pkt.time) if hasattr(pkt, 'time') else 0
-            pkt_len = len(pkt)
-            
-            if flow_key not in flows:
-                flows[flow_key] = {
-                    'Src IP': src_ip,
-                    'Dst IP': dst_ip,
-                    'Flow Duration': 0,
-                    'Total Fwd Packets': 0,
-                    'Total Backward Packets': 0,
-                    'Total Length of Fwd Packets': 0,
-                    'Total Length of Bwd Packets': 0,
-                    'Fwd Packet Length Max': 0,
-                    'Fwd Packet Length Min': 999999,
-                    'Fwd Packet Length Mean': 0,
-                    'Bwd Packet Length Max': 0,
-                    'Bwd Packet Length Min': 999999,
-                    'Flow Bytes/s': 0,
-                    'Flow Packets/s': 0,
-                    'Flow IAT Mean': 0,
-                    'Fwd IAT Total': 0,
-                    'Bwd IAT Total': 0,
-                    'Fwd PSH Flags': 0,
-                    'Fwd Header Length': 0,
-                    'Fwd Packets/s': 0,
-                    'Min Packet Length': 999999,
-                    'Average Packet Size': 0,
-                }
-                first_timestamps[flow_key] = timestamp
-            
-            flows[flow_key]['Total Fwd Packets'] += 1
-            flows[flow_key]['Total Length of Fwd Packets'] += pkt_len
-            flows[flow_key]['Fwd Packet Length Max'] = max(flows[flow_key]['Fwd Packet Length Max'], pkt_len)
-            flows[flow_key]['Fwd Packet Length Min'] = min(flows[flow_key]['Fwd Packet Length Min'], pkt_len)
-            flows[flow_key]['Min Packet Length'] = min(flows[flow_key]['Min Packet Length'], pkt_len)
-            
-            ip_header_len = pkt['IP'].ihl * 4 if hasattr(pkt['IP'], 'ihl') else 20
-            tcp_header_len = pkt['TCP'].dataofs * 4 if pkt.haslayer('TCP') and hasattr(pkt['TCP'], 'dataofs') else 0
-            udp_header_len = 8 if pkt.haslayer('UDP') else 0
-            flows[flow_key]['Fwd Header Length'] += ip_header_len + tcp_header_len + udp_header_len
-            
-            if pkt.haslayer('TCP') and pkt['TCP'].flags & 0x08:  # PSH flag
-                flows[flow_key]['Fwd PSH Flags'] += 1
-            
-            last_timestamps[flow_key] = timestamp
-        
-        for flow_key, flow_data in flows.items():
-            duration = last_timestamps[flow_key] - first_timestamps[flow_key]
-            flow_data['Flow Duration'] = int(duration * 1000000)
-            
-            total_pkts = flow_data['Total Fwd Packets'] + flow_data['Total Backward Packets']
-            total_bytes = flow_data['Total Length of Fwd Packets'] + flow_data['Total Length of Bwd Packets']
-            
-            if duration > 0:
-                flow_data['Flow Bytes/s'] = total_bytes / duration
-                flow_data['Flow Packets/s'] = total_pkts / duration
-                flow_data['Fwd Packets/s'] = flow_data['Total Fwd Packets'] / duration
-            
-            if total_pkts > 0:
-                flow_data['Fwd Packet Length Mean'] = flow_data['Total Length of Fwd Packets'] / flow_data['Total Fwd Packets']
-                flow_data['Average Packet Size'] = total_bytes / total_pkts
-        
-        if not flows:
-            return False, "No valid flows found"
-        
-        df = pd.DataFrame(list(flows.values()))
-        df.to_csv(csv_file, index=False)
-        
-        return True, None
-        
-    except Exception as exc:
-        return False, f"Feature extraction error: {exc}"
-
-
-# ---------------------------------------------------------------------------
-# NETWORK INTERFACE DETECTION
-# ---------------------------------------------------------------------------
-
-def get_active_interface():
-    """Auto-detect active network interface."""
-    for iface in conf.ifaces.values():
-        if iface.ip and iface.ip != "127.0.0.1" and iface.ip != "0.0.0.0":
-            if "Wi-Fi" in iface.name or "Wireless" in iface.name or "Ethernet" in iface.name:
-                return iface.name
-    return conf.iface
-
-
-def resolve_interface(requested: str):
-    """Resolve user-provided interface string to Scapy interface name."""
-    requested = (requested or "").strip()
-    if not requested:
-        return get_active_interface()
-
-    req_l = requested.casefold()
-    candidates = []
-
-    for iface in conf.ifaces.values():
-        name = (getattr(iface, "name", "") or "")
-        desc = (getattr(iface, "description", "") or "")
-
-        if name.casefold() == req_l or desc.casefold() == req_l:
-            return name
-
-        if req_l in name.casefold() or req_l in desc.casefold():
-            candidates.append(name)
-
-    if len(candidates) == 1:
-        return candidates[0]
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# MAIN INITIALIZATION
-# ---------------------------------------------------------------------------
-print("\n" + "="*70)
-print("🛡️  AI NETWORK IPS - BiLSTM MODEL with 5-LEVEL RISK SCORING")
-print("="*70)
-
-if not os.path.exists(BILSTM_MODEL_PATH):
-    print(f"❌ BiLSTM Model not found: {BILSTM_MODEL_PATH}")
-    print("   Please train the BiLSTM model first.")
-    sys.exit(1)
-
-try:
-    DETECTOR = BiLSTMDetector()
-except Exception as exc:
-    print(f"❌ BiLSTM Detector initialization failed: {exc}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
-
-if shutil.which("cicflowmeter") is None:
-    print("\n⚠️  WARNING: 'cicflowmeter' CLI not found (pip install cicflowmeter)")
-    print("   Fallback API mode will be used.")
-
-# Resolve interface
-_resolved_iface = resolve_interface(INTERFACE)
-if _resolved_iface is None:
-    print(f"\n❌ Interface '{INTERFACE}' not found by Scapy/Npcap.")
-    print("\nAvailable interfaces:")
-    for iface in conf.ifaces.values():
-        print(f"  - {getattr(iface, 'name', '')} | {getattr(iface, 'description', '')} | {getattr(iface, 'ip', '')}")
-    sys.exit(2)
-
-INTERFACE = _resolved_iface
-print(f"\n🛡️  SYSTEM STARTED | Interface: {INTERFACE}")
-
-
-# ---------------------------------------------------------------------------
-# CORE PIPELINE: Extract Features & Predict with BiLSTM
-# ---------------------------------------------------------------------------
-
-def feature_extraction_and_predict():
-    """Captures packets -> Extracts features -> Predicts with BiLSTM."""
-    print("   ↳ ⚙️ Analyzing...", end="\r")
+def generate_dummy_features(packet_count: int = 1) -> pd.DataFrame:
+    """
+    Generate dummy feature data when cicflowmeter fails.
+    Returns a DataFrame with 78 features filled with zeros.
+    This keeps the Kafka pipeline alive for testing.
+    """
+    dummy_data = {}
     
-    success, err_msg = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
+    # Create gold standard feature set with all zeros
+    GOLD_STANDARD_FEATURES = [
+        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
+        "flow_duration", "flow_byts_s", "flow_pkts_s", "fwd_pkts_s", "bwd_pkts_s",
+        "tot_fwd_pkts", "tot_bwd_pkts", "totlen_fwd_pkts", "totlen_bwd_pkts",
+        "fwd_pkt_len_max", "fwd_pkt_len_min", "fwd_pkt_len_mean", "fwd_pkt_len_std",
+        "bwd_pkt_len_max", "bwd_pkt_len_min", "bwd_pkt_len_mean", "bwd_pkt_len_std",
+        "pkt_len_max", "pkt_len_min", "pkt_len_mean", "pkt_len_std", "pkt_len_var",
+        "fwd_header_len", "bwd_header_len", "fwd_seg_size_min", "fwd_act_data_pkts",
+        "flow_iat_mean", "flow_iat_max", "flow_iat_min", "flow_iat_std",
+        "fwd_iat_tot", "fwd_iat_max", "fwd_iat_min", "fwd_iat_mean", "fwd_iat_std",
+        "bwd_iat_tot", "bwd_iat_max", "bwd_iat_min", "bwd_iat_mean", "bwd_iat_std",
+        "fwd_psh_flags", "bwd_psh_flags", "fwd_urg_flags", "bwd_urg_flags",
+        "fin_flag_cnt", "syn_flag_cnt", "rst_flag_cnt", "psh_flag_cnt",
+        "ack_flag_cnt", "urg_flag_cnt", "ece_flag_cnt", "down_up_ratio",
+        "pkt_size_avg", "init_fwd_win_byts", "init_bwd_win_byts",
+        "active_max", "active_min", "active_mean", "active_std",
+        "idle_max", "idle_min", "idle_mean", "idle_std",
+        "fwd_byts_b_avg", "fwd_pkts_b_avg", "bwd_byts_b_avg", "bwd_pkts_b_avg",
+        "fwd_blk_rate_avg", "bwd_blk_rate_avg", "fwd_seg_size_avg", "bwd_seg_size_avg",
+        "cwr_flag_count", "subflow_fwd_pkts", "subflow_bwd_pkts",
+        "subflow_fwd_byts", "subflow_bwd_byts",
+    ]
     
-    if not success:
-        success, err_msg = run_cicflowmeter_api(TEMP_PCAP, TEMP_CSV)
-        if not success:
-            return
+    for feature in GOLD_STANDARD_FEATURES:
+        if feature in ["src_ip", "dst_ip"]:
+            dummy_data[feature] = ["0.0.0.0"] * packet_count
+        elif feature in ["src_port", "dst_port"]:
+            dummy_data[feature] = [0] * packet_count
+        elif feature == "protocol":
+            dummy_data[feature] = [6] * packet_count  # TCP
+        elif feature == "timestamp":
+            dummy_data[feature] = [datetime.now().isoformat()] * packet_count
+        else:
+            dummy_data[feature] = [0.0] * packet_count
+    
+    return pd.DataFrame(dummy_data)
 
-    try:
-        df = pd.read_csv(TEMP_CSV)
-    except Exception as exc:
-        print(f"⚠️ CSV read error: {exc}")
-        return
-
-    if df.empty:
-        return
-
-    src_ips = df.get('Src IP') if 'Src IP' in df.columns else df.get('Source IP')
-    dst_ips = df.get('Dst IP') if 'Dst IP' in df.columns else df.get('Destination IP')
-
-    df_features = prepare_feature_frame(df)
-
-    try:
-        results, _ = DETECTOR.process_and_predict(df_features, src_ips=src_ips, dst_ips=dst_ips, original_df=df)
-    except Exception as exc:
-        print(f"⚠️ Prediction error: {exc}")
-        import traceback
-        traceback.print_exc()
-        return
-
-    if results:
-        try:
-            DETECTOR.log(df_features, results)
-        except Exception as log_exc:
-            print(f"⚠️ Logging error: {log_exc}")
-
-    # Process high-risk detections
-    for result in results or []:
-        if result['action'] == 'BLOCK':
-            ip_addr = result['src_ip']
-            
-            if ip_addr and ip_addr not in WHITELIST_IPS and ip_addr != "Unknown":
-                block_ip(ip_addr)
-                log_attack(ip_addr, "BLOCKED", f"{result['class_name']} Attack - Level {result['risk_level']}")
-            else:
-                log_attack(ip_addr, "ALLOWED", "Whitelisted")
-
-
-# ---------------------------------------------------------------------------
-# MAIN EXECUTION LOOP
-# ---------------------------------------------------------------------------
 
 def main_loop():
-    """Main IPS loop: continuously monitors network traffic."""
-    print(f"\n📡 Monitoring Network: {INTERFACE}")
-    print("⏹️  Press CTRL+C to stop...\n")
+    global KAFKA_PRODUCER
+    
+    print(f"\n📡 Ağ Dinleniyor: {INTERFACE}")
+    print(f"📤 Kafka Topic: {KAFKA_TOPIC}")
+    print("⏹️  Durdurmak için CTRL+C yapın...\n")
     
     iteration_count = 0
-    stats_interval = 10
+    total_messages_sent = 0
 
     while True:
         try:
-            print("⏳ Capturing packets...", end="\r")
+            print("⏳ Paket toplanıyor...", end="\r")
             packets = sniff(iface=INTERFACE, timeout=4)
-            
             if len(packets) > 0:
                 wrpcap(TEMP_PCAP, packets)
                 feature_extraction_and_predict()
+                iteration_count += 1
             else:
-                print(f"⚠️ 0 Packets! Check interface '{INTERFACE}'", end="\r")
+                print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
 
-            iteration_count += 1
-            if iteration_count % stats_interval == 0:
-                stats = DETECTOR.get_stats()
-                print(f"📊 [Stats] Buffer: {stats['buffer_size']}/{HARVEST_BUFFER_SIZE} | "
-                      f"Sequence: {stats['sequence_buffer_size']}/{SEQUENCE_LENGTH} | "
-                      f"Total: {stats['total_rows']}")
-            
+            # Periodic status update
+            if iteration_count > 0 and iteration_count % 10 == 0:
+                print(f"📊 [Producer Stats] {iteration_count} batch gönderildi ({KAFKA_TOPIC})")
+
         except KeyboardInterrupt:
-            print("\n🛑 System stopped by user.")
-            DETECTOR.shutdown()
+            print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
+            # Kafka Producer'ı temiz kapat
+            if KAFKA_PRODUCER is not None:
+                print("⏳ Kafka Producer kapatılıyor...")
+                KAFKA_PRODUCER.flush(timeout=5)
+                print("✅ Kafka Producer kapatıldı.")
             break
-        except Exception as exc:
-            print(f"\n⚠️ Loop error: {exc}")
+        except Exception as e:
+            print(f"⚠️ Ana döngü hatası: {e}")
             time.sleep(1)
-
 
 if __name__ == "__main__":
     main_loop()
