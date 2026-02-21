@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Engineering Report | LSTM Preprocessing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --secondary: #64748b;
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text: #0f172a;
+        --text-light: #475569;
+        --accent: #3b82f6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --error: #ef4444;
+        --border: #e2e8f0;
+        --shadow:
+          0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg:
+          0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --card-bg: #1e293b;
+          --text: #f8fafc;
+          --text-light: #cbd5e1;
+          --border: #334155;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        padding: 2rem 1rem;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      header {
+        margin-bottom: 3rem;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+        color: var(--primary);
+      }
+
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-light);
+      }
+
+      .version-tag {
+        display: inline-block;
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 1rem;
+      }
+
+      section {
+        background: var(--card-bg);
+        padding: 2.5rem;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        border: 1px border var(--border);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      section:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--primary);
+      }
+
+      p {
+        margin-bottom: 1.25rem;
+        color: var(--text-light);
+      }
+
+      .alert {
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid;
+        font-size: 0.95rem;
+      }
+
+      .alert-important {
+        background-color: rgba(37, 99, 235, 0.1);
+        border-color: var(--primary);
+        color: var(--text);
+      }
+
+      .alert-important strong {
+        color: var(--primary);
+      }
+
+      .step-grid {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .step-card {
+        padding: 1.5rem;
+        background: var(--bg);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border);
+      }
+
+      .step-card h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        color: var(--text);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .step-number {
+        font-family: "JetBrains Mono", monospace;
+        background: var(--primary);
+        color: white;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 0.8rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        font-size: 0.9rem;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      th {
+        font-weight: 600;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      code {
+        font-family: "JetBrains Mono", monospace;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.9em;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 4rem;
+        color: var(--text-light);
+        font-size: 0.85rem;
+      }
+
+      .highlight {
+        color: var(--primary);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Data Engineering Report</h1>
+        <p class="subtitle">LSTM Preprocessing Architecture & Strategy</p>
+        <div class="version-tag">Scientifically Rigorous Hybrid Solution</div>
+      </header>
+
+      <main>
+        <!-- Executive Summary -->
+        <section id="summary">
+          <h2>1. Executive Summary</h2>
+          <p>
+            The <code>preprocess_lstm.py</code> script implements a
+            production-grade data engineering pipeline designed to prepare the
+            <span class="highlight">CICIDS2017 dataset</span> for Long
+            Short-Term Memory (LSTM) models. The core philosophy is
+            <strong>Maximum Data Utilization</strong> paired with
+            <strong>Zero Data Leakage</strong>, ensuring that the resulting
+            model is both accurate and scientifically valid when evaluated on
+            unseen data.
+          </p>
+        </section>
+
+        <!-- Architectural Approach -->
+        <section id="architecture">
+          <h2>2. Architectural Approach</h2>
+          <p>
+            The script utilizes a unique
+            <strong>"Split Raw First -> Sequence Second"</strong> hybrid
+            approach. This design decision addresses the fundamental challenges
+            of sequence-based network intrusion detection.
+          </p>
+          <div class="alert alert-important">
+            <strong>CRITICAL DESIGN DECISION:</strong> Why Split Before
+            Windowing?
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem">
+              If sequences are created before the train/test split, "boundary
+              windows" (those containing data points from both train and test
+              sets) would cause data leakage. Splitting the raw rows first
+              ensures that no single window ever spans across the sets,
+              maintaining strict experimental integrity.
+            </p>
+          </div>
+        </section>
+
+        <!-- Step-by-Step Analysis -->
+        <section id="steps">
+          <h2>3. Step-by-Step Analysis</h2>
+          <div class="step-grid">
+            <div class="step-card">
+              <h3>
+                <span>Configuration & Environment</span>
+                <span class="step-number">01</span>
+              </h3>
+              <p>
+                Dynamically resolves project roots and data directories.
+                Implements a <code>STRIDE</code> parameter (default=1) to ensure
+                the LSTM sees every possible valid temporal pattern.
+              </p>
+            </div>
+            <div class="step-card">
+              <h3>
+                <span>Optimized Data Loading</span>
+                <span class="step-number">02</span>
+              </h3>
+              <p>
+                Uses <code>pd.read_csv</code> with <code>nrows=0</code> to
+                identify headers, then loads only the
+                <code>TOP_FEATURES</code> and <code>Label</code> to minimize
+                memory footprint.
+              </p>
+            </div>
+            <div class="step-card">
+              <h3>
+                <span>Stratified Raw Splitting</span>
+                <span class="step-number">03</span>
+              </h3>
+              <p>
+                Performs <code>train_test_split</code> with
+                <code>stratify=y_raw</code> on individual rows. This ensures
+                every file contributes balanced classes to both sets
+                <em>before</em> windowing.
+              </p>
+            </div>
+            <div class="step-card">
+              <h3>
+                <span>High-Performance Windowing</span>
+                <span class="step-number">04</span>
+              </h3>
+              <p>
+                Uses <code>np.lib.stride_tricks.sliding_window_view</code> for
+                memory-efficient 2D to 3D tensor transformation:
+                <code>(N, Window, Features)</code>.
+              </p>
+            </div>
+            <div class="step-card">
+              <h3>
+                <span>Leakage-Free Scaling</span>
+                <span class="step-number">05</span>
+              </h3>
+              <p>
+                The <code>MinMaxScaler</code> is fitted <strong>ONLY</strong> on
+                training data. Transform is then applied to both sets to prevent
+                test-set distribution from leaking into training.
+              </p>
+            </div>
+            <div class="step-card">
+              <h3>
+                <span>Multi-Class Label Engineering</span>
+                <span class="step-number">06</span>
+              </h3>
+              <p>
+                Maps raw labels to 3 core classes (Benign, Volumetric, Other).
+                Computes <strong>Class Weights</strong> using inverse frequency
+                to mitigate dataset imbalance.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Feature/Label Engineering -->
+        <section id="engineering">
+          <h2>4. Feature & Label Engineering</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
+            <div>
+              <h4 style="margin-bottom: 0.5rem">Label Mapping (3-Class)</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Index</th>
+                    <th>Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>0</code></td>
+                    <td>Benign</td>
+                  </tr>
+                  <tr>
+                    <td><code>1</code></td>
+                    <td>Volumetric (DoS/DDoS)</td>
+                  </tr>
+                  <tr>
+                    <td><code>2</code></td>
+                    <td>Complex (Web, Bot, etc.)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h4 style="margin-bottom: 0.5rem">KPI Metrics</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Benefit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Integrity</td>
+                    <td>100% Leakage Protection</td>
+                  </tr>
+                  <tr>
+                    <td>Efficiency</td>
+                    <td>Low Memory Footprint</td>
+                  </tr>
+                  <tr>
+                    <td>Robustness</td>
+                    <td>Stratified Distribution</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Conclusion -->
+        <section id="conclusion">
+          <h2>5. Conclusion</h2>
+          <p>
+            The approach implemented in
+            <code>preprocess_lstm.py</code> represents a balanced trade-off
+            between memory efficiency and scientific rigor. By prioritizing the
+            "Split-First" strategy and leakage-free scaling, it provides a solid
+            foundation for training reliable Deep Learning models for Network
+            Intrusion Detection.
+          </p>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>
+          &copy; 2026 Network Detection Project | Generated by Antigravity AI
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
