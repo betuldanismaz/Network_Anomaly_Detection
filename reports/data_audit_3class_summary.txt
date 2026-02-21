@@ -1,0 +1,79 @@
+
+==================================
+=== 3-CLASS DATA QUALITY AUDIT ===
+==================================
+  [INFO]  Data directory: D:\Projects\networkdetection\networkdetection\data\processed_ml
+
+  [PASS]  TRAIN file exists  →  train.csv
+  [PASS]  VAL file exists  →  val.csv
+  [PASS]  TEST file exists  →  test.csv
+
+  [INFO]  Loading datasets into memory...
+  [INFO]    Loaded TRAIN: (2264591, 21)
+  [INFO]    Loaded VAL: (283074, 21)
+  [INFO]    Loaded TEST: (283078, 21)
+
+==============================================
+=== MODULE 1: FILE INTEGRITY & SHAPE CHECK ===
+==============================================
+  [INFO]  TRAIN  →   2,264,591 rows  ×   21 cols
+  [INFO]  VAL    →     283,074 rows  ×   21 cols
+  [INFO]  TEST   →     283,078 rows  ×   21 cols
+  [PASS]  All splits have identical column count (21)
+
+=================================================
+=== MODULE 2: MISSING & INFINITE VALUES CHECK ===
+=================================================
+  [PASS]  TRAIN  →  0 NaN, 0 Inf  —  CLEAN
+  [PASS]  VAL    →  0 NaN, 0 Inf  —  CLEAN
+  [PASS]  TEST   →  0 NaN, 0 Inf  —  CLEAN
+
+===========================================================
+=== MODULE 3: LABEL DISTRIBUTION & STRATIFICATION PROOF ===
+===========================================================
+  [INFO]  TRAIN label distribution (2,264,591 rows):
+      Class 0 (Benign     ):   1,818,474  ( 80.30%)
+      Class 1 (Volumetric ):     304,559  ( 13.45%)
+      Class 2 (Semantic   ):     141,558  (  6.25%)
+
+  [INFO]  VAL label distribution (283,074 rows):
+      Class 0 (Benign     ):     227,311  ( 80.30%)
+      Class 1 (Volumetric ):      38,069  ( 13.45%)
+      Class 2 (Semantic   ):      17,694  (  6.25%)
+
+  [INFO]  TEST label distribution (283,078 rows):
+      Class 0 (Benign     ):     227,312  ( 80.30%)
+      Class 1 (Volumetric ):      38,071  ( 13.45%)
+      Class 2 (Semantic   ):      17,695  (  6.25%)
+
+  [INFO]  Stratification consistency (max deviation per class across splits):
+  [PASS]  Class 0 (Benign):  Δ = 0.001 pp  (≤ 0.5 pp)
+  [PASS]  Class 1 (Volumetric):  Δ = 0.001 pp  (≤ 0.5 pp)
+  [PASS]  Class 2 (Semantic):  Δ = 0.000 pp  (≤ 0.5 pp)
+
+  [PASS]  TRAIN has all 3 classes present
+  [PASS]  VAL has all 3 classes present
+  [PASS]  TEST has all 3 classes present
+
+=====================================================
+=== MODULE 4: SCALING VERIFICATION (MinMaxScaler) ===
+=====================================================
+  [INFO]  TRAIN  →  global min = 0.00000000,  global max = 1.00000000
+  [PASS]  TRAIN  →  All features within [0, 1] (± 1e-06)
+  [INFO]  VAL    →  global min = 0.00000000,  global max = 1.00000000
+  [PASS]  VAL    →  All features within [0, 1] (± 1e-06)
+  [INFO]  TEST   →  global min = 0.00000000,  global max = 1.00000000
+  [PASS]  TEST   →  All features within [0, 1] (± 1e-06)
+
+=======================
+=== FINAL SCORECARD ===
+=======================
+    PASS  1. Shape Check
+    PASS  2. NaN / Inf Check
+    PASS  3. Label Distribution
+    PASS  4. Scaling Verification
+
+    ════════════════════════════════════════════
+     OVERALL: 4/4 PASSED  ✅  DATA IS READY FOR TRAINING
+    ════════════════════════════════════════════
+
