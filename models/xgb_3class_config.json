@@ -1,0 +1,61 @@
+{
+    "model_type": "XGBoost 3-Class",
+    "xgboost_version": "2.1.4",
+    "training_date": "2026-02-22 21:21:46",
+    "classification": "3-class (Benign / Volumetric / Semantic)",
+    "objective": "multi:softprob",
+    "eval_metric": "mlogloss",
+    "imbalance_handling": "compute_sample_weight(balanced)",
+    "gpu_config": {
+        "gpu_available": true,
+        "device": "cuda",
+        "tree_method": "hist"
+    },
+    "hyperparameters": {
+        "n_estimators": 1000,
+        "max_depth": 7,
+        "learning_rate": 0.05,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "num_class": 3,
+        "best_iteration": 857,
+        "best_score_mlogloss": 0.05823788206335061
+    },
+    "test_metrics": {
+        "accuracy": 0.9771193805240959,
+        "macro_precision": 0.9362451384791758,
+        "macro_recall": 0.9838436523218848,
+        "macro_f1": 0.9587215553994929,
+        "weighted_f1": 0.977522264023498,
+        "macro_roc_auc": 0.9991059392047953,
+        "per_class": {
+            "Benign": {
+                "precision": 0.9978807827576878,
+                "recall": 0.9735957626522137,
+                "f1": 0.9855886989748203,
+                "support": 227312
+            },
+            "Volumetric": {
+                "precision": 0.8964155672199366,
+                "recall": 0.9958498594730898,
+                "f1": 0.9435201891370621,
+                "support": 38071
+            },
+            "Semantic": {
+                "precision": 0.9144390654599032,
+                "recall": 0.9820853348403504,
+                "f1": 0.9470557780865964,
+                "support": 17695
+            }
+        },
+        "roc_auc_per_class": {
+            "Benign": 0.9987553519040832,
+            "Volumetric": 0.9991065904350538,
+            "Semantic": 0.9994544633550182,
+            "macro": 0.9991059392047953
+        },
+        "inference_latency_ms": 0.007902240753173827,
+        "throughput_samples_per_sec": 126546.38490966799,
+        "total_test_samples": 283078
+    }
+}

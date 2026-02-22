@@ -1,9 +1,11 @@
 """
-Decision Tree 3 class classification 
+Decision Tree — 3-Class Classification
+Network Intrusion Detection on CICIDS2017
+Classes: Benign (0) | Volumetric (1) | Semantic (2)
 
 Author: betül
-Date: 05.02.2026
-""" 
+Date: 2026-02-22
+"""
 
 import os
 import sys
@@ -12,6 +14,8 @@ import pickle
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.tree import DecisionTreeClassifier, export_text
 from sklearn.metrics import (
     accuracy_score,
@@ -30,94 +34,130 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 # This way, all models use the same feature set, making comparisons fair.
 from src.config import TOP_FEATURES
 
+# Class label mapping
+CLASS_NAMES = ['Benign', 'Volumetric', 'Semantic']
+CLASS_LABELS_FULL = ['Benign (0)', 'Volumetric (1)', 'Semantic (2)']
 
-def load_data(data_dir: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+# Project root (two levels up from src/models/)
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
+def load_data(data_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load train, val, and test CSVs from the 3-class processed data directory."""
 
     data_path = Path(data_dir)
     train_path = data_path / "train.csv"
+    val_path = data_path / "val.csv"
     test_path = data_path / "test.csv"
-    
+
     # WHY: Check file existence explicitly to provide a helpful error message.
-    # Better than letting pandas fail with a cryptic error.
-    if not train_path.exists():
-        raise FileNotFoundError(f"Training data not found at: {train_path}")
-    if not test_path.exists():
-        raise FileNotFoundError(f"Test data not found at: {test_path}")
-    
+    for fpath, name in [(train_path, "train.csv"), (val_path, "val.csv"), (test_path, "test.csv")]:
+        if not fpath.exists():
+            raise FileNotFoundError(f"{name} not found at: {fpath}")
+
     print(f"📂 Loading training data from: {train_path}")
     train_df = pd.read_csv(train_path)
     print(f"   ✓ Loaded {len(train_df):,} training samples")
-    
+
+    print(f"📂 Loading validation data from: {val_path}")
+    val_df = pd.read_csv(val_path)
+    print(f"   ✓ Loaded {len(val_df):,} validation samples")
+
     print(f"📂 Loading test data from: {test_path}")
     test_df = pd.read_csv(test_path)
     print(f"   ✓ Loaded {len(test_df):,} test samples")
-    
-    return train_df, test_df
+
+    return train_df, val_df, test_df
 
 
 def prepare_features_and_labels(
-    train_df: pd.DataFrame, 
-    test_df: pd.DataFrame, 
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    test_df: pd.DataFrame,
     feature_cols: list[str]
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple:
+    """Extract feature matrices and label vectors from all splits.
 
-    # WHY: We use TOP_FEATURES to select only the most important features.
-    # This reduces noise and potential overfitting. Feature selection was done
-    # during preprocessing (likely using techniques like feature importance or correlation).
+    Strategy: Train on train.csv only, evaluate on both val and test.
+    Reasoning: Keeping val separate from training prevents data leakage
+    and gives an honest validation metric alongside the final test score.
+    """
+
     print("\n🔧 Preparing features and labels...")
     print(f"   Using {len(feature_cols)} selected features from TOP_FEATURES")
-    
+
     # WHY: Ensure all expected features exist in the DataFrame.
-    # This catches configuration errors early.
     missing_features = set(feature_cols) - set(train_df.columns)
     if missing_features:
         raise ValueError(f"Missing features in data: {missing_features}")
-    
-    # WHY: Extract feature columns into X (predictor variables)
+
     X_train = train_df[feature_cols].values
+    X_val = val_df[feature_cols].values
     X_test = test_df[feature_cols].values
-    
-    # WHY: Extract the 'Label' column into y (target variable)
-    # We assume 'Label' contains binary values: 0 (Normal) or 1 (Attack)
+
     y_train = train_df['Label'].values
+    y_val = val_df['Label'].values
     y_test = test_df['Label'].values
-    
+
     print(f"   ✓ X_train shape: {X_train.shape}")
-    print(f"   ✓ X_test shape: {X_test.shape}")
-    print(f"   ✓ Class distribution in training set:")
+    print(f"   ✓ X_val shape:   {X_val.shape}")
+    print(f"   ✓ X_test shape:  {X_test.shape}")
+
+    # Class distribution for all 3 classes
+    print(f"\n   📊 Training Set Class Distribution:")
     unique, counts = np.unique(y_train, return_counts=True)
     for label, count in zip(unique, counts):
-        label_name = "Normal" if label == 0 else "Attack"
-        print(f"      - {label_name} ({label}): {count:,} samples ({count/len(y_train)*100:.2f}%)")
-    
-    return X_train, X_test, y_train, y_test
+        cls_name = CLASS_NAMES[int(label)] if int(label) < len(CLASS_NAMES) else f"Unknown"
+        pct = count / len(y_train) * 100
+        print(f"      - {cls_name} ({int(label)}): {count:,} samples ({pct:.2f}%)")
+
+    print(f"\n   📊 Validation Set Class Distribution:")
+    unique_v, counts_v = np.unique(y_val, return_counts=True)
+    for label, count in zip(unique_v, counts_v):
+        cls_name = CLASS_NAMES[int(label)] if int(label) < len(CLASS_NAMES) else f"Unknown"
+        pct = count / len(y_val) * 100
+        print(f"      - {cls_name} ({int(label)}): {count:,} samples ({pct:.2f}%)")
+
+    print(f"\n   📊 Test Set Class Distribution:")
+    unique_t, counts_t = np.unique(y_test, return_counts=True)
+    for label, count in zip(unique_t, counts_t):
+        cls_name = CLASS_NAMES[int(label)] if int(label) < len(CLASS_NAMES) else f"Unknown"
+        pct = count / len(y_test) * 100
+        print(f"      - {cls_name} ({int(label)}): {count:,} samples ({pct:.2f}%)")
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 def train_decision_tree(
-    X_train: np.ndarray, 
-    y_train: np.ndarray, 
+    X_train: np.ndarray,
+    y_train: np.ndarray,
     max_depth: int = 10,
     random_state: int = 42
 ) -> DecisionTreeClassifier:
+    """Train a 3-class Decision Tree with balanced class weights."""
 
-    print(f"\n🌳 Training Decision Tree Classifier...")
+    print(f"\n🌳 Training Decision Tree Classifier (3-Class)...")
     print(f"   Hyperparameters:")
     print(f"   - max_depth: {max_depth} (prevents overfitting, maintains interpretability)")
     print(f"   - random_state: {random_state} (ensures reproducibility)")
-    print(f"   - criterion: 'gini' (default, measures impurity of splits)")
-    
-   
+    print(f"   - criterion: 'gini' (measures impurity of splits)")
+    print(f"   - class_weight: 'balanced' (critical for imbalanced Semantic class ~6%)")
+
+    # WHY class_weight='balanced'?
+    # The Semantic class is only ~6.25% of the data. Without balanced weights,
+    # the tree will focus on the majority Benign class and ignore Semantic.
+    # 'balanced' automatically adjusts weights inversely proportional to class frequencies.
     model = DecisionTreeClassifier(
         max_depth=max_depth,
         random_state=random_state,
-        criterion='gini'  # WHY gini? It's computationally efficient and works well in practice
+        criterion='gini',
+        class_weight='balanced'
     )
-    
-   
+
     print("   Training in progress...")
     model.fit(X_train, y_train)
     print("   ✓ Training complete!")
-    
+
     # WHY: Print tree statistics to understand model complexity
     n_nodes = model.tree_.node_count
     n_leaves = model.tree_.n_leaves
@@ -126,230 +166,323 @@ def train_decision_tree(
     print(f"   - Total nodes: {n_nodes}")
     print(f"   - Leaf nodes (decision outcomes): {n_leaves}")
     print(f"   - Actual depth: {actual_depth}")
-    
+    print(f"   - Number of classes: {model.n_classes_}")
+
     return model
 
 
 def evaluate_model(
-    model: DecisionTreeClassifier, 
-    X_test: np.ndarray, 
-    y_test: np.ndarray
+    model: DecisionTreeClassifier,
+    X_data: np.ndarray,
+    y_data: np.ndarray,
+    split_name: str = "Test"
 ) -> dict:
+    """Evaluate the 3-class model using macro-averaged metrics."""
 
-    print("\n📊 Evaluating model on test set...")
-    
-    # WHY: Generate predictions on test data
-    # The model traverses the tree for each sample, following decision rules
-    y_pred = model.predict(X_test)
-    
-    # WHY: Calculate multiple metrics to get a complete picture of performance
-    # Each metric tells us something different about the model's behavior
-    
-    # WHY Accuracy: Simple overall correctness percentage
-    # LIMITATION: Can be misleading if one class dominates (e.g., 95% normal traffic)
-    accuracy = accuracy_score(y_test, y_pred)
-    
+    print(f"\n📊 Evaluating model on {split_name} set...")
 
-    precision = precision_score(y_test, y_pred, average='binary', pos_label=1)
-    
+    y_pred = model.predict(X_data)
 
-    recall = recall_score(y_test, y_pred, average='binary', pos_label=1)
-    
+    # WHY macro-averaged metrics?
+    # average='macro' computes the metric for each class independently and then
+    # takes the unweighted mean. This gives equal importance to all 3 classes,
+    # including the minority Semantic class.
+    accuracy = accuracy_score(y_data, y_pred)
+    macro_precision = precision_score(y_data, y_pred, average='macro')
+    macro_recall = recall_score(y_data, y_pred, average='macro')
+    macro_f1 = f1_score(y_data, y_pred, average='macro')
+    weighted_f1 = f1_score(y_data, y_pred, average='weighted')
 
-    f1 = f1_score(y_test, y_pred, average='binary', pos_label=1)
-    
+    cm = confusion_matrix(y_data, y_pred)
 
-    cm = confusion_matrix(y_test, y_pred)
-    
-    print("\n   ✅ Evaluation Results:")
-    print(f"   - Accuracy:  {accuracy:.4f} ({accuracy*100:.2f}%)")
-    print(f"   - Precision: {precision:.4f} ({precision*100:.2f}%)")
-    print(f"   - Recall:    {recall:.4f} ({recall*100:.2f}%)")
-    print(f"   - F1-Score:  {f1:.4f} ({f1*100:.2f}%)")
-    
-    print("\n   📋 Confusion Matrix:")
-    print("   " + "-" * 50)
-    print(f"                    Predicted Normal  Predicted Attack")
-    print(f"   Actual Normal    {cm[0][0]:>15,}  {cm[0][1]:>16,}  (FP)")
-    print(f"   Actual Attack    {cm[1][0]:>15,}  {cm[1][1]:>16,}  (TP)")
-    print("                    (FN)")
-    print("   " + "-" * 50)
-    print(f"\n   Interpretation:")
-    print(f"   - True Negatives (TN):  {cm[0][0]:,} - Correctly identified normal traffic")
-    print(f"   - False Positives (FP): {cm[0][1]:,} - Normal traffic incorrectly flagged as attacks")
-    print(f"   - False Negatives (FN): {cm[1][0]:,} - Attacks that slipped through undetected ⚠️")
-    print(f"   - True Positives (TP):  {cm[1][1]:,} - Correctly detected attacks ✓")
-    
-    # WHY: Print detailed classification report
-    # This shows precision, recall, and F1 for BOTH classes (Normal and Attack)
-    print("\n   📊 Detailed Classification Report:")
-    print("   " + "-" * 50)
-    target_names = ['Normal (0)', 'Attack (1)']
-    print(classification_report(y_test, y_pred, target_names=target_names, digits=4))
-    
+    print(f"\n   ✅ {split_name} Results (Macro-Averaged):")
+    print(f"   - Accuracy:        {accuracy:.4f} ({accuracy*100:.2f}%)")
+    print(f"   - Macro Precision: {macro_precision:.4f} ({macro_precision*100:.2f}%)")
+    print(f"   - Macro Recall:    {macro_recall:.4f} ({macro_recall*100:.2f}%)")
+    print(f"   - Macro F1-Score:  {macro_f1:.4f} ({macro_f1*100:.2f}%)")
+    print(f"   - Weighted F1:     {weighted_f1:.4f} ({weighted_f1*100:.2f}%)")
+
+    # Per-class metrics
+    print(f"\n   � Per-Class Metrics ({split_name}):")
+    per_class = {}
+    for cls_id, cls_name in enumerate(CLASS_NAMES):
+        cls_p = precision_score(y_data, y_pred, labels=[cls_id], average='macro')
+        cls_r = recall_score(y_data, y_pred, labels=[cls_id], average='macro')
+        cls_f = f1_score(y_data, y_pred, labels=[cls_id], average='macro')
+        marker = " ⚠️  (minority ~6%)" if cls_name == "Semantic" else ""
+        print(f"   - {cls_name:12s}  P={cls_p:.4f}  R={cls_r:.4f}  F1={cls_f:.4f}{marker}")
+        per_class[cls_name] = {'precision': cls_p, 'recall': cls_r, 'f1': cls_f}
+
+    # 3×3 Confusion Matrix
+    print(f"\n   📋 3×3 Confusion Matrix ({split_name}):")
+    print("   " + "-" * 65)
+    header = f"{'':>18s}  {'Pred Benign':>12s}  {'Pred Volum.':>12s}  {'Pred Seman.':>12s}"
+    print(f"   {header}")
+    print("   " + "-" * 65)
+    for i, cls_name in enumerate(CLASS_NAMES):
+        row = "  ".join(f"{cm[i, j]:>12,}" for j in range(3))
+        print(f"   {cls_name:>18s}  {row}")
+    print("   " + "-" * 65)
+
+    # Per-class accuracy
+    print(f"\n   Per-Class Accuracy:")
+    for i, cls_name in enumerate(CLASS_NAMES):
+        total = cm[i, :].sum()
+        correct = cm[i, i]
+        pct = correct / total * 100 if total > 0 else 0
+        print(f"   - {cls_name}: {correct:,} / {total:,} ({pct:.2f}%)")
+
+    # Detailed classification report
+    print(f"\n   📊 Detailed Classification Report ({split_name}):")
+    print("   " + "-" * 65)
+    print(classification_report(y_data, y_pred,
+                                target_names=CLASS_LABELS_FULL,
+                                digits=4))
+
     return {
         'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1_score': f1,
+        'macro_precision': macro_precision,
+        'macro_recall': macro_recall,
+        'macro_f1': macro_f1,
+        'weighted_f1': weighted_f1,
         'confusion_matrix': cm,
-        'predictions': y_pred
+        'predictions': y_pred,
+        'per_class': per_class
     }
 
 
+def plot_confusion_matrix(cm: np.ndarray, reports_dir: str) -> str:
+    """Save a 3×3 confusion matrix heatmap to reports/figures/."""
+
+    print("\n🎨 Generating Confusion Matrix Visualization...")
+
+    os.makedirs(reports_dir, exist_ok=True)
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=CLASS_NAMES,
+                yticklabels=CLASS_NAMES,
+                annot_kws={'size': 14})
+    plt.title('3-Class Confusion Matrix — Decision Tree (Test Set)',
+              fontsize=16, fontweight='bold')
+    plt.ylabel('True Label', fontsize=13)
+    plt.xlabel('Predicted Label', fontsize=13)
+    plt.tight_layout()
+
+    cm_path = os.path.join(reports_dir, "dt_3class_confusion_matrix.png")
+    plt.savefig(cm_path, dpi=300)
+    print(f"   ✓ Confusion Matrix saved to: {cm_path}")
+    plt.close()
+
+    return cm_path
+
+
+def plot_feature_importance(model: DecisionTreeClassifier,
+                            feature_names: list[str],
+                            reports_dir: str) -> str:
+    """Plot horizontal bar chart of feature importances and save to file."""
+
+    print("\n🎨 Generating Feature Importance Visualization...")
+
+    os.makedirs(reports_dir, exist_ok=True)
+
+    importance_df = pd.DataFrame({
+        'feature': feature_names,
+        'importance': model.feature_importances_
+    }).sort_values('importance', ascending=False)
+
+    plt.figure(figsize=(12, 8))
+    sns.barplot(data=importance_df, x='importance', y='feature', palette='viridis')
+    plt.title('Feature Importance — 3-Class Decision Tree', fontsize=16, fontweight='bold')
+    plt.xlabel('Importance Score', fontsize=12)
+    plt.ylabel('Features', fontsize=12)
+    plt.tight_layout()
+
+    importance_path = os.path.join(reports_dir, "dt_3class_feature_importance.png")
+    plt.savefig(importance_path, dpi=300)
+    print(f"   ✓ Feature Importance saved to: {importance_path}")
+    plt.close()
+
+    # Print top features to terminal
+    print(f"\n   📊 Top 10 Features by Importance:")
+    for i, (_, row) in enumerate(importance_df.head(10).iterrows()):
+        print(f"      {i+1:2d}. {row['feature']:30s} {row['importance']:.4f}")
+
+    return importance_path
+
+
 def export_tree_rules(
-    model: DecisionTreeClassifier, 
+    model: DecisionTreeClassifier,
     feature_names: list[str]
 ) -> str:
+    """Export the decision tree rules as readable text."""
 
     print("\n📜 Exporting Decision Tree Rules...")
     print("   (This shows the exact if-else logic the model uses)")
-    
+
     # WHY: export_text creates a readable text representation of the tree
-    # It shows the decision path from root to each leaf
     tree_rules = export_text(
-        model, 
+        model,
         feature_names=feature_names,
-        spacing=3        # Indentation for readability
+        spacing=3
     )
-    
+
     print("\n" + "=" * 80)
-    print("DECISION TREE RULES (If-Then-Else Logic)")
+    print("DECISION TREE RULES (If-Then-Else Logic) — 3-Class")
     print("=" * 80)
     print(tree_rules)
     print("=" * 80)
-    
+
     print("\n   💡 How to read this:")
     print("   - Each line shows a decision rule (threshold)")
     print("   - Indentation shows tree depth/hierarchy")
-    print("   - 'class' shows the final prediction at each leaf")
-    print("   - 'value' shows [normal_count, attack_count] at that node")
-    
+    print("   - 'class' shows the final prediction at each leaf:")
+    print("     class 0 = Benign, class 1 = Volumetric, class 2 = Semantic")
+    print("   - 'value' shows [benign_count, volumetric_count, semantic_count] at that node")
+
     return tree_rules
 
 
 def save_model(model: DecisionTreeClassifier, output_path: str) -> None:
+    """Save the trained model using pickle."""
 
-    # WHY: Create parent directories if they don't exist
-    # This prevents errors if the 'models/' directory doesn't exist yet
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     print(f"\n💾 Saving trained model...")
     print(f"   Output path: {output_file}")
-    
-    # WHY: Use 'wb' (write binary) mode for pickle files
-    # Pickle creates binary data, not text
+
     with open(output_file, 'wb') as f:
         pickle.dump(model, f)
-    
-    # WHY: Verify the file was created and check its size
+
     file_size_kb = output_file.stat().st_size / 1024
     print(f"   ✓ Model saved successfully! (Size: {file_size_kb:.2f} KB)")
-    
+
     print("\n   📌 To load this model later, use:")
     print(f"      with open('{output_path}', 'rb') as f:")
     print(f"          model = pickle.load(f)")
 
 
 def main():
+    """Main training pipeline for 3-class Decision Tree."""
 
     print("\n" + "=" * 80)
-    print("🚀 DECISION TREE TRAINING FOR NETWORK INTRUSION DETECTION")
+    print("🚀 DECISION TREE TRAINING — 3-CLASS NETWORK INTRUSION DETECTION")
+    print("   Classes: Benign (0) | Volumetric (1) | Semantic (2)")
     print("=" * 80)
-    
+
     # ========================================================================
     # CONFIGURATION
     # ========================================================================
-    # WHY: Define all paths and parameters at the top for easy modification
-    
-    DATA_DIR = r"d:\Projects\networkdetection\networkdetection\data\processed_randomforest"
-    MODEL_OUTPUT_PATH = "models/dt_model.pkl"
-    
-    # WHY max_depth=10? 
+    DATA_DIR = os.path.join(ROOT, 'data', 'processed_ml')
+    MODEL_OUTPUT_PATH = os.path.join(ROOT, 'models', 'dt_3class_model.pkl')
+    RULES_OUTPUT_PATH = os.path.join(ROOT, 'models', 'dt_3class_rules.txt')
+    REPORTS_DIR = os.path.join(ROOT, 'reports', 'figures')
+
+    # WHY max_depth=10?
     # - Prevents overfitting (too deep = memorizes training data)
     # - Maintains interpretability (too deep = too many rules to understand)
-    # - Based on empirical best practices for binary classification
     MAX_DEPTH = 10
-    
+
     RANDOM_STATE = 42  # WHY 42? It's the "Answer to Life, Universe, and Everything" 😊
-    
+
     # ========================================================================
     # STEP 1: LOAD DATA
     # ========================================================================
     try:
-        train_df, test_df = load_data(DATA_DIR)
+        train_df, val_df, test_df = load_data(DATA_DIR)
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
-        print("\n💡 Tip: Make sure the preprocessed data exists.")
+        print("\n💡 Tip: Make sure the 3-class preprocessed data exists in data/processed_ml/.")
         print("   Run the preprocessing script first if needed.")
         sys.exit(1)
-    
+
     # ========================================================================
     # STEP 2: PREPARE FEATURES AND LABELS
     # ========================================================================
     try:
-        X_train, X_test, y_train, y_test = prepare_features_and_labels(
-            train_df, test_df, TOP_FEATURES
+        X_train, X_val, X_test, y_train, y_val, y_test = prepare_features_and_labels(
+            train_df, val_df, test_df, TOP_FEATURES
         )
     except ValueError as e:
         print(f"\n❌ Error: {e}")
         sys.exit(1)
-    
+
     # ========================================================================
     # STEP 3: TRAIN MODEL
     # ========================================================================
     model = train_decision_tree(
-        X_train, 
-        y_train, 
+        X_train,
+        y_train,
         max_depth=MAX_DEPTH,
         random_state=RANDOM_STATE
     )
-    
+
     # ========================================================================
-    # STEP 4: EVALUATE MODEL
+    # STEP 4: EVALUATE MODEL (Validation + Test)
     # ========================================================================
-    metrics = evaluate_model(model, X_test, y_test)
-    
+    print("\n" + "=" * 80)
+    print("📊 EVALUATION")
+    print("=" * 80)
+
+    val_metrics = evaluate_model(model, X_val, y_val, split_name="Validation")
+    test_metrics = evaluate_model(model, X_test, y_test, split_name="Test")
+
     # ========================================================================
-    # STEP 5: EXPORT TREE RULES (INTERPRETABILITY)
+    # STEP 5: VISUALIZATIONS
+    # ========================================================================
+    cm_path = plot_confusion_matrix(test_metrics['confusion_matrix'], REPORTS_DIR)
+    fi_path = plot_feature_importance(model, TOP_FEATURES, REPORTS_DIR)
+
+    # ========================================================================
+    # STEP 6: EXPORT TREE RULES (INTERPRETABILITY)
     # ========================================================================
     tree_rules = export_tree_rules(model, TOP_FEATURES)
-    
-    # WHY: Optionally save rules to a text file for documentation
-    rules_path = Path("models/dt_rules.txt")
-    rules_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(rules_path, 'w') as f:
+
+    rules_file = Path(RULES_OUTPUT_PATH)
+    rules_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(rules_file, 'w') as f:
         f.write(tree_rules)
-    print(f"\n   ✓ Rules also saved to: {rules_path}")
-    
+    print(f"\n   ✓ Rules saved to: {rules_file}")
+
     # ========================================================================
-    # STEP 6: SAVE MODEL
+    # STEP 7: SAVE MODEL
     # ========================================================================
     save_model(model, MODEL_OUTPUT_PATH)
-    
+
     # ========================================================================
     # SUMMARY
     # ========================================================================
     print("\n" + "=" * 80)
-    print("✅ TRAINING COMPLETE!")
+    print("✅ 3-CLASS TRAINING COMPLETE!")
     print("=" * 80)
-    print(f"\n📊 Final Model Performance:")
-    print(f"   - Accuracy:  {metrics['accuracy']:.4f}")
-    print(f"   - Precision: {metrics['precision']:.4f}")
-    print(f"   - Recall:    {metrics['recall']:.4f}")
-    print(f"   - F1-Score:  {metrics['f1_score']:.4f}")
-    
-    print(f"\n💾 Model saved to: {MODEL_OUTPUT_PATH}")
-    print(f"📜 Tree rules saved to: {rules_path}")
-    
+
+    print(f"\n📊 Final Model Performance (Test Set):")
+    print(f"   - Accuracy:        {test_metrics['accuracy']:.4f}")
+    print(f"   - Macro Precision: {test_metrics['macro_precision']:.4f}")
+    print(f"   - Macro Recall:    {test_metrics['macro_recall']:.4f}")
+    print(f"   - Macro F1-Score:  {test_metrics['macro_f1']:.4f}")
+    print(f"   - Weighted F1:     {test_metrics['weighted_f1']:.4f}")
+
+    print(f"\n� Per-Class Performance (Test Set):")
+    for cls_name in CLASS_NAMES:
+        m = test_metrics['per_class'][cls_name]
+        marker = " ⚠️  (minority class, ~6%)" if cls_name == "Semantic" else ""
+        print(f"   - {cls_name:12s}  P={m['precision']:.4f}  R={m['recall']:.4f}  F1={m['f1']:.4f}{marker}")
+
+    print(f"\n💾 Saved Artifacts:")
+    print(f"   - Model:             {MODEL_OUTPUT_PATH}")
+    print(f"   - Tree Rules:        {RULES_OUTPUT_PATH}")
+    print(f"   - Confusion Matrix:  {cm_path}")
+    print(f"   - Feature Importance: {fi_path}")
+
     print("\n🎯 Next Steps:")
-    print("   1. Review the decision tree rules above to validate they make sense")
-    print("   2. If recall is low, consider increasing max_depth or using ensemble methods")
-    print("   3. If precision is low, consider adding more discriminative features")
-    print("   4. Deploy the model using the saved .pkl file")
-    print("   5. Monitor performance on real-world traffic and retrain as needed")
-    
+    print("   1. Review the decision tree rules above to validate they make sense for 3-class")
+    print("   2. Check Semantic class performance — it's the minority (~6%)")
+    print("   3. If macro F1 is low, consider increasing max_depth or using ensemble methods")
+    print("   4. Compare with Random Forest, XGBoost, and LSTM models")
+    print("   5. Deploy the model using the saved .pkl file")
+
     print("\n" + "=" * 80)
 
 
