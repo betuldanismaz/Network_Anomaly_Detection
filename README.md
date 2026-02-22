@@ -51,9 +51,9 @@ This project implements a production-ready **Network Intrusion Detection System 
 | :---------------- | :------: | :-------------: | :----------: | :------: | :-----------: |
 | **XGBoost (GPU)** |  97.71%  |     93.62%      |    98.38%    |  95.87%  |    0.9991     |
 | **Random Forest** |  97.13%  |     93.09%      |    98.23%    |  95.43%  |    0.9983     |
-| **BiLSTM**        |  97.73%  |     97.87%      |    97.73%    |  97.80%  |       —       |
-| **LSTM**          |  98.15%  |     98.18%      |    98.15%    |  98.16%  |       —       |
-| **Decision Tree** |    —     |        —        |      —       |    —     |       —       |
+| **BiLSTM**        |  97.73%  |     93.21%      |    97.77%    |  95.37%  |       —       |
+| **LSTM**          |  98.15%  |     95.79%      |    97.13%    |  96.45%  |       —       |
+| **Decision Tree** |  95.81%  |     88.51%      |    97.64%    |  92.58%  |    0.9975     |
 
 ### Binary Classification (Normal / Attack) — Archived
 
@@ -287,12 +287,43 @@ streamlit run src/dashboard/app.py
 
 ### Decision Tree — 3-Class
 
-- Max depth: 10 · Class weights: balanced
-- Evaluation reports available in `reports/decisiontree/`
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 95.81% |
+| Macro Precision | 88.51% |
+| Macro Recall    | 97.64% |
+| Macro F1-Score  | 92.58% |
+| Macro ROC-AUC   | 0.9975 |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | ROC-AUC |
+| :--------- | :-------: | :----: | :------: | :-----: |
+| Benign     |  99.81%   | 94.97% |  97.33%  | 0.9967  |
+| Volumetric |  82.83%   | 99.63% |  90.46%  | 0.9970  |
+| Semantic   |  82.89%   | 98.32% |  89.95%  | 0.9990  |
+
+**Configuration:** max_depth=10 · class_weight=balanced · evaluation reports in `reports/decisiontree/`
 
 ---
 
 ### BiLSTM — 3-Class
+
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 97.73% |
+| Macro Precision | 93.21% |
+| Macro Recall    | 97.77% |
+| Macro F1-Score  | 95.37% |
+| Weighted F1     | 97.76% |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | Support |
+| :--------- | :-------: | :----: | :------: | ------: |
+| Benign     |  99.53%   | 97.63% |  98.57%  | 454,567 |
+| Volumetric |  92.94%   | 98.60% |  95.69%  |  76,130 |
+| Semantic   |  87.15%   | 97.07% |  91.84%  |  35,383 |
 
 **Architecture:**
 
@@ -303,16 +334,30 @@ Input (batch, 10, 20) → BiLSTM(128) → BatchNorm → Dropout(0.3)
                       → Dense(3, Softmax)
 ```
 
-**Training:** 50 epochs (early stopping) · batch size 256 · Adam (lr=0.001) · sparse categorical crossentropy · balanced class weights  
-**Performance:** ~98% accuracy — see `reports/bilstm/`
+**Training:** 50 epochs (early stopping) · batch size 256 · Adam (lr=0.001) · sparse categorical crossentropy · balanced class weights
 
 ---
 
 ### LSTM — 3-Class
 
-- Unidirectional variant of the BiLSTM architecture for lower latency
-- Optimized for resource-constrained deployment
-- Performance: ~98% accuracy — see `reports/lstm/`
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 98.15% |
+| Macro Precision | 95.79% |
+| Macro Recall    | 97.13% |
+| Macro F1-Score  | 96.45% |
+| Weighted F1     | 98.16% |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | Support |
+| :--------- | :-------: | :----: | :------: | ------: |
+| Benign     |  99.23%   | 98.46% |  98.84%  | 454,567 |
+| Volumetric |  93.62%   | 97.61% |  95.58%  |  76,130 |
+| Semantic   |  94.53%   | 95.33% |  94.93%  |  35,383 |
+
+**Architecture:** Unidirectional LSTM variant — lower latency, optimized for resource-constrained deployment  
+**Training:** 50 epochs (early stopping) · batch size 256 · Adam (lr=0.001) · sparse categorical crossentropy · balanced class weights
 
 ---
 
