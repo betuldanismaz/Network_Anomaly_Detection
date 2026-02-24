@@ -1,594 +1,483 @@
-# 🛡️ Network Intrusion Detection System (NIDS)
+<div align="center">
 
-A production-ready Network Intrusion Detection System featuring **multiple machine learning architectures** for comprehensive threat detection: Random Forest for real-time binary classification, XGBoost for GPU-accelerated high-performance detection, Decision Tree for interpretable analysis, and BiLSTM for temporal pattern analysis with 3-class attack categorization.
+# 🛡️ Network Intrusion Detection System
 
-**🎯 Key Capabilities:** Real-time Detection | Automated Firewall Response | Live Monitoring Dashboard | Multi-Model Architecture
+**A Multi-Model Machine Learning System for Real-Time Network Threat Detection**
 
----
+[![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?logo=tensorflow&logoColor=white)](https://tensorflow.org)
+[![XGBoost](https://img.shields.io/badge/XGBoost-2.1.4-blue)](https://xgboost.readthedocs.io)
+[![Kafka](https://img.shields.io/badge/Apache%20Kafka-7.4-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 📊 Quick Stats
-
-| Model             | Task                                 | Accuracy | Precision | Recall | F1-Score | Use Case               |
-| ----------------- | ------------------------------------ | -------- | --------- | ------ | -------- | ---------------------- |
-| **XGBoost**       | Binary (Normal/Attack)               | 99.82%   | 99.66%    | 99.28% | 99.47%   | GPU-Accelerated Prod   |
-| **Random Forest** | Binary (Normal/Attack)               | 99.73%   | 97.87%    | 99.90% | 98.88%   | Real-time IPS          |
-| **Decision Tree** | Binary (Normal/Attack)               | 99.60%   | 99.61%    | 98.08% | 98.84%   | Interpretable Analysis |
-| **BiLSTM**        | 3-Class (Benign/Volumetric/Semantic) | 97.73%   | 97.87%    | 97.73% | 97.80%   | Temporal Analysis      |
-| **LSTM**          | 3-Class (Benign/Volumetric/Semantic) | 98.15%   | 98.18%    | 98.15% | 98.16%   | Lightweight Temporal   |
-| **CatBoost**      | Binary (Optimized via PyCaret)       | ~99.8%   | 99.7%     | 99.8%  | ~99.8%   | High-Performance Bench |
+</div>
 
 ---
 
-## 📑 Table of Contents
+## Overview
 
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [🔬 Experiments & AutoML](#-experiments--automl)
-- [Quick Start](#-quick-start)
-- [Model Performance](#-model-performance)
-- [Project Structure](#-project-structure)
-- [Usage](#-usage)
-- [Configuration](#-configuration)
-- [Development](#-development)
-- [Dependencies](#-dependencies)
+This project implements a production-ready **Network Intrusion Detection System (NIDS)** that combines multiple machine learning architectures for comprehensive threat detection. The system supports both **binary** (Normal / Attack) and **3-class** (Benign / Volumetric / Semantic) classification, and is built around a **Kafka streaming pipeline** for real-time inference.
+
+**Models:** Random Forest · XGBoost (GPU) · Decision Tree · BiLSTM · LSTM  
+**Dataset:** [CICIDS 2017](https://www.unb.ca/cic/datasets/ids-2017.html) — 2.83M labeled network flows  
+**Authors:** Betül Danışmaz · Mustafa Emre Bıyık
 
 ---
 
-## ✨ Features
+## Table of Contents
 
-### 🚀 Core Capabilities
-
-| Feature                           | Description                                                  |
-| --------------------------------- | ------------------------------------------------------------ |
-| **Dual-Model Architecture**       | Random Forest (real-time) + BiLSTM/LSTM (temporal analysis)  |
-| **Real-Time Detection**           | 4-second packet capture windows with immediate analysis      |
-| **3-Class Attack Classification** | Benign, Volumetric (DDoS), Semantic (Port Scan, Web Attacks) |
-| **AutoML Optimization**           | PyCaret integration for model selection and tuning           |
-| **Automated Firewall Response**   | OS-level IP blocking (Windows/Linux)                         |
-| **Live Dashboard**                | Streamlit-based monitoring with real-time statistics         |
-| **Data Harvesting**               | Continuous learning pipeline for model retraining            |
-| **Top 20 Features**               | Optimized feature selection for 3x faster inference          |
-| **Custom Thresholding**           | Security-first decision boundaries (0.1077 for RF)           |
-
-### 🎯 What Makes This Special
-
-1. **Security-First ML Design**
-   - **99.90% Recall** → Only 0.1% of attacks slip through
-   - **Low False Positive Rate** → 97.87% precision prevents alarm fatigue
-   - **Custom Threshold Optimization** → Prioritizes catching attacks over reducing false alarms
-
-2. **Production-Ready Architecture**
-   - Thread-safe buffered writes (no data loss)
-   - Graceful shutdown with data persistence
-   - Fallback mechanisms for feature extraction (CLI + API modes)
-   - # Comprehensive error handling and logging
-     **1. Multi-Model Approach**
-
-- **Random Forest**: Fast binary classification (6-9s latency) for immediate threat response
-  | **Decision Tree** | Highly interpretable model for understanding decision logic
-  | **BiLSTM/LSTM** | Deep temporal analysis for sophisticated attack pattern recognition
-  | **Complementary Strengths** | Speed + Interpretability + Accuracy combined
-
-**2. Production-Ready Design**
-
-- Thread-safe buffered writes
-- Graceful shutdown with data persistence
-- Comprehensive error handling and logging
-- Memory-efficient batch processing for BiLSTM
-
-**3. Advanced Attack Classification**
-
-- **Benign** (Class 0): Normal network traffic
-- **Volumetric** (Class 1): DDoS, DoS, Botnet attacks
-- **Semantic** (Class 2): Port Scanning, Web Attacks, Brute Force, Infiltration
+- [Performance Summary](#performance-summary)
+- [Features](#features)
+- [System Architecture](#system-architecture)
+- [Getting Started](#getting-started)
+- [Model Details](#model-details)
+- [Project Structure](#project-structure)
+- [Usage Guide](#usage-guide)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Dependencies](#dependencies)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
 
 ---
 
-## 🏗️ Architecture
+## Performance Summary
 
-### System Overview
+### 3-Class Classification (Benign / Volumetric / Semantic)
+
+| Model             | Accuracy | Macro Precision | Macro Recall | Macro F1 | Macro ROC-AUC |
+| :---------------- | :------: | :-------------: | :----------: | :------: | :-----------: |
+| **XGBoost (GPU)** |  97.71%  |     93.62%      |    98.38%    |  95.87%  |    0.9991     |
+| **Random Forest** |  97.13%  |     93.09%      |    98.23%    |  95.43%  |    0.9983     |
+| **BiLSTM**        |  97.73%  |     93.21%      |    97.77%    |  95.37%  |       —       |
+| **LSTM**          |  98.15%  |     95.79%      |    97.13%    |  96.45%  |       —       |
+| **Decision Tree** |  95.81%  |     88.51%      |    97.64%    |  92.58%  |    0.9975     |
+
+### Binary Classification (Normal / Attack) — Archived
+
+| Model             | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
+| :---------------- | :------: | :-------: | :----: | :------: | :-----: |
+| **XGBoost**       |  99.82%  |  99.66%   | 99.28% |  99.47%  | 1.0000  |
+| **Random Forest** |  99.73%  |  97.87%   | 99.90% |  98.88%  | 0.9994  |
+| **Decision Tree** |  99.60%  |  99.61%   | 98.08% |  98.84%  |    —    |
+| **CatBoost**      |  ~99.8%  |  ~99.7%   | ~99.8% |  ~99.8%  |    —    |
+
+> Binary models are preserved in `binary_models/` for reference. The active system uses 3-class classification.
+
+---
+
+## Features
+
+| Capability                      | Description                                                                                              |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------- |
+| **Multi-Model Architecture**    | 5 model types — RF, XGBoost, DT, BiLSTM, LSTM — with both 3-class and binary variants                    |
+| **Kafka Streaming Pipeline**    | Docker-based Apache Kafka + Zookeeper for real-time message ingestion and processing                     |
+| **3-Class Attack Taxonomy**     | Distinguishes Benign, Volumetric (DDoS/DoS/Botnet), and Semantic (PortScan/WebAttack/BruteForce) traffic |
+| **GPU-Accelerated Training**    | XGBoost CUDA acceleration provides 15–45× speedup over CPU                                               |
+| **Automated Firewall Response** | OS-level IP blocking via Windows Firewall or iptables                                                    |
+| **Live Monitoring Dashboard**   | Streamlit-based real-time UI with metrics, attack timeline, and event log                                |
+| **One-Command Startup**         | `run_system.py` orchestrates all services (Docker, Kafka, Consumer, Dashboard, Producer)                 |
+| **Evaluation Dashboards**       | Per-model executive reports with confusion matrices, ROC curves, and feature importance                  |
+| **Dynamic Model Hot-Reload**    | Kafka Consumer detects configuration changes and switches models without restart                         |
+| **Data Quality Auditing**       | Automated validation pipelines for both binary and 3-class datasets                                      |
+
+### Attack Classification Taxonomy
+
+| Class | Label          | Attack Types                                                               |
+| :---: | :------------- | :------------------------------------------------------------------------- |
+|   0   | **Benign**     | Normal network traffic                                                     |
+|   1   | **Volumetric** | DDoS, DoS (Slowhttptest, Slowloris, Hulk, GoldenEye), Botnet               |
+|   2   | **Semantic**   | Port Scanning, Web Attacks (XSS, SQL Injection), Brute Force, Infiltration |
+
+---
+
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    NETWORK TRAFFIC INPUT                         │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │   Scapy Capture      │
-              │   (4-second windows) │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │  CICFlowMeter        │
-              │  (78 Features)       │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │  Feature Selection   │
-              │  (Top 20 Features)   │
-              └──────────┬───────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         │                               │
-         ▼                               ▼
-┌─────────────────┐           ┌─────────────────────┐
-│  Random Forest  │           │      BiLSTM         │
-│  Binary (0/1)   │           │  3-Class (0/1/2)    │
-│  Real-time IPS  │           │  Temporal Analysis  │
-└────────┬────────┘           └──────────┬──────────┘
-         │                               │
-         ▼                               ▼
-┌─────────────────┐           ┌─────────────────────┐
-│ Firewall Block  │           │  Pattern Reports    │
-│ SQLite Alerts   │           │  Confusion Matrix   │
-│ Live Dashboard  │           │  Classification     │
-└─────────────────┘           └─────────────────────┘
+                        ┌───────────────────────┐
+                        │   Network Interface   │
+                        └───────────┬───────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │    Scapy Capture       │
+                        │   (4-second windows)   │
+                        └───────────┬───────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │    CICFlowMeter        │
+                        │   (78 → 20 features)   │
+                        └───────────┬───────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │    Live Bridge         │
+                        │   (Kafka Producer)     │
+                        └───────────┬───────────┘
+                                    │
+                             Kafka Topic
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │    Kafka Consumer      │
+                        │  (Dynamic Model Load)  │
+                        └───────────┬───────────┘
+                                    │
+                ┌───────────────────┼───────────────────┐
+                │                   │                   │
+                ▼                   ▼                   ▼
+        ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
+        │   XGBoost    │  │ Random Forest│  │   BiLSTM/LSTM    │
+        │ 3-Class(GPU) │  │   3-Class    │  │  3-Class (Seq.)  │
+        └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘
+               │                 │                    │
+               └─────────────────┼────────────────────┘
+                                 │
+                                 ▼
+                        ┌───────────────────────┐
+                        │   Response Engine      │
+                        │  • Firewall Blocking   │
+                        │  • SQLite Logging      │
+                        │  • Streamlit Dashboard │
+                        └───────────────────────┘
 ```
 
-### Model Comparison
 
-| Aspect            | Random Forest             | BiLSTM                                            |
-| ----------------- | ------------------------- | ------------------------------------------------- |
-| **Input**         | Single flow (20 features) | Sequence of 10 flows (20 features × 10 timesteps) |
-| **Output**        | Binary (Normal/Attack)    | 3-Class (Benign/Volumetric/Semantic)              |
-| **Latency**       | 6-9 seconds               | Batch processing                                  |
-| **Use Case**      | Real-time blocking        | Offline analysis, pattern detection               |
-| **Training Time** | ~15 minutes               | ~2-3 hours (50 epochs)                            |
-| **Model Size**    | 16.7 MB                   | 3.9 MB (BiLSTM) / ~2 MB (LSTM)                    |
-| **Preprocessing** | `preprocess.py`           | `preprocess_lstm.py`                              |
-| **Scaler**        | `scaler.pkl`              | `scaler_lstm.pkl`                                 |
+### Technology Stack
 
-### Component Breakdown
-
-| Component                | Technology                  | Purpose                                    |
-| ------------------------ | --------------------------- | ------------------------------------------ |
-| **Packet Capture**       | Scapy                       | Raw packet sniffing from network interface |
-| **Feature Extraction**   | CICFlowMeter (Java)         | 78 bidirectional flow features             |
-| **Preprocessing**        | Pandas + scikit-learn       | Scaling, feature selection, sequencing     |
-| **RF Model**             | scikit-learn RandomForest   | Binary classification (75 estimators)      |
-| **BiLSTM/LSTM Model**    | TensorFlow/Keras            | 3-class sequential classification          |
-| **Firewall Integration** | Windows Firewall / iptables | OS-level IP blocking                       |
-| **Database**             | SQLite                      | Attack event logging                       |
-| **Dashboard**            | Streamlit                   | Real-time monitoring UI                    |
+| Layer              | Technology                  | Role                                         |
+| :----------------- | :-------------------------- | :------------------------------------------- |
+| Packet Capture     | Scapy                       | Raw packet sniffing from network interface   |
+| Feature Extraction | CICFlowMeter (Java)         | 78 bidirectional flow features               |
+| Preprocessing      | Pandas, scikit-learn        | Scaling, feature selection, sequencing       |
+| ML Models          | XGBoost, scikit-learn       | Gradient boosting and tree-based classifiers |
+| Deep Learning      | TensorFlow / Keras          | BiLSTM and LSTM temporal models              |
+| Streaming          | Apache Kafka + Zookeeper    | Real-time event pipeline (Docker)            |
+| Firewall           | Windows Firewall / iptables | Automated OS-level IP blocking               |
+| Storage            | SQLite                      | Attack event persistence                     |
+| Dashboard          | Streamlit                   | Real-time monitoring interface               |
 
 ---
 
-## 🔬 Experiments & AutoML
-
-We use **PyCaret** to rigorously benchmark and optimize our machine learning models. The experiments are located in `experiments/` and provide insights into model selection.
-
-### Key Findings
-
-- **CatBoost** emerged as a top performer with excellent robustness and speed.
-- **PyCaret Setup**: The `experiments/pycaret_setup.ipynb` notebook handles the setup, comparison, and tuning of various models.
-- **Visualizations**: ROC-AUC curves, Confusion Matrices, and Feature Importance plots are generated in `experiments/results/`.
-
-### Experiment Artifacts
-
-- `experiments/catboost_info/`: Logs and training data for the CatBoost model.
-- `experiments/results/`: Generated plots for model evaluation.
-
----
-
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- **Python 3.8+** (tested on 3.9, 3.10, 3.11)
-- **Admin/Root privileges** (for packet capture and firewall)
-- **Java 11+** (for CICFlowMeter)
-- **Windows 10/11 or Linux** (Ubuntu 20.04+)
+| Requirement      | Notes                                           |
+| :--------------- | :---------------------------------------------- |
+| Python 3.8+      | Tested on 3.9, 3.10, 3.11                       |
+| Docker Desktop   | Required for Kafka + Zookeeper                  |
+| Admin privileges | Packet capture and firewall rules               |
+| Java 11+         | CICFlowMeter feature extraction                 |
+| CUDA GPU         | _Optional_ — accelerates XGBoost and TensorFlow |
 
 ### Installation
 
-**Step 1: Clone Repository**
-
 ```bash
+# 1. Clone the repository
 git clone https://github.com/betuldanismaz/Network_Anomaly_Detection.git
 cd Network_Anomaly_Detection/networkdetection
-```
 
-**Step 2: Create Virtual Environment**
-
-```bash
-# Windows
+# 2. Create and activate virtual environment
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1          # Windows
+# source venv/bin/activate           # Linux / macOS
 
-# Linux/Mac
-python3 -m venv venv
-source venv/bin/activate
-```
-
-**Step 3: Install Dependencies**
-
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Configure environment
+copy .env.example .env               # Then edit .env with your settings
 ```
 
-**Step 4: Configure Environment**
+### Quick Launch
 
 ```bash
-# Copy template
-cp .env.example .env
-
-# Edit .env with your settings (see Configuration section)
+python run_system.py
 ```
 
-### Running the System
+This single command:
 
-**Option 1: Real-Time IPS (Random Forest)**
+1. Verifies Docker availability
+2. Starts Zookeeper + Kafka containers via `docker-compose`
+3. Launches **Kafka Consumer** (ML inference engine) in a new terminal
+4. Opens **Streamlit Dashboard** at `http://localhost:8501`
+5. Starts **Live Bridge Producer** (traffic capture) in a new terminal
+
+> Each service runs in its own terminal window. Close the launcher — services continue running independently.
+
+### Manual Startup (Alternative)
 
 ```bash
-# Terminal 1: Start IPS engine
+# Terminal 1 — Infrastructure
+docker-compose up -d
+
+# Terminal 2 — Kafka Consumer (ML predictions)
+python src/kafka_consumer.py
+
+# Terminal 3 — Live Bridge (traffic capture + Kafka producer)
 python src/live_bridge.py
 
-# Terminal 2: Launch dashboard
+# Terminal 4 — Dashboard
 streamlit run src/dashboard/app.py
 ```
 
-**Option 2: BiLSTM Training & Evaluation**
+---
 
-```bash
-# Step 1: Preprocess data for LSTM
-python src/features/preprocess_lstm.py
+## Model Details
 
-# Step 2: Train BiLSTM model
-python src/models/train_bilstm.py
+### XGBoost — 3-Class (GPU Accelerated)
 
-# Step 3: Evaluate model
-python src/models/evaluate_bilstm.py
+| Metric            |               Value |
+| :---------------- | ------------------: |
+| Accuracy          |              97.71% |
+| Macro Precision   |              93.62% |
+| Macro Recall      |              98.38% |
+| Macro F1-Score    |              95.87% |
+| Macro ROC-AUC     |              0.9991 |
+| Inference Latency |     0.008 ms/sample |
+| Throughput        | 126,546 samples/sec |
 
-# Option 3: Standard LSTM Training
-python src/models/train_lstm.py
-python src/models/evaluate_lstm.py
-```
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | ROC-AUC |
+| :--------- | :-------: | :----: | :------: | :-----: |
+| Benign     |  99.79%   | 97.36% |  98.56%  | 0.9988  |
+| Volumetric |  89.64%   | 99.58% |  94.35%  | 0.9991  |
+| Semantic   |  91.44%   | 98.21% |  94.71%  | 0.9995  |
+
+**Configuration:** XGBoost 2.1.4 · CUDA · `tree_method=hist` · 1000 estimators · max_depth=7 · lr=0.05 · best iteration 857 · `compute_sample_weight(balanced)`
 
 ---
 
-## 📊 Model Performance
+### Random Forest — 3-Class
 
-### Random Forest (Binary Classification)
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 97.13% |
+| Macro Precision | 93.09% |
+| Macro Recall    | 98.23% |
+| Macro F1-Score  | 95.43% |
+| Macro ROC-AUC   | 0.9983 |
 
-**Training Dataset:** CICIDS 2017 (2,830,743 flows)
+**Per-Class Breakdown:**
 
-| Metric                  | Value  | Interpretation                                   |
-| ----------------------- | ------ | ------------------------------------------------ |
-| **Accuracy**            | 99.73% | Overall correctness                              |
-| **Precision**           | 97.87% | When predicting "attack", correct 97.87% of time |
-| **Recall**              | 99.90% | Catches 99.9% of all actual attacks              |
-| **F1-Score**            | 98.88% | Harmonic mean of precision & recall              |
-| **ROC-AUC**             | 0.9994 | Near-perfect discriminative ability              |
-| **False Negative Rate** | 0.10%  | Only 1 in 1000 attacks missed                    |
+| Class      | Precision | Recall | F1-Score | ROC-AUC |
+| :--------- | :-------: | :----: | :------: | :-----: |
+| Benign     |  99.84%   | 96.58% |  98.19%  | 0.9977  |
+| Volumetric |  84.89%   | 99.89% |  91.78%  | 0.9978  |
+| Semantic   |  94.53%   | 98.21% |  96.34%  | 0.9994  |
 
-**Confusion Matrix:**
-
-```
-                Predicted
-              Normal  Attack
-Actual Normal  98.7%   1.3%   ← FP: 2.13%
-      Attack   0.1%   99.9%   ← FN: 0.10%
-```
-
-**Top 5 Features (by Importance):**
-
-1. Bwd Packet Length Std (14.2%)
-2. Packet Length Variance (11.8%)
-3. Subflow Fwd Bytes (9.3%)
-4. Total Length of Fwd Packets (7.6%)
-5. Flow Bytes/s (6.4%)
-
-### Decision Tree (Binary Classification)
-
-**Training Dataset:** CICIDS 2017 (2,830,743 flows)
-
-| Metric                  | Value  | Interpretation                                   |
-| ----------------------- | ------ | ------------------------------------------------ |
-| **Accuracy**            | 99.60% | Overall correctness                              |
-| **Precision**           | 99.61% | When predicting "attack", correct 99.61% of time |
-| **Recall**              | 98.08% | Catches 98.08% of all actual attacks             |
-| **F1-Score**            | 98.84% | Harmonic mean of precision & recall              |
-| **False Negative Rate** | 1.92%  | 936 attacks missed out of 48,877                 |
-
-**Top Feature:** `Bwd Packet Length Std` (71.37% importance)
-
-**Configuration:**
-
-- Max Depth: 10 levels
-- Total Nodes: 433
-- Criterion: Gini impurity
-- Random State: 42 (reproducible)
-
-**Visualizations:**
-
-- Tree structure diagram (top 4 levels, 300 DPI)
-- Feature importance chart (top 10 features)
-- Confusion matrix heatmap
-- Decision rules export (text format)
-
-### XGBoost (Binary Classification - GPU Accelerated)
-
-**Training Dataset:** CICIDS 2017 (1,866,407 flows)
-
-| Metric                | Value               | Interpretation                                   |
-| --------------------- | ------------------- | ------------------------------------------------ |
-| **Accuracy**          | 99.82%              | Overall correctness                              |
-| **Precision**         | 99.66%              | When predicting "attack", correct 99.66% of time |
-| **Recall**            | 99.28%              | Catches 99.28% of all actual attacks             |
-| **F1-Score**          | 99.47%              | Harmonic mean of precision & recall              |
-| **ROC-AUC**           | 1.0000              | **Perfect discriminative ability** ✨            |
-| **Inference Latency** | 0.0027 ms/sample    | Ultra-fast prediction speed                      |
-| **Throughput**        | 373,348 samples/sec | High-performance processing                      |
-
-**Confusion Matrix (Optimized Threshold = 0.84):**
-
-```
-                Predicted
-              Normal  Attack
-Actual Normal  99.93%  0.07%   ← FP: 164 out of 231,085
-      Attack   0.72%  99.28%   ← FN: 350 out of 48,877
-```
-
-**Training Performance:**
-
-- **Training Time**: 19.6 seconds (GPU-accelerated)
-- **Hardware**: CUDA-enabled GPU
-- **XGBoost Version**: 2.1.4
-- **Best Iteration**: 999 (out of 1000)
-- **Validation LogLoss**: 0.006969
-
-**Configuration:**
-
-- Estimators: 1000 trees
-- Max Depth: 7 levels
-- Learning Rate: 0.05
-- Subsample: 0.8
-- Column Sample: 0.8
-- Tree Method: `hist` (GPU-optimized)
-- Device: `cuda`
-- Scale Pos Weight: 4.73 (handles class imbalance)
-
-**Key Advantages:**
-
-- ⚡ **15-45x faster** than CPU training with GPU acceleration
-- 🎯 **Perfect ROC-AUC** (1.0000) - best discriminative performance
-- 🚀 **Sub-millisecond inference** - 0.0027 ms per sample
-- 💪 **Production-ready** - optimized threshold for maximum F1-score
-- 📊 **Balanced performance** - excellent precision AND recall
-
-**Visualizations:**
-
-- Confusion matrix comparison (baseline vs optimized threshold)
-- Feature importance (top 20 by gain)
-- Learning curve (validation LogLoss)
-- ROC curve (AUC = 1.0000)
-- Precision-Recall curve with optimal threshold marker
-
-### BiLSTM (3-Class Classification)
-
-**Architecture (BiLSTM):**
-
-- Input: (batch_size, 10 timesteps, 20 features)
-- BiLSTM Layer 1: 128 units + BatchNorm + Dropout(0.3)
-- BiLSTM Layer 2: 64 units + BatchNorm + Dropout(0.3)
-- Dense: 32 units (ReLU) + Dropout(0.3)
-- Output: 3 units (Softmax)
-
-**Architecture (LSTM):**
-
-- Similar structure but uses unidirectional LSTM layers for lower latency.
-- Optimized for resource-constrained environments.
-
-**Training Configuration:**
-
-- Epochs: 50 (with early stopping)
-- Batch Size: 256
-- Optimizer: Adam (lr=0.001)
-- Loss: Sparse Categorical Crossentropy
-- Class Weights: Balanced (computed from training data)
-
-**Class Mapping:**
-
-- **Class 0 (Benign)**: Normal traffic
-- **Class 1 (Volumetric)**: DDoS, DoS, Botnet
-- **Class 2 (Semantic)**: PortScan, Web Attack, Brute Force, Infiltration
-
-**Performance:** ~98%+ accuracy on test set (see `reports/bilstm/final_classification_report.txt`)
+**Configuration:** 50 estimators · max_features=sqrt · Gini criterion · best CV F1 (macro)=0.9367 · training time ~40 min
 
 ---
 
-## 📁 Project Structure
+### Decision Tree — 3-Class
+
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 95.81% |
+| Macro Precision | 88.51% |
+| Macro Recall    | 97.64% |
+| Macro F1-Score  | 92.58% |
+| Macro ROC-AUC   | 0.9975 |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | ROC-AUC |
+| :--------- | :-------: | :----: | :------: | :-----: |
+| Benign     |  99.81%   | 94.97% |  97.33%  | 0.9967  |
+| Volumetric |  82.83%   | 99.63% |  90.46%  | 0.9970  |
+| Semantic   |  82.89%   | 98.32% |  89.95%  | 0.9990  |
+
+**Configuration:** max_depth=10 · class_weight=balanced · evaluation reports in `reports/decisiontree/`
+
+---
+
+### BiLSTM — 3-Class
+
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 97.73% |
+| Macro Precision | 93.21% |
+| Macro Recall    | 97.77% |
+| Macro F1-Score  | 95.37% |
+| Weighted F1     | 97.76% |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | Support |
+| :--------- | :-------: | :----: | :------: | ------: |
+| Benign     |  99.53%   | 97.63% |  98.57%  | 454,567 |
+| Volumetric |  92.94%   | 98.60% |  95.69%  |  76,130 |
+| Semantic   |  87.15%   | 97.07% |  91.84%  |  35,383 |
+
+**Architecture:**
+
+```
+Input (batch, 10, 20) → BiLSTM(128) → BatchNorm → Dropout(0.3)
+                      → BiLSTM(64)  → BatchNorm → Dropout(0.3)
+                      → Dense(32, ReLU) → Dropout(0.3)
+                      → Dense(3, Softmax)
+```
+
+**Training:** 50 epochs (early stopping) · batch size 256 · Adam (lr=0.001) · sparse categorical crossentropy · balanced class weights
+
+---
+
+### LSTM — 3-Class
+
+| Metric          |  Value |
+| :-------------- | -----: |
+| Accuracy        | 98.15% |
+| Macro Precision | 95.79% |
+| Macro Recall    | 97.13% |
+| Macro F1-Score  | 96.45% |
+| Weighted F1     | 98.16% |
+
+**Per-Class Breakdown:**
+
+| Class      | Precision | Recall | F1-Score | Support |
+| :--------- | :-------: | :----: | :------: | ------: |
+| Benign     |  99.23%   | 98.46% |  98.84%  | 454,567 |
+| Volumetric |  93.62%   | 97.61% |  95.58%  |  76,130 |
+| Semantic   |  94.53%   | 95.33% |  94.93%  |  35,383 |
+
+**Architecture:** Unidirectional LSTM variant — lower latency, optimized for resource-constrained deployment  
+**Training:** 50 epochs (early stopping) · batch size 256 · Adam (lr=0.001) · sparse categorical crossentropy · balanced class weights
+
+---
+
+### Binary Models (Archived)
+
+Binary (Normal / Attack) models are preserved in `binary_models/` for reference:
+
+| Model         | Accuracy | F1-Score | ROC-AUC |
+| :------------ | :------: | :------: | :-----: |
+| XGBoost       |  99.82%  |  99.47%  | 1.0000  |
+| Random Forest |  99.73%  |  98.88%  | 0.9994  |
+| Decision Tree |  99.60%  |  98.84%  |    —    |
+
+---
+
+## Project Structure
 
 ```
 networkdetection/
-├── 📂 data/
-│   ├── original_csv/              # Raw CICIDS 2017 dataset
-│   ├── processed_csv/             # Preprocessed for Random Forest
-│   │   └── ready_splits/          # Train/Val/Test splits
-│   ├── processed_lstm/            # Preprocessed for BiLSTM
-│   │   ├── X_train.npy           # Training sequences (N, 10, 20)
-│   │   ├── y_train.npy           # Training labels
-│   │   ├── X_test.npy            # Test sequences
-│   │   └── y_test.npy            # Test labels
-│   └── live_captured_traffic.csv  # Data harvesting output
 │
-├── 📂 experiments/                # 🔬 NEW: AutoML & Experiments
-│   ├── pycaret_setup.ipynb        # PyCaret experiment notebook
-│   ├── logs.log                   # Experiment logs
-│   ├── catboost_info/             # CatBoost training artifacts
-│   └── results/                   # Generated evaluation plots
+├── run_system.py                         # One-command system orchestrator
+├── docker-compose.yml                    # Kafka + Zookeeper containers
+├── requirements.txt                      # Python dependencies
+├── .env.example                          # Environment variable template
 │
-├── 📂 models/
-│   ├── rf_optimized_model.pkl     # Random Forest (75 estimators)
-│   ├── scaler.pkl                 # MinMaxScaler for RF
-│   ├── threshold.txt              # RF decision boundary (0.1077)
-│   ├── threshold_config.json      # RF threshold metadata
-│   ├── xgboost_model.pkl          # XGBoost model (1000 trees, GPU)
-│   ├── threshold_xgb.txt          # XGBoost decision boundary (0.84)
-│   ├── xgb_config.json            # XGBoost training metadata
-│   ├── dt_model.pkl               # Trained Decision Tree model
-│   ├── dt_rules.txt               # Decision Tree rules (text)
-│   ├── bilstm_best.keras          # Trained BiLSTM model
-│   ├── lstm_best.keras            # Trained LSTM model
-│   ├── scaler_lstm.pkl            # MinMaxScaler for BiLSTM/LSTM
-│   └── class_weights.json         # BiLSTM class weights
+├── binary_models/                        # Archived binary classification models
+│   ├── rf_optimized_model.pkl
+│   ├── xgboost_model.pkl
+│   ├── dt_model.pkl
+│   ├── dt_rules.txt
+│   ├── threshold_xgb.txt
+│   └── xgb_config.json
 │
-├── 📂 src/
-│   ├── live_bridge.py             # 🚀 Real-time IPS engine (RF)
-│   ├── config.py                  # Top 20 feature definitions
+├── data/
+│   ├── active_model.txt                  # Active model selector
+│   ├── original_csv/                     # Raw CICIDS 2017 CSVs
+│   ├── processed_ml/                     # 3-class data (train/val/test.csv)
+│   ├── processed_lstm/                   # BiLSTM/LSTM sequences (.npy)
+│   └── processed_randomforest/           # Binary RF preprocessed data
+│
+├── models/                               # Active 3-class models
+│   ├── rf_3class_model.pkl
+│   ├── rf_3class_config.json
+│   ├── xgb_3class_model.pkl
+│   ├── xgb_3class_config.json
+│   ├── dt_3class_model.pkl
+│   ├── dt_3class_rules.txt
+│   ├── bilstm_best.keras
+│   ├── lstm_best.keras
+│   ├── scaler_ml_3class.pkl              # MinMaxScaler (3-class)
+│   ├── scaler_lstm.pkl                   # MinMaxScaler (LSTM)
+│   ├── scaler.pkl                        # MinMaxScaler (binary RF)
+│   ├── class_weights.json
+│   ├── threshold.txt
+│   ├── threshold_config.json
+│   ├── shap_explainer.pkl
+│   └── pycaret_champion.pkl              # CatBoost (AutoML)
+│
+├── src/
+│   ├── live_bridge.py                    # Kafka Producer — traffic capture
+│   ├── kafka_consumer.py                 # Kafka Consumer — ML inference
+│   ├── config.py                         # Top-20 feature definitions
 │   │
-│   ├── 📁 capture/
-│   │   └── sniffer.py             # Scapy packet capture
+│   ├── capture/
+│   │   └── sniffer.py                    # Scapy packet capture
 │   │
-│   ├── 📁 dashboard/
-│   │   └── app.py                 # Streamlit monitoring dashboard
+│   ├── dashboard/
+│   │   ├── app.py                        # Streamlit monitoring dashboard
+│   │   └── app2.py                       # Alternative dashboard
 │   │
-│   ├── 📁 features/
-│   │   ├── preprocess.py          # RF preprocessing pipeline
-│   │   ├── preprocess_lstm.py     # BiLSTM preprocessing (sequences)
-│   │   └── resplit_data.py        # Data splitting utility
+│   ├── features/
+│   │   ├── preprocess.py                 # Binary RF preprocessing
+│   │   ├── preprocess_ml_3class.py       # 3-class ML preprocessing
+│   │   ├── preprocess_lstm.py            # BiLSTM/LSTM sequence generation
+│   │   └── data_audit_3class.py          # 3-class data quality audit
 │   │
-│   ├── 📁 models/
-│   │   ├── train_randomforest.py  # RF training script
-│   │   ├── train_xgboost.py       # XGBoost training script (GPU)
-│   │   ├── train_dt.py            # Decision Tree training script
-│   │   ├── train_bilstm.py        # BiLSTM training script
-│   │   ├── train_lstm.py          # LSTM training script
-│   │   ├── evaluate_bilstm.py     # BiLSTM evaluation script
-│   │   ├── evaluate_lstm.py       # LSTM evaluation script
-│   │   ├── analyze_results.py     # RF model evaluation
-│   │   ├── analyze_thresholds.py  # Threshold optimization & risk scoring
-│   │   ├── stress_test.py         # Performance benchmarking
-│   │   └── top_20_features.json   # Feature importance rankings
+│   ├── models/
+│   │   ├── train_randomforest.py         # 3-class Random Forest
+│   │   ├── train_xgboost.py             # 3-class XGBoost (GPU)
+│   │   ├── train_decisiontree.py        # 3-class Decision Tree
+│   │   ├── train_bilstm.py              # BiLSTM training
+│   │   ├── train_lstm.py                # LSTM training
+│   │   ├── evaluate_randomforest.py     # RF evaluation + dashboard
+│   │   ├── evaluate_xgboost.py          # XGBoost evaluation + dashboard
+│   │   ├── evaluate_decisiontree.py     # DT evaluation + dashboard
+│   │   ├── evaluate_bilstm.py           # BiLSTM evaluation
+│   │   ├── evaluate_lstm.py             # LSTM evaluation
+│   │   ├── binary_train_randomforest.py # Binary RF (legacy)
+│   │   ├── binary_train_xgboost.py      # Binary XGBoost (legacy)
+│   │   ├── binary_train_dt.py           # Binary DT (legacy)
+│   │   ├── analyze_thresholds.py        # Threshold optimization
+│   │   └── stress_test.py               # Performance benchmarking
 │   │
-│   └── 📁 utils/
-│       ├── db_manager.py          # SQLite operations
-│       ├── firewall_manager.py    # Firewall integration
-│       ├── visualize_dt.py        # Decision Tree visualizations
-│       ├── data_audit.py          # RF data quality checks
-│       ├── data_audit_lstm.py     # BiLSTM data quality checks
-│       ├── model_optimizer.py     # Threshold optimization
-│       ├── xai_engine.py          # Explainable AI utilities
-│       └── inspect_csv.py         # CSV inspection helper
+│   └── utils/
+│       ├── db_manager.py                 # SQLite operations
+│       ├── firewall_manager.py           # OS-level firewall integration
+│       ├── visualize_dt.py               # Decision Tree visualizations
+│       ├── visualize_classes.py          # Class distribution plots
+│       ├── analyze_class_distribution.py # Class balance analysis
+│       ├── data_audit.py                 # Binary data audit
+│       ├── data_audit_lstm.py            # LSTM data audit
+│       ├── model_optimizer.py            # Threshold optimization
+│       ├── xai_engine.py                 # SHAP explainability
+│       └── inspect_csv.py               # CSV inspection utility
 │
-├── 📂 reports/
-│   ├── figures/                   # RF visualizations
-│   ├── xgboost/                   # XGBoost visualizations
-│   │   ├── xgb_confusion_matrix.png
-│   │   ├── xgb_feature_importance.png
-│   │   ├── xgb_learning_curve.png
-│   │   ├── xgb_roc_curve.png
-│   │   └── xgb_precision_recall.png
-│   ├── decisiontree/              # Decision Tree visualizations
-│   │   ├── dt_structure_top4_levels.png
-│   │   ├── dt_feature_importance.png
-│   │   ├── dt_confusion_matrix.png
-│   │   └── text_exports/decision_tree_rules.txt
-│   └── bilstm/                    # BiLSTM evaluation reports
-│       ├── final_classification_report.txt
-│       ├── final_confusion_matrix.png
-│       └── training_history/
+├── reports/
+│   ├── randomforest/                     # 3-class RF visualizations
+│   ├── xgboost/                          # 3-class XGBoost visualizations
+│   ├── decisiontree/                     # 3-class DT visualizations
+│   ├── bilstm/                           # BiLSTM evaluation reports
+│   ├── lstm/                             # LSTM evaluation reports
+│   ├── randomforest_binary/              # Archived binary RF reports
+│   ├── xgboost_binary/                   # Archived binary XGBoost reports
+│   └── decisiontree_binary/              # Archived binary DT reports
 │
-├── 📂 test/
-│   ├── attack_test.py             # Simulated attack scenarios
-│   └── check_interfaces.py        # Network interface detector
+├── experiments/                          # AutoML & PyCaret experiments
+│   ├── pycaret_setup.ipynb
+│   └── results/
 │
-├── requirements.txt               # Python dependencies
-├── .env.example                   # Environment template
-└── README.md                      # This file
+└── test/
+    └── attack_test.py                    # Simulated attack scenarios
 ```
 
 ---
 
-## 💻 Usage
+## Usage Guide
 
-### Random Forest: Real-Time IPS
+### Dashboard
 
-**Start Monitoring:**
-
-```bash
-python src/live_bridge.py
-```
-
-**Console Output Example:**
-
-```
-======================================================================
-🔧 LIVE DETECTOR INITIALIZATION
-======================================================================
-✅ Model Loaded: models/rf_optimized_model.pkl
-✅ Scaler Loaded: models/scaler.pkl
-✅ Threshold Loaded: 0.1077
-✅ Top Features: 20 columns
-======================================================================
-
-[2026-01-02 18:30:15] ✅ NORMAL
-  Src: 192.168.1.105 → Dst: 8.8.8.8
-  Confidence: 0.0234
-
-[2026-01-02 18:30:20] 🚨 ATTACK DETECTED!
-  Src: 203.0.113.45 → Dst: 192.168.1.100
-  Confidence: 0.9876
-  🚫 IP blocked: 203.0.113.45
-```
-
-### BiLSTM: Training & Evaluation
-
-**Step 1: Preprocess Data**
-
-```bash
-python src/features/preprocess_lstm.py
-```
-
-This creates:
-
-- `data/processed_lstm/X_train.npy` - Training sequences (N, 10, 20)
-- `data/processed_lstm/y_train.npy` - Training labels
-- `data/processed_lstm/X_test.npy` - Test sequences
-- `data/processed_lstm/y_test.npy` - Test labels
-- `models/scaler_lstm.pkl` - Fitted scaler
-- `models/class_weights.json` - Class weights
-
-**Step 2: Train Model**
-
-```bash
-python src/models/train_bilstm.py
-```
-
-Output:
-
-- `models/bilstm_best.keras` - Best model checkpoint
-- `reports/bilstm/training_history/` - Loss/accuracy plots
-
-**Step 3: Evaluate Model**
-
-```bash
-python src/models/evaluate_bilstm.py
-```
-
-Generates:
-
-- `reports/bilstm/final_classification_report.txt`
-- `reports/bilstm/final_confusion_matrix.png`
-
-**Example Classification Report:**
-
-```
-              precision    recall  f1-score   support
-
-      Benign     0.9850    0.9920    0.9885    150000
-  Volumetric     0.9780    0.9750    0.9765     80000
-    Semantic     0.9810    0.9790    0.9800     70000
-
-    accuracy                         0.9830    300000
-```
-
-### Dashboard Usage
-
-**Launch Dashboard:**
+Launch the monitoring dashboard:
 
 ```bash
 streamlit run src/dashboard/app.py
@@ -596,63 +485,47 @@ streamlit run src/dashboard/app.py
 
 **Features:**
 
-- 📊 Real-time metrics (total events, blocked IPs)
-- 📈 Attack timeline chart
-- 🥧 Action distribution (blocked vs allowed)
-- 📋 Filterable event log
-- 🔓 IP unblock interface
+- Real-time event metrics and blocked IP count
+- Attack timeline visualization
+- Action distribution charts (blocked vs. allowed)
+- Filterable event log with source/destination details
+- IP unblock interface for false positive management
+
+### Standalone Detection (Without Kafka)
+
+```bash
+python src/live_bridge.py
+```
+
+Runs the capture-to-prediction pipeline directly without Kafka, suitable for testing and development.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-### Environment Variables (`.env`)
+### Environment Variables
+
+Create a `.env` file from the provided template:
 
 ```env
-# Network Interface
 NETWORK_INTERFACE=Wi-Fi
-# Find yours: python test/check_interfaces.py
-
-# IP Whitelist (comma-separated, no spaces)
 WHITELIST_IPS=192.168.1.1,127.0.0.1,8.8.8.8
-
-# Random Forest Threshold (0.0 - 1.0)
 THRESHOLD=0.10774313582858071
-# Lower = more sensitive, Higher = fewer false alarms
 ```
 
-### Random Forest Threshold Tuning
+| Variable            | Description                                                          |
+| :------------------ | :------------------------------------------------------------------- |
+| `NETWORK_INTERFACE` | Network adapter name (run `python test/check_interfaces.py` to list) |
+| `WHITELIST_IPS`     | Comma-separated IPs to exclude from blocking                         |
+| `THRESHOLD`         | Decision boundary for binary classification                          |
 
-| Threshold  | Recall | Precision | Use Case                     |
-| ---------- | ------ | --------- | ---------------------------- |
-| **0.05**   | 99.95% | 92%       | High-security (banks, gov't) |
-| **0.1077** | 99.90% | 97.87%    | **Recommended (current)**    |
-| **0.20**   | 99.5%  | 99%       | Balanced production          |
-| **0.50**   | 95%    | 99.8%     | Low false alarm priority     |
+### Active Model Selection
 
-**Change Threshold:**
+The Kafka Consumer dynamically loads models based on `data/active_model.txt`. Model hot-reloading is supported — update this file and the consumer switches models automatically without restart.
 
-1. Edit `models/threshold.txt` → Change value
-2. Or edit `.env` → `THRESHOLD=0.20`
-3. Restart `live_bridge.py`
+### Class Mapping
 
-### BiLSTM Hyperparameters
-
-Edit `src/models/train_bilstm.py`:
-
-```python
-EPOCHS = 50
-BATCH_SIZE = 256
-LEARNING_RATE = 0.001
-LSTM_UNITS_1 = 128
-LSTM_UNITS_2 = 64
-DROPOUT_RATE = 0.3
-WINDOW_SIZE = 10  # Sequence length
-```
-
-### Class Mapping (BiLSTM)
-
-Edit `src/utils/classes_map.json`:
+Define attack-to-class mapping in `src/utils/classes_map.json`:
 
 ```json
 {
@@ -669,184 +542,102 @@ Edit `src/utils/classes_map.json`:
 
 ---
 
-## 🛠️ Development
+## Development
 
-### Training Random Forest
+### Training Pipeline (3-Class Models)
 
 ```bash
-python src/models/train_randomforest.py
+# Step 1 — Preprocess raw CICIDS 2017 data into 3-class splits
+python src/features/preprocess_ml_3class.py
+# Output: data/processed_ml/{train,val,test}.csv
+
+# Step 2 — Train models
+python src/models/train_randomforest.py      # Random Forest
+python src/models/train_xgboost.py           # XGBoost (GPU-accelerated)
+python src/models/train_decisiontree.py      # Decision Tree
+
+# Step 3 — Generate evaluation dashboards
+python src/models/evaluate_randomforest.py
+python src/models/evaluate_xgboost.py
+python src/models/evaluate_decisiontree.py
 ```
 
-Outputs:
+Each evaluation script produces:
 
-- `models/rf_optimized_model.pkl`
-- `models/scaler.pkl`
-- `models/threshold.txt`
-- `reports/figures/confusion_matrix.png`
+- **Executive dashboard** — gauge charts, key metrics, deployment readiness
+- **Detailed numeric report** — per-class precision/recall/F1
+- **Confusion matrix** — 3×3 heatmap
+- **Feature importance** — top-20 ranked features
+- **ROC curves** — One-vs-Rest with AUC per class
 
-### Training XGBoost
-
-**Requirements:** CUDA-enabled GPU (optional but recommended for 15-45x speedup)
-
-```bash
-python src/models/train_xgboost.py
-```
-
-**Training Time:**
-
-- With GPU: ~20 seconds
-- Without GPU: 5-15 minutes
-
-Outputs:
-
-- `models/xgboost_model.pkl` - Trained XGBoost model (4.49 MB)
-- `models/threshold_xgb.txt` - Optimized decision threshold (0.84)
-- `models/xgb_config.json` - Training configuration and metrics
-- `reports/figures/xgboost/xgb_confusion_matrix.png` - Baseline vs Optimized
-- `reports/figures/xgboost/xgb_feature_importance.png` - Top 20 features
-- `reports/figures/xgboost/xgb_learning_curve.png` - Validation LogLoss
-- `reports/figures/xgboost/xgb_roc_curve.png` - ROC curve (AUC=1.0)
-- `reports/figures/xgboost/xgb_precision_recall.png` - PR curve with optimal threshold
-
-### Training Decision Tree
+### Training Pipeline (Deep Learning)
 
 ```bash
-# Train the model
-python src/models/train_dt.py
-
-# Generate visualizations
-python src/utils/visualize_dt.py
-```
-
-Outputs:
-
-- `models/dt_model.pkl` - Trained Decision Tree model
-- `models/dt_rules.txt` - Human-readable decision rules
-- `reports/decisiontree/dt_structure_top4_levels.png` - Tree diagram
-- `reports/decisiontree/dt_feature_importance.png` - Feature importance chart
-- `reports/decisiontree/dt_confusion_matrix.png` - Confusion matrix heatmap
-
-### Training BiLSTM
-
-```bash
-# 1. Preprocess data
+# Step 1 — Preprocess into LSTM sequences
 python src/features/preprocess_lstm.py
 
-# 2. Train model
+# Step 2 — Train
 python src/models/train_bilstm.py
-
-# 3. Evaluate
-python src/models/evaluate_bilstm.py
-```
-
-### Training LSTM (Unidirectional)
-
-```bash
-# Train model
 python src/models/train_lstm.py
 
-# Evaluate
+# Step 3 — Evaluate
+python src/models/evaluate_bilstm.py
 python src/models/evaluate_lstm.py
 ```
 
-### Threshold Analysis & Risk Scoring
-
-Analyze prediction confidence to determine optimal thresholds for 5-level risk scoring:
+### Binary Models (Legacy)
 
 ```bash
-python src/models/analyze_thresholds.py
+python src/models/binary_train_randomforest.py
+python src/models/binary_train_xgboost.py
+python src/models/binary_train_dt.py
 ```
-
-**Outputs:**
-
-- `reports/bilstm/threshold_analysis.png`
-- Precision/Recall metrics for custom thresholds
-- Suggested risk levels (Critical, High, Medium, Low, Minimal)
 
 ### Data Quality Audits
 
-**Random Forest:**
-
 ```bash
-python src/utils/data_audit.py
+python src/features/data_audit_3class.py     # 3-class ML data
+python src/utils/data_audit.py               # Binary RF data
+python src/utils/data_audit_lstm.py           # LSTM sequence data
 ```
 
-Checks:
-
-- No data leakage between splits
-- Class balance
-- Missing values
-- Feature correlation
-
-**BiLSTM:**
-
-```bash
-python src/utils/data_audit_lstm.py
-```
-
-Checks:
-
-- Sequence shapes
-- NaN/Inf values
-- Scaling verification
-- Class distribution
-
-### Testing
-
-**Simulate Attack:**
-
-```bash
-python test/attack_test.py
-```
-
-**Stress Test:**
+### Stress Testing
 
 ```bash
 python src/models/stress_test.py
+# Reports: throughput (predictions/sec), latency (ms), memory usage
 ```
-
-Output:
-
-- ⚡ Throughput: predictions/sec
-- 📊 Latency: average ms
-- 💾 Memory usage
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
-```python
-# Core ML
-scikit-learn==1.7.2
-xgboost==2.1.4  # GPU-accelerated gradient boosting
-tensorflow
-joblib
+### Python Packages
 
-# AutoML
-pycaret
-catboost
-
-# Data Processing
+```
 numpy
 pandas
-
-# Network & Security
+scikit-learn
+tensorflow
+xgboost
 scapy
-cicflowmeter
-
-# Visualization
+streamlit
 matplotlib
 seaborn
+joblib
 plotly
-
-# Dashboard
-streamlit
-
-# Utilities
 python-dotenv
+cicflowmeter
+confluent-kafka
 ```
 
-**Install:**
+### System Requirements
+
+| Requirement    | Purpose                                                  |
+| :------------- | :------------------------------------------------------- |
+| Docker Desktop | Kafka + Zookeeper containerized infrastructure           |
+| Java 11+       | CICFlowMeter feature extraction                          |
+| CUDA Toolkit   | _Optional_ — GPU acceleration for XGBoost and TensorFlow |
 
 ```bash
 pip install -r requirements.txt
@@ -854,77 +645,52 @@ pip install -r requirements.txt
 
 ---
 
-## 🔍 How It Works
+## Experiments & AutoML
 
-### Random Forest Pipeline
+PyCaret was used to benchmark multiple algorithms on binary classification:
 
-1. **Capture** (4s) → Scapy sniffs packets
-2. **Extract** (2-5s) → CICFlowMeter generates 78 features
-3. **Preprocess** → Select top 20 features, scale (0-1)
-4. **Predict** → RF outputs probability, apply threshold (0.1077)
-5. **Act** → Block IP if attack detected, log to DB
-
-### BiLSTM Pipeline
-
-1. **Preprocess** → Load CSVs, map labels (0/1/2)
-2. **Sequence** → Create sliding windows (10 timesteps)
-3. **Scale** → MinMaxScaler (0-1) fitted on training data
-4. **Train** → 2 BiLSTM layers + BatchNorm + Dropout
-5. **Evaluate** → Generate classification report, confusion matrix
-
-### Why Dual Models?
-
-| Scenario              | Best Model    | Reason                         |
-| --------------------- | ------------- | ------------------------------ |
-| Real-time blocking    | Random Forest | 6-9s latency, immediate action |
-| Pattern analysis      | BiLSTM        | Captures temporal dependencies |
-| Attack categorization | BiLSTM        | 3-class granularity            |
-| Resource-constrained  | Random Forest | No GPU needed                  |
-| Offline forensics     | BiLSTM        | Deep pattern recognition       |
+- **CatBoost** emerged as top performer (~99.8% accuracy)
+- Experiment notebook: `experiments/pycaret_setup.ipynb`
+- Results and visualizations: `experiments/results/`
 
 ---
 
-## 📄 License
+## License
 
-MIT License - Copyright (c) 2026 Betul Danismaz
-
-See [LICENSE](LICENSE) for full text.
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
-### Datasets
+### Dataset
 
-- **[CICIDS 2017](https://www.unb.ca/cic/datasets/ids-2017.html)** - Canadian Institute for Cybersecurity
+> Iman Sharafaldin, Arash Habibi Lashkari, and Ali A. Ghorbani, "Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization", _4th International Conference on Information Systems Security and Privacy (ICISSP)_, 2018.
+
+**Source:** [CICIDS 2017 — Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/ids-2017.html)
 
 ### Tools & Libraries
 
-- **[Scapy](https://scapy.net/)** - Packet manipulation
-- **[CICFlowMeter](https://github.com/ahlashkari/CICFlowMeter)** - Flow feature extraction
-- **[scikit-learn](https://scikit-learn.org/)** - Machine learning
-- **[TensorFlow](https://www.tensorflow.org/)** - Deep learning
-- **[Streamlit](https://streamlit.io/)** - Dashboard framework
-
----
-
-## 📧 Contact & Support
-
-**Authors:** Betul Danismaz, Mustafa Emre Bıyık
-
-**Repository:** [Network_Anomaly_Detection](https://github.com/betuldanismaz/Network_Anomaly_Detection)
+| Tool                                                       | Purpose                                       |
+| :--------------------------------------------------------- | :-------------------------------------------- |
+| [Scapy](https://scapy.net/)                                | Packet manipulation and capture               |
+| [CICFlowMeter](https://github.com/ahlashkari/CICFlowMeter) | Bidirectional flow feature extraction         |
+| [XGBoost](https://xgboost.readthedocs.io/)                 | GPU-accelerated gradient boosting             |
+| [scikit-learn](https://scikit-learn.org/)                  | Machine learning algorithms and preprocessing |
+| [TensorFlow](https://www.tensorflow.org/)                  | Deep learning framework                       |
+| [Apache Kafka](https://kafka.apache.org/)                  | Distributed event streaming                   |
+| [Streamlit](https://streamlit.io/)                         | Interactive dashboard framework               |
+| [SHAP](https://shap.readthedocs.io/)                       | Model explainability                          |
 
 ---
 
 <div align="center">
 
-## ⚡ Dual-Model Architecture | Real-Time Detection | Temporal Analysis
+**Betül Danışmaz · Mustafa Emre Bıyık**
 
-**Star ⭐ this repo if you find it useful!**
+[GitHub Repository](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 
 [![GitHub Stars](https://img.shields.io/github/stars/betuldanismaz/Network_Anomaly_Detection?style=social)](https://github.com/betuldanismaz/Network_Anomaly_Detection)
 [![GitHub Forks](https://img.shields.io/github/forks/betuldanismaz/Network_Anomaly_Detection?style=social)](https://github.com/betuldanismaz/Network_Anomaly_Detection)
-
-**Made with ❤️ for cybersecurity research**
 
 </div>

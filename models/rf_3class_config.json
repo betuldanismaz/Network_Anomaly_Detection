@@ -1,0 +1,79 @@
+{
+    "model_type": "RandomForest_3Class",
+    "classification": "3-class",
+    "classes": {
+        "0": "Benign",
+        "1": "Volumetric",
+        "2": "Semantic"
+    },
+    "training_date": "2026-02-21",
+    "training_time_seconds": 2403.0,
+    "scoring_metric": "f1_macro",
+    "best_cv_f1_macro": 0.9367,
+    "hyperparameters": {
+        "n_estimators": 50,
+        "min_samples_split": 10,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "max_depth": null,
+        "criterion": "gini",
+        "bootstrap": true
+    },
+    "test_metrics": {
+        "accuracy": 0.9713,
+        "macro_precision": 0.9309,
+        "macro_recall": 0.9823,
+        "macro_f1": 0.9543,
+        "macro_roc_auc": 0.9983
+    },
+    "per_class_metrics": {
+        "Benign": {
+            "precision": 0.9984,
+            "recall": 0.9658,
+            "f1": 0.9819
+        },
+        "Volumetric": {
+            "precision": 0.8489,
+            "recall": 0.9989,
+            "f1": 0.9178
+        },
+        "Semantic": {
+            "precision": 0.9453,
+            "recall": 0.9821,
+            "f1": 0.9634
+        }
+    },
+    "per_class_roc_auc": {
+        "Benign": 0.9977,
+        "Volumetric": 0.9978,
+        "Semantic": 0.9994
+    },
+    "dataset": {
+        "train_samples": 2264591,
+        "val_samples": 283074,
+        "test_samples": 283078,
+        "n_features": 20,
+        "feature_names": [
+            "Bwd Packet Length Std",
+            "Bwd Packet Length Mean",
+            "Packet Length Std",
+            "Packet Length Variance",
+            "Bwd Packet Length Max",
+            "Subflow Bwd Bytes",
+            "Avg Bwd Segment Size",
+            "Packet Length Mean",
+            "Average Packet Size",
+            "Max Packet Length",
+            "Total Length of Bwd Packets",
+            "Fwd IAT Std",
+            "Total Fwd Packets",
+            "Total Backward Packets",
+            "Bwd Packets/s",
+            "Idle Min",
+            "Fwd IAT Mean",
+            "Subflow Fwd Packets",
+            "Total Length of Fwd Packets",
+            "Fwd IAT Max"
+        ]
+    }
+}
