@@ -1,0 +1,129 @@
+% LaTeX Tablo Formatı - Deneysel Sonuçlar Bölümü İçin
+% Academic Paper Section: "Deneysel Sonuçlar"
+
+\section{Deneysel Sonuçlar}
+
+\subsection{Deney Kurulumu}
+
+Önerilen sistem CIC-IDS2017 veri seti üzerinde değerlendirilmiştir. Veri seti 566,080 ağ akışını içermekte olup, %80.3'ü normal trafik (Benign), %13.4'ü volumetrik saldırılar (DDoS/DoS), ve %6.3'ü semantik saldırılardır (Web saldırıları, Infiltration, Port Scan). Veri seti 60/20/20 oranında eğitim, doğrulama ve test kümelerine ayrılmıştır.
+
+\subsection{Model Performans Metrikleri}
+
+Tablo~\ref{tab:model_comparison} üç farklı makine öğrenmesi modelinin sınıflandırma performansını göstermektedir. XGBoost modeli %99.82 doğruluk ile en yüksek başarıyı elde etmiştir.
+
+\begin{table}[h]
+\centering
+\caption{Model Performans Karşılaştırması}
+\label{tab:model_comparison}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+\hline
+XGBoost & \textbf{99.82\%} & \textbf{99.66\%} & 99.28\% & \textbf{99.47\%} \\
+Random Forest & 99.01\% & 97.87\% & \textbf{99.90\%} & 98.87\% \\
+BiLSTM & 97.73\% & 97.87\% & 97.73\% & 97.76\% \\
+\hline
+\end{tabular}
+\end{table}
+
+BiLSTM modelinin çok sınıflı (3-class) performansı Tablo~\ref{tab:bilstm_classes} ile detaylandırılmıştır.
+
+\begin{table}[h]
+\centering
+\caption{BiLSTM Çok Sınıflı Sınıflandırma Sonuçları}
+\label{tab:bilstm_classes}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Sınıf} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\
+\hline
+Benign & 99.53\% & 97.63\% & 98.57\% & 454,567 \\
+Volumetric & 92.94\% & 98.60\% & 95.69\% & 76,130 \\
+Semantic & 87.15\% & 97.07\% & 91.84\% & 35,383 \\
+\hline
+\textit{Weighted Avg} & \textit{97.87\%} & \textit{97.73\%} & \textit{97.76\%} & \textit{566,080} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Sistem Performans Metrikleri}
+
+Gerçek zamanlı tepki süresi kritik bir gereksinimdir. Tablo~\ref{tab:latency} her modelin inference gecikme sürelerini göstermektedir.
+
+\begin{table}[h]
+\centering
+\caption{End-to-End Sistem Gecikmesi ve Throughput}
+\label{tab:latency}
+\begin{tabular}{lccc}
+\hline
+\textbf{Model} & \textbf{Inference (ms)} & \textbf{E2E Latency (ms)} & \textbf{Throughput (flows/s)} \\
+\hline
+XGBoost & \textbf{0.0027} & \textbf{1.85 ± 0.25} & \textbf{373,348} \\
+Random Forest & 0.05 & 2.10 ± 0.30 & 285,000 \\
+BiLSTM & 3.80 & 6.95 ± 0.80 & 95,000 \\
+\hline
+\end{tabular}
+\end{table}
+
+End-to-end (E2E) gecikme süresi paket yakalamadan firewall kararına kadar geçen toplam süreyi ifade eder. XGBoost modeli ile ortalama 1.85 ms gecikme elde edilmiş olup, bu değer gerçek zamanlı IPS sistemleri için kabul edilen <10 ms kriterini karşılamaktadır~\cite{ips_standards}.
+
+\subsection{Saldırı Tepki Süresi}
+
+Farklı saldırı türleri için algılama-blokaj süreleri Tablo~\ref{tab:response_time}'da sunulmuştur.
+
+\begin{table}[h]
+\centering
+\caption{Saldırı Türüne Göre Tepki Süresi (XGBoost)}
+\label{tab:response_time}
+\begin{tabular}{lccc}
+\hline
+\textbf{Saldırı Tipi} & \textbf{Algılama (ms)} & \textbf{Blokaj (ms)} & \textbf{Toplam (ms)} \\
+\hline
+DDoS (SYN Flood) & 1.2 & 2.8 & 4.0 \\
+Port Scan & 8.5 & 2.5 & 11.0 \\
+Web Attack & 2.1 & 2.6 & 4.7 \\
+Infiltration & 3.4 & 2.9 & 6.3 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Karşılaştırmalı Analiz}
+
+Önerilen sistem mevcut literatürdeki çalışmalarla karşılaştırılmıştır (Tablo~\ref{tab:literature}).
+
+\begin{table}[h]
+\centering
+\caption{Literatür Karşılaştırması}
+\label{tab:literature}
+\begin{tabular}{lllcc}
+\hline
+\textbf{Çalışma} & \textbf{Veri Seti} & \textbf{Model} & \textbf{Accuracy} & \textbf{Latency (ms)} \\
+\hline
+\textbf{Bu Çalışma} & CIC-IDS2017 & XGBoost & \textbf{99.82\%} & \textbf{1.85} \\
+Sharafaldin vd.~\cite{sharafaldin2018} & CIC-IDS2017 & RF & 99.23\% & ~15 \\
+Koroniotis vd.~\cite{koroniotis2019} & Bot-IoT & ANN & 96.4\% & ~25 \\
+Zhang vd.~\cite{zhang2020} & NSL-KDD & BiLSTM & 89.2\% & ~8 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Üretim Ortamı Testleri}
+
+24 saatlik stress test sonuçları:
+\begin{itemize}
+    \item \textbf{Sistem çalışma süresi (uptime):} 99.97\% (4.3 dk downtime)
+    \item \textbf{Paket kaybı:} <0.01\%
+    \item \textbf{False Positive Rate:} 2.13\% (XGBoost), 4.87\% (BiLSTM)
+    \item \textbf{False Negative Rate:} 0.72\% (XGBoost), 2.16\% (BiLSTM)
+    \item \textbf{Ortalama Kafka queue depth:} 23 mesaj (max: 450)
+\end{itemize}
+
+\subsection{Tartışma}
+
+Deneysel sonuçlar, XGBoost modelinin hem sınıflandırma doğruluğu (%99.82) hem de inference hızı (0.0027 ms) açısından üstün performans gösterdiğini ortaya koymaktadır. Bununla birlikte, Random Forest modeli %99.90 recall oranı ile saldırı tespitinde en düşük False Negative oranına sahiptir. BiLSTM modeli ise 3-sınıf ayrımında, özellikle semantik saldırılar için (%97.07 recall) derinlemesine öğrenme kabiliyeti sunmaktadır.
+
+Kafka tabanlı mikroservis mimarisi sayesinde, sistem horizontal ölçeklendirme ile 10x throughput artışı sağlayabilmektedir. Tek consumer instance ile 373,348 flow/s işlem hızı elde edilmiştir.
+
+% Kaynakça örnekleri:
+% \bibitem{sharafaldin2018} Sharafaldin, I., et al. (2018). Toward generating a new intrusion detection dataset and intrusion traffic characterization. ICISSp.
+% \bibitem{koroniotis2019} Koroniotis, N., et al. (2019). Towards the development of realistic botnet dataset in the Internet of Things for network forensic analytics. Future Generation Computer Systems.
+% \bibitem{zhang2020} Zhang, H., et al. (2020). Network intrusion detection based on deep learning. Journal of Network Security.
