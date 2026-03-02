@@ -1,7 +1,7 @@
 """
 Random Forest Training Script for Network Intrusion Detection System
 3-CLASS CLASSIFICATION: Benign (0), Volumetric (1), Semantic (2)
-Date: 2026-02-21
+Date: 2026-03-02
 """
 
 import pandas as pd
@@ -13,7 +13,7 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import ParameterGrid
 from sklearn.metrics import (
     classification_report,
     accuracy_score,
@@ -115,63 +115,101 @@ def train_3class_model():
         print(f"      - {cls_name} ({cls_id}): {count:,} ({pct:.2f}%)")
 
     # ============================================================================
-    # 3. HYPERPARAMETER TUNING WITH RANDOMIZED SEARCH
+    # 3. HYPERPARAMETER TUNING — TARGETED GRID SEARCH (SCORED ON VALIDATION SET)
     # ============================================================================
-    print(f"\n{YELLOW}⚙️  Step 2: Hyperparameter Tuning (Optimizing for Macro F1)...{RESET}")
-    print(f"   🎯 Strategy: Using RandomizedSearchCV with scoring='f1_macro'")
-    print(f"   🎯 Class Weights: 'balanced' (critical for imbalanced Semantic class)")
-    print(f"      - Max iterations: 10")
-    print(f"      - Cross-validation folds: 3")
-    print(f"      - Parallel jobs: 4")
+    # WHY replace RandomizedSearchCV?
+    # The old approach: 10 random combos × 3-fold CV on training data.
+    #   - Slow (repeats full CV), noisy (CV score ≠ held-out val score),
+    #     and never tested softer class weights or structural leaf guards.
+    # The new approach: exhaustive 18-combo grid, scored directly on val.csv.
+    #   - No CV overhead, faster per-combo, directly optimises the metric we care about.
+    #   - Explores two class_weight strategies to find the precision/recall sweet spot.
+    #
+    # ROOT CAUSE of low Volumetric precision (84.89%)
+    # ------------------------------------------------
+    # 1. 'balanced' weights upweight Semantic by ~5.3×, teaching all trees to be
+    #    aggressive about predicting attacks → many Benign flows get flagged as
+    #    Volumetric → low Volumetric precision.
+    # 2. min_samples_leaf=[1,2,4] allowed tiny noisy leaves near the Benign-Volumetric
+    #    boundary to survive → unstable predictions.
+    # 3. criterion='gini' only — 'entropy' makes more balanced multi-class splits.
+    #
+    # FIXES applied
+    # -------------
+    # • criterion: fixed to 'entropy'
+    # • min_samples_leaf: [10, 30, 50]  — bigger floor, cleaner leaves
+    # • class_weight: ['balanced', {0:1.0, 1:2.0, 2:4.0}]
+    #     'balanced'       → old behaviour (high recall, lower precision)
+    #     custom {1:2,2:4} → softer boost (better precision, slight recall trade-off)
+    # • max_depth: [20, 30, None] — deeper than the old [10,15,20] for finer splits
+    # • n_estimators: fixed at 100 — enough trees, faster per-combo
 
-    # Define hyperparameter search space
-    param_distributions = {
-        'n_estimators': [50, 75, 100],
-        'max_depth': [10, 15, 20, None],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4],
-        'max_features': ['sqrt', 'log2'],
-        'bootstrap': [True],
-        'criterion': ['gini']
+    param_grid = {
+        'max_depth':        [20, 30, None],
+        'min_samples_leaf': [10, 30, 50],
+        'max_features':     ['sqrt', 'log2'],
+        'class_weight':     ['balanced', {0: 1.0, 1: 2.0, 2: 4.0}],
     }
+    total_combos = len(list(ParameterGrid(param_grid)))
 
-    # Base estimator with balanced class weights
-    base_rf = RandomForestClassifier(
-        class_weight='balanced',
-        random_state=42,
-        n_jobs=4,
-        verbose=1
-    )
+    print(f"\n{YELLOW}⚙️  Step 2: Targeted Grid Search (scored on Validation Macro F1)...{RESET}")
+    print(f"   Grid: max_depth={param_grid['max_depth']}, "
+          f"min_samples_leaf={param_grid['min_samples_leaf']}, "
+          f"max_features={param_grid['max_features']}, class_weight=['balanced', custom]")
+    print(f"   Total combinations: {total_combos}  |  n_estimators=100  |  criterion=entropy")
 
-    # RandomizedSearchCV with f1_macro scoring
-    print(f"\n   ⏳ Starting RandomizedSearchCV (10 iterations, 3-fold CV)...")
-    random_search = RandomizedSearchCV(
-        estimator=base_rf,
-        param_distributions=param_distributions,
-        n_iter=10,
-        scoring='f1_macro',
-        cv=3,
-        verbose=2,
-        random_state=42,
-        n_jobs=4,
-        return_train_score=True
-    )
+    best_val_f1   = -1.0
+    best_params   = {}
+    best_rf       = None
+    best_cv_score = -1.0  # reused for the best val F1 in reporting
 
-    # Fit the random search
     train_start = time.time()
-    random_search.fit(X_train, y_train)
+
+    for i, params in enumerate(ParameterGrid(param_grid), start=1):
+        cw_label = 'balanced' if params['class_weight'] == 'balanced' else 'custom'
+        rf = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=params['max_depth'],
+            min_samples_leaf=params['min_samples_leaf'],
+            min_samples_split=max(params['min_samples_leaf'] * 2, 2),
+            max_features=params['max_features'],
+            criterion='entropy',
+            class_weight=params['class_weight'],
+            bootstrap=True,
+            random_state=42,
+            n_jobs=4
+        )
+        rf.fit(X_train, y_train)
+        y_pred_v = rf.predict(X_val)
+        val_f1 = f1_score(y_val, y_pred_v, average='macro')
+        val_p  = precision_score(y_val, y_pred_v, average='macro')
+        val_r  = recall_score(y_val, y_pred_v, average='macro')
+
+        is_best = val_f1 > best_val_f1
+        tag = f" {GREEN}✅ best{RESET}" if is_best else ""
+        depth_str = str(params['max_depth']) if params['max_depth'] is not None else 'None'
+        print(f"   [{i:2d}/{total_combos}] depth={depth_str:>4s}  leaf={params['min_samples_leaf']:>2d}  "
+              f"feat={params['max_features']:>4s}  cw={cw_label:>8s}  "
+              f"→ P={val_p:.4f}  R={val_r:.4f}  F1={val_f1:.4f}{tag}")
+
+        if is_best:
+            best_val_f1   = val_f1
+            best_params   = params
+            best_rf       = rf
+            best_cv_score = val_f1  # used in reporting below
+
     train_time = time.time() - train_start
 
-    # Get best model
-    best_rf = random_search.best_estimator_
-    best_params = random_search.best_params_
-    best_cv_score = random_search.best_score_
-
-    print(f"\n{GREEN}   ✅ Hyperparameter Tuning Complete! (Training time: {train_time:.1f}s){RESET}")
+    cw_best_label = 'balanced' if best_params['class_weight'] == 'balanced' else 'custom {0:1, 1:2, 2:4}'
+    print(f"\n{GREEN}   ✅ Grid Search Complete! (Total time: {train_time:.1f}s){RESET}")
     print(f"\n   📋 Best Parameters Found:")
-    for param, value in best_params.items():
-        print(f"      - {param}: {value}")
-    print(f"\n   🏆 Best CV Macro F1 Score: {best_cv_score:.4f}")
+    print(f"      - max_depth:        {best_params['max_depth']}")
+    print(f"      - min_samples_leaf: {best_params['min_samples_leaf']}")
+    print(f"      - max_features:     {best_params['max_features']}")
+    print(f"      - class_weight:     {cw_best_label}")
+    print(f"      - criterion:        entropy")
+    print(f"      - n_estimators:     100")
+    print(f"\n   🏆 Best Val Macro F1 Score: {best_cv_score:.4f}")
 
     # ============================================================================
     # 4. EVALUATION ON VALIDATION SET
@@ -355,22 +393,21 @@ def train_3class_model():
 MODEL CONFIGURATION & HYPERPARAMETERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Training Date: 2026-02-21
+Training Date: 2026-03-02
 Model Type: RandomForest_3Class
 Classification: 3-Class (Benign / Volumetric / Semantic)
-Scoring Metric: f1_macro
+Scoring Metric: f1_macro (on held-out validation set)
 Training Time: {train_time:.1f} seconds
 
-Best Hyperparameters:
-  • n_estimators: {best_params.get('n_estimators', 'N/A')}
-  • max_depth: {best_params.get('max_depth', 'N/A')}
-  • min_samples_split: {best_params.get('min_samples_split', 'N/A')}
+Best Hyperparameters (from 36-combo grid search):
+  • n_estimators:     100  [fixed]
+  • criterion:        entropy  [fixed]
+  • max_depth:        {best_params.get('max_depth', 'N/A')}
   • min_samples_leaf: {best_params.get('min_samples_leaf', 'N/A')}
-  • max_features: {best_params.get('max_features', 'N/A')}
-  • criterion: {best_params.get('criterion', 'N/A')}
-  • class_weight: balanced
+  • max_features:     {best_params.get('max_features', 'N/A')}
+  • class_weight:     {cw_best_label}
 
-Best CV Macro F1 Score: {best_cv_score:.4f}
+Best Val Macro F1 Score: {best_cv_score:.4f}
     """
     ax1.text(0.05, 0.95, config_text, transform=ax1.transAxes,
              fontsize=11, verticalalignment='top', family='monospace',
@@ -528,7 +565,7 @@ RECOMMENDATIONS & NOTES
         "model_type": "RandomForest_3Class",
         "classification": "3-class",
         "classes": {str(i): name for i, name in enumerate(CLASS_NAMES)},
-        "training_date": "2026-02-21",
+        "training_date": "2026-03-02",
         "training_time_seconds": round(train_time, 1),
         "scoring_metric": "f1_macro",
         "best_cv_f1_macro": round(float(best_cv_score), 4),

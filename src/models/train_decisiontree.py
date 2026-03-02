@@ -25,6 +25,7 @@ from sklearn.metrics import (
     confusion_matrix,
     classification_report
 )
+from sklearn.model_selection import ParameterGrid
 
 # WHY: We add the parent directory to the path so Python can find our config module.
 # This allows us to run this script from different locations (e.g., project root or src/).
@@ -128,45 +129,129 @@ def prepare_features_and_labels(
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
+def tune_decision_tree(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    random_state: int = 42
+) -> dict:
+    """Grid search over key hyperparameters, scored on validation macro F1.
+
+    WHY a grid search instead of fixed params?
+    A single decision tree is sensitive to depth and leaf-size settings.
+    Deeper trees (depth 20+) capture finer Benign/Volumetric/Semantic boundaries,
+    but too deep without leaf guards causes noisy leaves that hurt precision.
+    Rather than hand-tuning, we let the validation set decide the best combo.
+    """
+
+    # WHY these ranges?
+    # - max_depth: 15-30 — shallow (10) was under-fitting for 3-class;
+    #   None (unlimited) risks noisy leaves, so we cap at 30 and let
+    #   min_samples_leaf handle pruning instead.
+    # - min_samples_leaf: 20-100 — a leaf with fewer samples is likely noise;
+    #   this is a structural pruning guard that replaces the blunt max_depth cap.
+    # - class_weight: 'balanced' vs custom — 'balanced' can over-boost Semantic
+    #   (weight ~5.3×), custom {0:1,1:2,2:4} is softer and preserves more precision.
+    param_grid = {
+        'max_depth':        [15, 20, 30],
+        'min_samples_leaf': [20, 50, 100],
+        'class_weight':     ['balanced', {0: 1.0, 1: 2.0, 2: 4.0}],
+    }
+
+    print(f"\n🔍 Hyperparameter Grid Search (scored on Validation Macro F1)...")
+    print(f"   Grid: max_depth={param_grid['max_depth']}, "
+          f"min_samples_leaf={param_grid['min_samples_leaf']}, "
+          f"class_weight=['balanced', custom]")
+    print(f"   Total combinations: {len(list(ParameterGrid(param_grid)))}")
+
+    best_f1   = -1.0
+    best_params = {}
+    results = []
+
+    for i, params in enumerate(ParameterGrid(param_grid), start=1):
+        clf = DecisionTreeClassifier(
+            max_depth=params['max_depth'],
+            min_samples_leaf=params['min_samples_leaf'],
+            min_samples_split=params['min_samples_leaf'] * 2,  # always 2× leaf floor
+            criterion='entropy',
+            class_weight=params['class_weight'],
+            random_state=random_state
+        )
+        clf.fit(X_train, y_train)
+        y_pred_val = clf.predict(X_val)
+        val_f1 = f1_score(y_val, y_pred_val, average='macro')
+        val_p  = precision_score(y_val, y_pred_val, average='macro')
+        val_r  = recall_score(y_val, y_pred_val, average='macro')
+
+        cw_label = 'balanced' if params['class_weight'] == 'balanced' else 'custom'
+        results.append((val_f1, params, cw_label))
+        print(f"   [{i:2d}/18] depth={str(params['max_depth']):>3s}  "
+              f"leaf={params['min_samples_leaf']:>3d}  cw={cw_label:>8s}  "
+              f"→ P={val_p:.4f}  R={val_r:.4f}  F1={val_f1:.4f}"
+              + (" ✅ best" if val_f1 > best_f1 else ""))
+
+        if val_f1 > best_f1:
+            best_f1 = val_f1
+            best_params = params
+
+    print(f"\n   🏆 Best Val Macro F1: {best_f1:.4f}")
+    print(f"   Best params: max_depth={best_params['max_depth']}, "
+          f"min_samples_leaf={best_params['min_samples_leaf']}, "
+          f"class_weight={'balanced' if best_params['class_weight'] == 'balanced' else 'custom'}")
+
+    return best_params
+
+
 def train_decision_tree(
     X_train: np.ndarray,
     y_train: np.ndarray,
-    max_depth: int = 10,
+    best_params: dict,
     random_state: int = 42
 ) -> DecisionTreeClassifier:
-    """Train a 3-class Decision Tree with balanced class weights."""
+    """Train the final 3-class Decision Tree using hyperparameters from grid search."""
 
-    print(f"\n🌳 Training Decision Tree Classifier (3-Class)...")
-    print(f"   Hyperparameters:")
-    print(f"   - max_depth: {max_depth} (prevents overfitting, maintains interpretability)")
-    print(f"   - random_state: {random_state} (ensures reproducibility)")
-    print(f"   - criterion: 'gini' (measures impurity of splits)")
-    print(f"   - class_weight: 'balanced' (critical for imbalanced Semantic class ~6%)")
+    max_depth        = best_params['max_depth']
+    min_samples_leaf = best_params['min_samples_leaf']
+    class_weight     = best_params['class_weight']
+    cw_label = 'balanced' if class_weight == 'balanced' else 'custom {0:1, 1:2, 2:4}'
 
-    # WHY class_weight='balanced'?
-    # The Semantic class is only ~6.25% of the data. Without balanced weights,
-    # the tree will focus on the majority Benign class and ignore Semantic.
-    # 'balanced' automatically adjusts weights inversely proportional to class frequencies.
+    print(f"\n🌳 Training Final Decision Tree Classifier (3-Class)...")
+    print(f"   Hyperparameters (from grid search):")
+    print(f"   - max_depth:         {max_depth}")
+    print(f"   - min_samples_leaf:  {min_samples_leaf}  (structural pruning guard)")
+    print(f"   - min_samples_split: {min_samples_leaf * 2}  (= 2 × leaf floor)")
+    print(f"   - criterion:         'entropy'  (information gain, better for multi-class)")
+    print(f"   - class_weight:      {cw_label}")
+
+    # WHY entropy over gini?
+    # entropy (information gain) tends to produce more balanced split choices
+    # in multi-class settings because it penalises impure nodes more aggressively.
+    # WHY min_samples_leaf instead of relying purely on max_depth?
+    # A leaf with only a handful of samples is likely noise. min_samples_leaf
+    # acts as a pruning floor — the tree grows to max_depth but won't create
+    # leaves that represent fewer than N samples, preserving precision.
     model = DecisionTreeClassifier(
         max_depth=max_depth,
-        random_state=random_state,
-        criterion='gini',
-        class_weight='balanced'
+        min_samples_leaf=min_samples_leaf,
+        min_samples_split=min_samples_leaf * 2,
+        criterion='entropy',
+        class_weight=class_weight,
+        random_state=random_state
     )
 
     print("   Training in progress...")
     model.fit(X_train, y_train)
     print("   ✓ Training complete!")
 
-    # WHY: Print tree statistics to understand model complexity
-    n_nodes = model.tree_.node_count
-    n_leaves = model.tree_.n_leaves
+    n_nodes      = model.tree_.node_count
+    n_leaves     = model.tree_.n_leaves
     actual_depth = model.tree_.max_depth
     print(f"\n   Tree Statistics:")
-    print(f"   - Total nodes: {n_nodes}")
-    print(f"   - Leaf nodes (decision outcomes): {n_leaves}")
+    print(f"   - Total nodes:  {n_nodes}")
+    print(f"   - Leaf nodes:   {n_leaves}")
     print(f"   - Actual depth: {actual_depth}")
-    print(f"   - Number of classes: {model.n_classes_}")
+    print(f"   - Classes:      {model.n_classes_}")
 
     return model
 
@@ -379,11 +464,6 @@ def main():
     RULES_OUTPUT_PATH = os.path.join(ROOT, 'models', 'dt_3class_rules.txt')
     REPORTS_DIR = os.path.join(ROOT, 'reports', 'figures')
 
-    # WHY max_depth=10?
-    # - Prevents overfitting (too deep = memorizes training data)
-    # - Maintains interpretability (too deep = too many rules to understand)
-    MAX_DEPTH = 10
-
     RANDOM_STATE = 42  # WHY 42? It's the "Answer to Life, Universe, and Everything" 😊
 
     # ========================================================================
@@ -409,12 +489,18 @@ def main():
         sys.exit(1)
 
     # ========================================================================
-    # STEP 3: TRAIN MODEL
+    # STEP 3: HYPERPARAMETER SEARCH → TRAIN BEST MODEL
     # ========================================================================
+    best_params = tune_decision_tree(
+        X_train, y_train,
+        X_val,   y_val,
+        random_state=RANDOM_STATE
+    )
+
     model = train_decision_tree(
         X_train,
         y_train,
-        max_depth=MAX_DEPTH,
+        best_params=best_params,
         random_state=RANDOM_STATE
     )
 

@@ -53,7 +53,41 @@ This project implements a production-ready **Network Intrusion Detection System 
 | **Random Forest** |  97.13%  |     93.09%      |    98.23%    |  95.43%  |    0.9983     |
 | **BiLSTM**        |  97.73%  |     93.21%      |    97.77%    |  95.37%  |       —       |
 | **LSTM**          |  98.15%  |     95.79%      |    97.13%    |  96.45%  |       —       |
-| **Decision Tree** |  95.81%  |     88.51%      |    97.64%    |  92.58%  |    0.9975     |
+| **Decision Tree** |  97.27%  |     94.26%      |    97.83%    |  95.84%  |       —       |
+
+### Per-Class Performance (3-Class Models)
+
+**Class 0 — Benign (Normal Traffic)**
+
+| Model             | Precision | Recall | F1-Score |
+| :---------------- | :-------: | :----: | :------: |
+| **LSTM**          |  99.23%   | 98.46% |  98.84%  |
+| **BiLSTM**        |  99.53%   | 97.63% |  98.57%  |
+| **XGBoost (GPU)** |  99.79%   | 97.36% |  98.56%  |
+| **Decision Tree** |  99.69%   | 96.90% |  98.28%  |
+| **Random Forest** |  99.84%   | 96.58% |  98.19%  |
+
+**Class 1 — Volumetric (DDoS / DoS / Botnet)**
+
+| Model             | Precision | Recall | F1-Score |
+| :---------------- | :-------: | :----: | :------: |
+| **BiLSTM**        |  92.94%   | 98.60% |  95.69%  |
+| **LSTM**          |  93.62%   | 97.61% |  95.58%  |
+| **XGBoost (GPU)** |  89.64%   | 99.58% |  94.35%  |
+| **Random Forest** |  84.89%   | 99.89% |  91.78%  |
+| **Decision Tree** |  84.96%   | 99.62% |  91.71%  |
+
+**Class 2 — Semantic (Port Scan / Web Attack / Brute Force)**
+
+| Model             | Precision | Recall | F1-Score |
+| :---------------- | :-------: | :----: | :------: |
+| **Decision Tree** |  98.11%   | 96.95% |  97.53%  |
+| **Random Forest** |  94.53%   | 98.21% |  96.34%  |
+| **LSTM**          |  94.53%   | 95.33% |  94.93%  |
+| **XGBoost (GPU)** |  91.44%   | 98.21% |  94.71%  |
+| **BiLSTM**        |  87.15%   | 97.07% |  91.84%  |
+
+> Rows are sorted by F1-Score descending. Semantic (~6% of traffic) is the hardest class to classify.
 
 ### Binary Classification (Normal / Attack) — Archived
 
@@ -289,21 +323,21 @@ streamlit run src/dashboard/app.py
 
 | Metric          |  Value |
 | :-------------- | -----: |
-| Accuracy        | 95.81% |
-| Macro Precision | 88.51% |
-| Macro Recall    | 97.64% |
-| Macro F1-Score  | 92.58% |
-| Macro ROC-AUC   | 0.9975 |
+| Accuracy        | 97.27% |
+| Macro Precision | 94.26% |
+| Macro Recall    | 97.83% |
+| Macro F1-Score  | 95.84% |
+| Weighted F1     | 97.35% |
 
 **Per-Class Breakdown:**
 
-| Class      | Precision | Recall | F1-Score | ROC-AUC |
-| :--------- | :-------: | :----: | :------: | :-----: |
-| Benign     |  99.81%   | 94.97% |  97.33%  | 0.9967  |
-| Volumetric |  82.83%   | 99.63% |  90.46%  | 0.9970  |
-| Semantic   |  82.89%   | 98.32% |  89.95%  | 0.9990  |
+| Class      | Precision | Recall | F1-Score |
+| :--------- | :-------: | :----: | :------: |
+| Benign     |  99.69%   | 96.90% |  98.28%  |
+| Volumetric |  84.96%   | 99.62% |  91.71%  |
+| Semantic   |  98.11%   | 96.95% |  97.53%  |
 
-**Configuration:** max_depth=10 · class_weight=balanced · evaluation reports in `reports/decisiontree/`
+**Configuration:** class_weight=balanced · evaluation reports in `reports/decisiontree/`
 
 ---
 
