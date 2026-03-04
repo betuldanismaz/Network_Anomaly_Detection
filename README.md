@@ -59,33 +59,33 @@ This project implements a production-ready **Network Intrusion Detection System 
 
 **Class 0 — Benign (Normal Traffic)**
 
-| Model             | Accuracy | Precision | Recall | F1-Score |
-| :---------------- | :------: | :-------: | :----: | :------: |
-| **LSTM**          |  98.15%  |  99.23%   | 98.46% |  98.84%  |
-| **BiLSTM**        |  97.73%  |  99.53%   | 97.63% |  98.57%  |
-| **XGBoost (GPU)** |  97.71%  |  99.79%   | 97.36% |  98.56%  |
-| **Decision Tree** |  97.27%  |  99.69%   | 96.90% |  98.28%  |
-| **Random Forest** |  97.13%  |  99.84%   | 96.58% |  98.19%  |
+| Model             | Overall Acc. | Precision | Recall | F1-Score |
+| :---------------- | :----------: | :-------: | :----: | :------: |
+| **LSTM**          |    98.15%    |  99.23%   | 98.46% |  98.84%  |
+| **BiLSTM**        |    97.73%    |  99.53%   | 97.63% |  98.57%  |
+| **XGBoost (GPU)** |    97.71%    |  99.79%   | 97.36% |  98.56%  |
+| **Decision Tree** |    97.27%    |  99.69%   | 96.90% |  98.28%  |
+| **Random Forest** |    97.13%    |  99.84%   | 96.58% |  98.19%  |
 
 **Class 1 — Volumetric (DDoS / DoS / Botnet)**
 
-| Model             | Accuracy | Precision | Recall | F1-Score |
-| :---------------- | :------: | :-------: | :----: | :------: |
-| **BiLSTM**        |  97.73%  |  92.94%   | 98.60% |  95.69%  |
-| **LSTM**          |  98.15%  |  93.62%   | 97.61% |  95.58%  |
-| **XGBoost (GPU)** |  97.71%  |  89.64%   | 99.58% |  94.35%  |
-| **Random Forest** |  97.13%  |  84.89%   | 99.89% |  91.78%  |
-| **Decision Tree** |  97.27%  |  84.96%   | 99.62% |  91.71%  |
+| Model             | Overall Acc. | Precision | Recall | F1-Score |
+| :---------------- | :----------: | :-------: | :----: | :------: |
+| **BiLSTM**        |    97.73%    |  92.94%   | 98.60% |  95.69%  |
+| **LSTM**          |    98.15%    |  93.62%   | 97.61% |  95.58%  |
+| **XGBoost (GPU)** |    97.71%    |  89.64%   | 99.58% |  94.35%  |
+| **Random Forest** |    97.13%    |  84.89%   | 99.89% |  91.78%  |
+| **Decision Tree** |    97.27%    |  84.96%   | 99.62% |  91.71%  |
 
 **Class 2 — Semantic (Port Scan / Web Attack / Brute Force)**
 
-| Model             | Accuracy | Precision | Recall | F1-Score |
-| :---------------- | :------: | :-------: | :----: | :------: |
-| **Decision Tree** |  97.27%  |  98.11%   | 96.95% |  97.53%  |
-| **Random Forest** |  97.13%  |  94.53%   | 98.21% |  96.34%  |
-| **LSTM**          |  98.15%  |  94.53%   | 95.33% |  94.93%  |
-| **XGBoost (GPU)** |  97.71%  |  91.44%   | 98.21% |  94.71%  |
-| **BiLSTM**        |  97.73%  |  87.15%   | 97.07% |  91.84%  |
+| Model             | Overall Acc. | Precision | Recall | F1-Score |
+| :---------------- | :----------: | :-------: | :----: | :------: |
+| **Decision Tree** |    97.27%    |  98.11%   | 96.95% |  97.53%  |
+| **Random Forest** |    97.13%    |  94.53%   | 98.21% |  96.34%  |
+| **LSTM**          |    98.15%    |  94.53%   | 95.33% |  94.93%  |
+| **XGBoost (GPU)** |    97.71%    |  91.44%   | 98.21% |  94.71%  |
+| **BiLSTM**        |    97.73%    |  87.15%   | 97.07% |  91.84%  |
 
 > Rows are sorted by F1-Score descending. Semantic (~6% of traffic) is the hardest class to classify.
 
