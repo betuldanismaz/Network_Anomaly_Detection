@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Section 2: Related Work — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, "Times New Roman", serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background-color: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* ── HEADER ── */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #2980b9;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* ── SECTION HEADINGS ── */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #ffffff;
+        background: #2980b9;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #2980b9;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+
+      .subsection-block {
+        margin-bottom: 2.4rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #2980b9;
+        border: 1.5px solid #2980b9;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+
+      /* ── BODY TEXT ── */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      .metric {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 10pt;
+        color: #1a5276;
+      }
+      strong {
+        font-weight: 700;
+      }
+
+      /* ── CALLOUTS ── */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-orange {
+        background: #fef9e7;
+        border-left: 5px solid #f39c12;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-purple {
+        background: #f5eef8;
+        border-left: 5px solid #8e44ad;
+      }
+
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout-orange .callout-label {
+        color: #784212;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-purple .callout-label {
+        color: #6c3483;
+      }
+      .callout p {
+        margin-bottom: 0;
+      }
+
+      /* ── TABLES ── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.4rem 0 0.3rem 0;
+      }
+      thead {
+        background-color: #2c3e50;
+        color: #ffffff;
+      }
+      th {
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.5pt;
+        border: 1px solid #1a252f;
+      }
+      td {
+        padding: 0.55rem 0.8rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        vertical-align: top;
+      }
+      tbody tr:nth-child(even) {
+        background-color: #f4f6f7;
+      }
+      tbody tr:hover {
+        background-color: #d6eaf8;
+      }
+
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.4rem;
+      }
+
+      /* ── LITERATURE CARDS ── */
+      .lit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.9rem;
+        margin: 1.3rem 0;
+      }
+      .lit-card {
+        border: 1px solid #d5d8dc;
+        border-radius: 5px;
+        padding: 1rem 1.1rem;
+        background: #fdfefe;
+      }
+      .lit-card .ref {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        color: #2980b9;
+        margin-bottom: 0.3rem;
+      }
+      .lit-card .lit-title {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 0.4rem;
+      }
+      .lit-card p {
+        font-size: 8.5pt;
+        margin-bottom: 0;
+        color: #34495e;
+      }
+      .gap-badge {
+        display: inline-block;
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        padding: 0.15rem 0.45rem;
+        border-radius: 3px;
+        margin-top: 0.4rem;
+      }
+      .gap-red {
+        background: #fdedec;
+        color: #c0392b;
+      }
+      .gap-green {
+        background: #eafaf1;
+        color: #1e8449;
+      }
+
+      /* ── POSITIONING TABLE ── */
+      .pos-check {
+        color: #27ae60;
+        font-weight: 700;
+        text-align: center;
+      }
+      .pos-cross {
+        color: #c0392b;
+        font-weight: 700;
+        text-align: center;
+      }
+      .pos-partial {
+        color: #f39c12;
+        font-weight: 700;
+        text-align: center;
+      }
+      .pos-us {
+        background: #eaf4fb !important;
+        font-weight: 700;
+      }
+
+      /* ── DARK BOX ── */
+      .gap-summary-box {
+        background: linear-gradient(135deg, #1a2a4a 0%, #2c3e50 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin-top: 2.5rem;
+      }
+      .gap-summary-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #5dade2;
+        margin-bottom: 1rem;
+      }
+      .gap-list {
+        list-style: none;
+        padding: 0;
+      }
+      .gap-list li {
+        display: flex;
+        gap: 0.9rem;
+        margin-bottom: 0.7rem;
+        font-size: 9.5pt;
+        color: #d5d8dc;
+        align-items: flex-start;
+      }
+      .gap-list li .g-num {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        color: #5dade2;
+        min-width: 24px;
+        flex-shrink: 0;
+      }
+
+      /* ── FOOTER ── */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .gap-summary-box {
+          background: linear-gradient(
+            135deg,
+            #1a2a4a 0%,
+            #2c3e50 100%
+          ) !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        thead {
+          background-color: #2c3e50 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- ═══════════════════════════════════════
+         PAPER HEADER
+    ════════════════════════════════════════ -->
+      <header class="paper-header">
+        <div class="paper-label">Academic Conference Paper — Section 2</div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════════════════════════
+         SECTION 2: RELATED WORK
+    ════════════════════════════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 2</span>
+          <h2 class="section-title">Related Work</h2>
+        </div>
+
+        <p>
+          The application of machine learning to network intrusion detection has
+          generated a rich and rapidly expanding body of literature over the
+          past two decades. We organise our review along five dimensions most
+          relevant to the design choices of this work: (§2.1) benchmark datasets
+          used for NIDS evaluation and the selection rationale for CICIDS2017;
+          (§2.2) traditional machine learning approaches applied to network flow
+          classification; (§2.3) deep learning and sequential modelling
+          approaches; (§2.4) attack taxonomy and class granularity choices in
+          prior work; and (§2.5) real-time deployment and MLOps integration. For
+          each area, we identify the specific gaps in the existing literature
+          that our work addresses.
+        </p>
+
+        <!-- ══════════════ 2.1 ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">2.1</span>
+            <h3 class="subsection-title">
+              Benchmark Datasets in Network Intrusion Detection
+            </h3>
+          </div>
+
+          <p>
+            The quality and realism of the training dataset critically
+            determines the practical generalisability of any NIDS model. The
+            network security community has produced a succession of benchmark
+            datasets of increasing fidelity, each addressing limitations of its
+            predecessors.
+          </p>
+
+          <p>
+            The <span class="kw">KDD Cup 1999</span> dataset [Stolfo et al.,
+            1999] was among the first widely adopted NIDS benchmarks, derived
+            from the 1998 DARPA intrusion detection evaluation programme.
+            Despite its widespread use, KDD99 has been extensively criticised
+            for its unrealistic traffic generation methodology, high redundancy
+            (nearly 78% redundant records in the training set [Tavallaee et al.,
+            2009]), and failure to represent modern attack patterns. Its
+            derivative, <span class="kw">NSL-KDD</span> [Tavallaee et al.,
+            2009], resolved the redundancy issue but retained the synthetic
+            traffic generation methodology of its predecessor, limiting its
+            relevance to contemporary network environments.
+          </p>
+
+          <p>
+            The <span class="kw">UNSW-NB15</span> dataset [Moustafa &amp; Slay,
+            2015] represented a substantial advance, using the IXIA PerfectStorm
+            tool to generate realistic hybrid traffic containing nine attack
+            categories and genuine benign traffic. It introduced richer feature
+            sets (49 features) and remains widely used. However, its single-day
+            capture window limits temporal diversity, and its attack
+            distribution does not include several attack categories of current
+            operational relevance.
+          </p>
+
+          <p>
+            The <span class="kw">CICIDS2017</span> dataset [Sharafaldin et al.,
+            2018], generated by the Canadian Institute for Cybersecurity,
+            addresses these limitations through a multi-day (Monday–Friday),
+            multi-profile traffic generation methodology that closely simulates
+            real enterprise network behaviour. Benign traffic is generated by 25
+            abstract user behaviour profiles derived from analysis of real
+            network activity; attack traffic is generated using real attack
+            tools including <em>Nmap</em>, <em>Slowloris</em>, <em>LOIC</em>,
+            <em>hping3</em>, and <em>Metasploit</em>. With
+            <span class="metric">2.83 million labelled flows</span> across eight
+            attack categories extracted via CICFlowMeter, CICIDS2017 is the most
+            comprehensive and commonly cited public NIDS benchmark available as
+            of 2024.
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 3. Comparison of Major NIDS Benchmark Datasets
+            </caption>
+            <thead>
+              <tr>
+                <th>Dataset</th>
+                <th>Year</th>
+                <th>Total Records</th>
+                <th>Attack Categories</th>
+                <th>Traffic Realism</th>
+                <th>Temporal Diversity</th>
+                <th>Feature Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>KDD Cup 1999</strong></td>
+                <td>1999</td>
+                <td>~5 million</td>
+                <td>4 (DoS, R2L, U2R, Probe)</td>
+                <td>Low — synthetic DARPA</td>
+                <td>Single scenario</td>
+                <td>41</td>
+              </tr>
+              <tr>
+                <td><strong>NSL-KDD</strong></td>
+                <td>2009</td>
+                <td>~149K</td>
+                <td>4 (inherited)</td>
+                <td>Low — inherited</td>
+                <td>Single scenario</td>
+                <td>41</td>
+              </tr>
+              <tr>
+                <td><strong>UNSW-NB15</strong></td>
+                <td>2015</td>
+                <td>~2.54 million</td>
+                <td>9</td>
+                <td>Medium — hybrid IXIA</td>
+                <td>1 day (12 hours)</td>
+                <td>49</td>
+              </tr>
+              <tr>
+                <td><strong>CIC-IDS-2017</strong></td>
+                <td>2017</td>
+                <td>~2.83 million</td>
+                <td>14 (8 categories)</td>
+                <td><strong>High</strong> — real user profiles</td>
+                <td><strong>5 days</strong></td>
+                <td>78</td>
+              </tr>
+              <tr>
+                <td><strong>CIC-IoT-2023</strong></td>
+                <td>2023</td>
+                <td>&gt;170 million</td>
+                <td>IoT-specific</td>
+                <td>High — IoT testbed</td>
+                <td>Multi-day</td>
+                <td>46</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Feature counts reflect the raw extracted feature space before
+            selection. CICIDS2017 is selected in this work for its unique
+            combination of temporal diversity, multi-category attacks, and
+            realistic benign traffic generation.
+          </div>
+
+          <div class="callout callout-orange">
+            <div class="callout-label">⚠ Known Limitation of CICIDS2017</div>
+            <p>
+              CICIDS2017 is not without its own well-documented limitations.
+              Artefacts in the CICFlowMeter extraction process introduce certain
+              anomalously infinite or NaN feature values, particularly for
+              <em>Flow Bytes/s</em> and <em>Flow Packets/s</em> in zero-duration
+              flows. Additionally, the benign traffic model — while more
+              realistic than DARPA-derived predecessors — was generated in a
+              controlled testbed environment and may not capture the full
+              diversity of real enterprise network traffic patterns. Our
+              preprocessing pipeline explicitly handles both issues (see §3.3),
+              and we acknowledge these limitations as a threat to external
+              validity in §9.3.
+            </p>
+          </div>
+        </div>
+        <!-- /2.1 -->
+
+        <!-- ══════════════ 2.2 ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">2.2</span>
+            <h3 class="subsection-title">
+              Traditional Machine Learning Approaches for NIDS
+            </h3>
+          </div>
+
+          <p>
+            The application of classical supervised learning algorithms to
+            network intrusion detection on flow-level tabular features has a
+            well-established history, with tree-based ensemble methods
+            consistently demonstrating state-of-the-art performance.
+          </p>
+
+          <p>
+            <span class="kw">Random Forest (RF)</span> classifiers have been
+            extensively evaluated on NIDS tasks since their introduction by
+            Breiman [2001]. Abdulhammed et al. [2019] demonstrated RF accuracy
+            exceeding 99% on CICIDS2017 under binary classification, attributing
+            the model's robustness to its intrinsic feature importance mechanism
+            and resistance to overfitting on noisy flow features. However, their
+            evaluation employed a naive random shuffle-split across the merged
+            multi-day dataset — a methodological choice that, as we demonstrate
+            in §3.4, introduces temporal leakage and overstates generalisation
+            performance. Panigrahi &amp; Borah [2018] similarly reported high RF
+            performance across multiple datasets including NSL-KDD but noted
+            elevated false positive rates on minority attack classes under
+            class-imbalanced training conditions.
+          </p>
+
+          <p>
+            <span class="kw">Gradient boosting</span> methods — particularly
+            <em>XGBoost</em> [Chen &amp; Guestrin, 2016] — have emerged as the
+            dominant traditional ML approach for network intrusion
+            classification. Dhaliwal et al. [2018] performed a systematic
+            comparison of XGBoost against RF, Decision Tree, and Naïve Bayes on
+            CICIDS2017, finding XGBoost superior across accuracy, precision, and
+            recall on binary classification. Stiawan et al. [2020] extended this
+            comparison to UNSW-NB15, confirming XGBoost's advantage on
+            multi-class scenarios. Zhang et al. [2022] introduced
+            GPU-accelerated XGBoost training for NIDS, demonstrating throughput
+            improvements of 20–60× over CPU baselines on large-scale flow
+            datasets — a technique we adopt and benchmark in this work. Notably,
+            none of these studies evaluated XGBoost under leakage-free temporal
+            partitioning or on a 3-class operationally motivated taxonomy.
+          </p>
+
+          <p>
+            <span class="kw">Decision Trees</span> have been studied primarily
+            for their interpretability advantages in NIDS contexts. Quinlan's
+            C4.5 algorithm and its descendants have been applied to network
+            anomaly detection from the earliest literature [Lee &amp; Stolfo,
+            1998]. While decision trees are generally outperformed by ensembles
+            on accuracy metrics, their transparent rule sets remain attractive
+            for deployment in environments requiring explainable decisions — a
+            practical consideration reflected in our inclusion of a Decision
+            Tree model alongside ensemble and deep learning counterparts.
+          </p>
+
+          <div class="lit-grid">
+            <div class="lit-card">
+              <div class="ref">[Abdulhammed et al., 2019]</div>
+              <div class="lit-title">
+                RF on CICIDS2017 — Binary Classification
+              </div>
+              <p>
+                Reported 99%+ binary accuracy on CICIDS2017. Noted within-day
+                class proportionality issue. <strong>Gap:</strong> Naive random
+                split; binary only; no temporal leakage analysis.
+              </p>
+              <span class="gap-badge gap-red">Gap: Leakage · Binary only</span>
+            </div>
+            <div class="lit-card">
+              <div class="ref">[Dhaliwal et al., 2018]</div>
+              <div class="lit-title">
+                XGBoost vs. RF vs. DT — Comparative Study
+              </div>
+              <p>
+                XGBoost outperformance confirmed on CICIDS2017 across 4
+                algorithms. GPU training not used. <strong>Gap:</strong> No
+                3-class taxonomy; no production deployment.
+              </p>
+              <span class="gap-badge gap-red"
+                >Gap: 3-class taxonomy · No deployment</span
+              >
+            </div>
+            <div class="lit-card">
+              <div class="ref">[Zhang et al., 2022]</div>
+              <div class="lit-title">
+                GPU-Accelerated XGBoost for Large-Scale NIDS
+              </div>
+              <p>
+                Demonstrated 20–60× throughput improvement on GPU XGBoost for
+                network flow classification. <strong>Our work</strong> builds on
+                this and benchmarks inference latency end-to-end.
+              </p>
+              <span class="gap-badge gap-green">Builds on this</span>
+            </div>
+            <div class="lit-card">
+              <div class="ref">[Panigrahi &amp; Borah, 2018]</div>
+              <div class="lit-title">
+                RF Evaluation on NSL-KDD and CICIDS2017
+              </div>
+              <p>
+                Identified elevated false positive rates on minority classes
+                under class imbalance. Our work addresses this via per-file
+                stratified splits and class-weight balancing.
+              </p>
+              <span class="gap-badge gap-green">Addressed here (C1, C2)</span>
+            </div>
+          </div>
+        </div>
+        <!-- /2.2 -->
+
+        <!-- ══════════════ 2.3 ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">2.3</span>
+            <h3 class="subsection-title">
+              Deep Learning and Sequential Models for NIDS
+            </h3>
+          </div>
+
+          <p>
+            Deep learning approaches have been applied to network intrusion
+            detection across a range of architectures, motivated by the
+            hypothesis that raw or minimally processed network data contains
+            hierarchical and temporal structure that shallow models cannot fully
+            exploit.
+          </p>
+
+          <p>
+            <span class="kw">Convolutional Neural Networks (CNNs)</span> applied
+            to raw packet byte sequences were explored by Wang et al. [2017] and
+            Lotfollahi et al. [2020], demonstrating that end-to-end learning
+            from packet payloads could achieve competitive classification
+            accuracy without manual feature engineering. However, end-to-end
+            packet-level models require payload access that is unavailable in
+            encrypted traffic environments, limiting their applicability in
+            modern TLS-dominated networks.
+          </p>
+
+          <p>
+            <span class="kw">Recurrent Neural Networks (RNNs)</span> and their
+            gated variants address the sequential nature of network traffic by
+            treating flows as time-ordered series. Kim &amp; Kim [2015] applied
+            vanilla RNNs to network anomaly detection, demonstrating sensitivity
+            to inter-packet timing features. However, vanilla RNNs are
+            susceptible to the vanishing gradient problem over long sequences.
+            Javaid et al. [2016] applied sparse autoencoders for unsupervised
+            pre-training of RNN-based NIDS, achieving competitive results on
+            NSL-KDD but not evaluating on more realistic multi-day datasets.
+          </p>
+
+          <p>
+            <span class="kw">Long Short-Term Memory (LSTM)</span> networks have
+            become the dominant deep learning architecture for sequential
+            network flow classification. Yin et al. [2017] demonstrated that
+            LSTM outperformed traditional ML methods (RF, SVM, BP-neural
+            network) on KDD Cup 1999, achieving
+            <span class="metric">99.53%</span> detection rate and
+            <span class="metric">0.10%</span> false alarm rate. Althubiti et al.
+            [2018] validated LSTM on CICIDS2017 for binary classification,
+            reporting favourable recall on specific attack categories. However,
+            these studies evaluated LSTM in isolation, without comparison
+            against contemporary gradient boosting methods under identical
+            experimental conditions.
+          </p>
+
+          <p>
+            <span class="kw">Bidirectional LSTM (BiLSTM)</span> — which
+            processes input sequences in both forward and backward temporal
+            directions, thereby incorporating future context into each hidden
+            state computation — has been applied to NIDS by Imrana et al.
+            [2021], who reported BiLSTM outperforming unidirectional LSTM on
+            CICIDS2018. Zhao et al. [2022] applied BiLSTM to encrypted traffic
+            classification with CICIDS2017, confirming improved performance over
+            unidirectional models on the minority attack classes. A key
+            limitation shared by these studies is the evaluation methodology:
+            both employ global random splitting of the merged multi-day dataset,
+            which we argue in §3.4 constitutes a form of temporal leakage with a
+            non-trivial effect on reported test performance.
+          </p>
+
+          <div class="callout callout-blue">
+            <div class="callout-label">💡 Critical Methodological Gap</div>
+            <p>
+              A consistent pattern across deep learning NIDS literature —
+              including the LSTM work of Yin et al. [2017], the BiLSTM work of
+              Imrana et al. [2021], and the CNN work of Lotfollahi et al. [2020]
+              — is the evaluation of deep models <em>in isolation</em> from
+              their closest traditional ML competitors, under differing
+              experimental conditions and data partitions. This makes it
+              impossible to draw rigorous conclusions about the relative merits
+              of deep vs. traditional approaches. Our work is explicitly
+              designed to close this gap through strict experimental parity: all
+              five models are evaluated on identical data splits,
+              class-weighting strategies, and feature sets.
+            </p>
+          </div>
+
+          <p>
+            Hybrid architectures combining convolutional feature extraction with
+            recurrent sequence modelling (CNN-LSTM, CNN-BiLSTM) have also been
+            proposed [Khan et al., 2021; Dey et al., 2022], achieving marginal
+            accuracy improvements on specific attack categories at the cost of
+            substantially increased model complexity, training time, and
+            inference latency.
+            <span class="kw">Attention mechanisms</span> and
+            <span class="kw">Transformer-based</span> architectures have more
+            recently been explored for NIDS [Guo et al., 2023; Wu et al., 2024],
+            though these approaches demand significantly larger datasets and
+            computational resources than are justified by marginal gains over
+            well-tuned LSTM baselines on CICIDS2017-scale data. In this context,
+            our decision to use stacked LSTM and BiLSTM as the deep learning
+            component of a rigorous comparative study is methodologically
+            appropriate: both architectures are well-established, reproducible,
+            and computationally tractable on the available hardware.
+          </p>
+        </div>
+        <!-- /2.3 -->
+
+        <!-- ══════════════ 2.4 ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">2.4</span>
+            <h3 class="subsection-title">
+              Attack Taxonomies and Class Granularity in Prior Work
+            </h3>
+          </div>
+
+          <p>
+            The choice of class granularity in NIDS model design has significant
+            and often underappreciated implications for both model performance
+            and operational utility. Three principal granularity strategies
+            appear in the literature, each with distinct trade-offs.
+          </p>
+
+          <p>
+            <strong>Binary classification</strong> (Normal vs. Attack) is the
+            most common formulation in prior work [Yin et al., 2017; Abdulhammed
+            et al., 2019; Dhaliwal et al., 2018]. While maximally tractable from
+            a learning perspective — it requires no attack category knowledge
+            and benefits from the largest effective training set for the attack
+            class — binary classification discards the operationally critical
+            distinction between attack types, providing no actionable
+            information for incident response beyond "an attack was detected."
+            In practice, a SOC analyst receiving a binary alert must still
+            identify the attack category before selecting a countermeasure,
+            reintroducing the classification problem downstream.
+          </p>
+
+          <p>
+            <strong>Fine-grained multi-class classification</strong> across all
+            individual attack labels (14+ classes in CICIDS2017) has been
+            explored by Sharafaldin et al. [2018] in the original CICIDS2017
+            paper and by subsequent work including Leevy &amp; Khoshgoftaar
+            [2020]. While providing maximum information granularity, this
+            approach suffers severely from data-sparsity pathologies: certain
+            attack sub-categories contain fewer than 1,000 instances in the full
+            dataset, making reliable classification statistically infeasible and
+            leading to unstable macro-averaged metrics dominated by majority
+            classes.
+          </p>
+
+          <p>
+            Intermediate <strong>coarse multi-class formulations</strong> have
+            been proposed in a smaller body of work. Dong &amp; Wang [2019]
+            proposed a 4-class taxonomy (Normal, DoS, Probe, R2L/U2R) derived
+            from the KDD99 category structure — a taxonomy designed for a
+            25-year-old dataset with substantially different attack technology
+            than 2017 threats. Papadopoulos et al. [2021] proposed a 3-class
+            scheme on CICIDS2017 (Benign, DoS, Other Attacks), but grouped
+            Botnet, Port Scan, Web Attacks, and Brute Force into a single
+            heterogeneous "Other" class, losing the operationally meaningful
+            distinction between bandwidth-exhaustion and application-layer
+            threats.
+          </p>
+
+          <div class="callout callout-purple">
+            <div class="callout-label">🎯 Novelty of Our Taxonomy</div>
+            <p>
+              Our proposed
+              <strong>Benign / Volumetric / Semantic</strong> taxonomy is to the
+              best of our knowledge the first 3-class formulation applied to
+              CICIDS2017 that is explicitly motivated by the operational
+              distinction between
+              <em>network-layer resource exhaustion attacks</em> (DDoS, DoS,
+              Botnet — sharing the common property of impacting availability
+              through traffic volume) and
+              <em>application-layer semantic exploits</em>
+              (Port Scan, Web Attack, Brute Force, Infiltration — sharing the
+              property of targeting specific services or credentials through
+              low-volume, intelligent probing). This grouping aligns with the
+              SOC triage heuristic of separating "volumetric/bandwidth" alerts
+              (routed to network operations) from "targeted/semantic" alerts
+              (routed to endpoint security teams), and maintains sufficient
+              class cardinality for robust model training.
+            </p>
+          </div>
+        </div>
+        <!-- /2.4 -->
+
+        <!-- ══════════════ 2.5 ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">2.5</span>
+            <h3 class="subsection-title">
+              Real-Time NIDS Deployment, Streaming, and MLOps
+            </h3>
+          </div>
+
+          <p>
+            Despite the maturity of NIDS model development in the academic
+            literature, the engineering of production-ready real-time intrusion
+            detection systems remains comparatively underresearched. Most
+            published NIDS work concludes at the offline evaluation stage,
+            leaving the critical deployment problem — integrating a trained
+            classifier into a live network monitoring pipeline — as an assumed
+            next step that is rarely specified or validated.
+          </p>
+
+          <p>
+            Early network-level intrusion detection frameworks from the security
+            industry — including Bro/Zeek [Paxson, 1999] and Suricata [OISF,
+            2009] — provide high-performance packet capture and rule-based
+            detection at network line rate but do not incorporate ML inference
+            as a first-class component. Integration of ML models into these
+            frameworks requires significant custom engineering and typically
+            results in offline "post-processing" pipelines rather than true
+            real-time inference.
+          </p>
+
+          <p>
+            Event streaming architectures based on
+            <span class="kw">Apache Kafka</span> have been proposed as a
+            backbone for large-scale ML inference pipelines in adjacent domains
+            including fraud detection [He et al., 2014] and industrial IoT
+            anomaly detection [Cardenas et al., 2011]. Cheng et al. [2021]
+            demonstrated a Kafka-based network traffic analysis pipeline for
+            DDoS detection, achieving sub-second alert latency on synthetic
+            traffic. However, their system used a static binary classifier with
+            no support for multi-class detection, model switching, or automated
+            firewall response integration.
+          </p>
+
+          <p>
+            <span class="kw">MLOps</span> practices — encompassing versioned
+            model artifacts, reproducible training pipelines, experiment
+            tracking, and continuous deployment — have been formalised in the
+            software engineering literature by Sculley et al. [2015] ("Hidden
+            Technical Debt in Machine Learning Systems") and operationalised
+            through tools including MLflow [Zaharia et al., 2018], DVC [Rustem
+            et al., 2020], and Kubeflow. Their application to NIDS systems
+            specifically has received limited attention: Apruzzese et al. [2023]
+            surveyed 140 NIDS papers and found that fewer than 12% reported
+            reproducible experimental configurations sufficient for independent
+            replication, and effectively none addressed production deployment
+            lifecycle management.
+          </p>
+
+          <p>
+            <span class="kw">AutoML</span> tools — particularly PyCaret [Ali,
+            2020] and H2O AutoML [LeDell &amp; Poirier, 2020] — have been
+            applied to NIDS benchmarking tasks to establish comprehensive
+            baseline comparisons across algorithm families. Ferrag et al. [2020]
+            used AutoML to survey classifier performance across seven benchmark
+            datasets including CICIDS2017, identifying Random Forest and XGBoost
+            as consistently dominant. Our use of PyCaret extends this approach
+            to the 3-class setting, confirming algorithm ranking under our
+            leakage-free evaluation protocol and serving as a validation
+            instrument for our hand-tuned models.
+          </p>
+
+          <div class="callout callout-green">
+            <div class="callout-label">
+              ✅ Positioning vs. Prior Deployment Work
+            </div>
+            <p>
+              While Cheng et al. [2021] and Cardenas et al. [2011] demonstrate
+              Kafka-based streaming for network ML tasks, no prior work known to
+              us integrates all of the following capabilities into a single,
+              publicly described architecture: <strong>(1)</strong> live packet
+              capture via Scapy; <strong>(2)</strong> real-time CICFlowMeter
+              flow feature extraction; <strong>(3)</strong> Kafka streaming with
+              Docker containerisation; <strong>(4)</strong> simultaneous support
+              for 2D-tabular ML and 3D-sequential DL inference with
+              zero-downtime model hot-swapping; <strong>(5)</strong> automated
+              OS-level firewall response; and <strong>(6)</strong> a real-time
+              monitoring dashboard — all validated through a controlled attack
+              simulation environment.
+            </p>
+          </div>
+        </div>
+        <!-- /2.5 -->
+
+        <!-- ══════════════ POSITIONING TABLE ══════════════ -->
+        <div style="margin-top: 2.5rem">
+          <p
+            style="
+              font-family: &quot;Inter&quot;, sans-serif;
+              font-size: 8.5pt;
+              font-weight: 700;
+              color: #2c3e50;
+              margin-bottom: 0.5rem;
+            "
+          >
+            Table 4. Positioning Matrix — This Work vs. Representative Prior
+            Studies
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Study</th>
+                <th>Dataset</th>
+                <th>Leakage-Free Split</th>
+                <th>3-Class Taxonomy</th>
+                <th>ML vs. DL Comparison</th>
+                <th>Real-Time Pipeline</th>
+                <th>Model Hot-Swap</th>
+                <th>Attack Simulation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Yin et al. [2017]</td>
+                <td>KDD99</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-partial">⚠ Partial</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+              </tr>
+              <tr>
+                <td>Dhaliwal et al. [2018]</td>
+                <td>CICIDS2017</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-check">✓</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+              </tr>
+              <tr>
+                <td>Imrana et al. [2021]</td>
+                <td>CICIDS2018</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-partial">⚠ Partial</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+              </tr>
+              <tr>
+                <td>Zhao et al. [2022]</td>
+                <td>CICIDS2017</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-partial">⚠ Partial</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+              </tr>
+              <tr>
+                <td>Cheng et al. [2021]</td>
+                <td>Synthetic</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-check">✓ Kafka</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-partial">⚠ Partial</td>
+              </tr>
+              <tr>
+                <td>Ferrag et al. [2020]</td>
+                <td>7 datasets</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-check">✓ AutoML</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+                <td class="pos-cross">✗</td>
+              </tr>
+              <tr class="pos-us">
+                <td><strong>This Work</strong></td>
+                <td><strong>CICIDS2017</strong></td>
+                <td class="pos-check">✓</td>
+                <td class="pos-check">✓</td>
+                <td class="pos-check">✓ 5 models</td>
+                <td class="pos-check">✓ Kafka + Docker</td>
+                <td class="pos-check">✓ Zero-downtime</td>
+                <td class="pos-check">✓ hping3 + Nmap</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            ✓ = Fully addressed; ⚠ = Partially addressed; ✗ = Not addressed.
+            This work is the only study in our review to satisfy all seven
+            dimensions simultaneously.
+          </div>
+        </div>
+
+        <!-- ══════════════ GAP SUMMARY ══════════════ -->
+        <div class="gap-summary-box">
+          <h3>Summary of Identified Gaps Addressed by This Work</h3>
+          <ul class="gap-list">
+            <li>
+              <span class="g-num">G1</span>
+              <span
+                ><strong style="color: #ffffff">Temporal Data Leakage:</strong>
+                No prior work on CICIDS2017 has applied per-file stratified
+                splitting to eliminate cross-day temporal leakage; all major
+                studies use global random shuffling, inflating reported test
+                accuracy.</span
+              >
+            </li>
+            <li>
+              <span class="g-num">G2</span>
+              <span
+                ><strong style="color: #ffffff"
+                  >Operationally Motivated 3-Class Taxonomy:</strong
+                >
+                Existing coarse-grained multi-class formulations either inherit
+                legacy attack categories (KDD99-derived) or use ad hoc groupings
+                not motivated by SOC triage requirements.</span
+              >
+            </li>
+            <li>
+              <span class="g-num">G3</span>
+              <span
+                ><strong style="color: #ffffff"
+                  >Experimental Parity in ML vs. DL Comparison:</strong
+                >
+                No published study evaluates gradient-boosted trees and deep
+                sequential models under identical data partitions and
+                class-weighting conditions on CICIDS2017's 3-class
+                problem.</span
+              >
+            </li>
+            <li>
+              <span class="g-num">G4</span>
+              <span
+                ><strong style="color: #ffffff"
+                  >Production-Complete Real-Time Architecture:</strong
+                >
+                Existing deployment work addresses isolated components
+                (streaming, or firewall, or dashboard) but not their integration
+                into a validated, end-to-end production system.</span
+              >
+            </li>
+            <li>
+              <span class="g-num">G5</span>
+              <span
+                ><strong style="color: #ffffff"
+                  >Dynamic Model Hot-Swapping:</strong
+                >
+                No prior NIDS deployment work supports zero-downtime switching
+                between heterogeneous model architectures (2D tabular ↔ 3D
+                sequential) in a live streaming pipeline.</span
+              >
+            </li>
+            <li>
+              <span class="g-num">G6</span>
+              <span
+                ><strong style="color: #ffffff">MLOps Reproducibility:</strong>
+                Fewer than 12% of published NIDS studies [Apruzzese et al.,
+                2023] report configurations sufficient for independent
+                replication. Our pipeline is fully seeded, config-driven, and
+                artifact-versioned.</span
+              >
+            </li>
+          </ul>
+        </div>
+      </article>
+      <!-- /section-block -->
+
+      <!-- ═══════════════════════════════════════
+         FOOTER
+    ════════════════════════════════════════ -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 2 — Related Work<br />
+          <span class="col-label">Sub-sections:</span> 2.1 Datasets · 2.2
+          Traditional ML · 2.3 Deep Learning · 2.4 Taxonomies · 2.5
+          Deployment<br />
+          <span class="col-label">Dataset:</span> CICIDS2017 (2.83M flows, 5
+          days)
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Key Tables:</span> Dataset Comparison (T3) ·
+          Positioning Matrix (T4)<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
