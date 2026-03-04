@@ -185,12 +185,10 @@ TOP_FEATURES = [
 ```
 
 2. **Verify Scaler Compatibility:**
-
    - Ensure `models/scaler.pkl` expects 20 features, not 78
    - Retrain scaler if needed: `scaler.fit(X_train[TOP_FEATURES])`
 
 3. **Optimize Threshold:**
-
    - Run grid search to find optimal threshold for Recall
    - Save to `models/threshold.txt`
 
