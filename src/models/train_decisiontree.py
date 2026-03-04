@@ -4,7 +4,7 @@ Network Intrusion Detection on CICIDS2017
 Classes: Benign (0) | Volumetric (1) | Semantic (2)
 
 Author: betül
-Date: 2026-02-22
+Date: 2026-03-02
 """
 
 import os
