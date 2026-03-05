@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Section 10: Conclusion & Future Work — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* HEADER */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #2c3e50;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* SECTIONS */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #2c3e50;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsection-block {
+        margin-bottom: 2.2rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border: 1.5px solid #2c3e50;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+
+      /* BODY */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      strong {
+        font-weight: 700;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #f4f6f7;
+        border: 1px solid #bdc3c7;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #2c3e50;
+      }
+
+      /* CONTRIBUTION RECAP */
+      .contrib-list {
+        list-style: none;
+        margin: 1.2rem 0;
+      }
+      .contrib-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        background: #f8f9fa;
+        border: 1.5px solid #d5d8dc;
+        border-left: 5px solid #2c3e50;
+        border-radius: 0 5px 5px 0;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.7rem;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+      }
+      .contrib-list .c-tag {
+        flex-shrink: 0;
+        font-weight: 800;
+        color: #2c3e50;
+        font-size: 8.5pt;
+        min-width: 28px;
+      }
+      .contrib-list .c-text {
+        color: #34495e;
+      }
+      .contrib-list .c-text strong {
+        color: #1a1a2e;
+      }
+
+      /* FUTURE WORK GRID */
+      .fw-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin: 1.4rem 0;
+      }
+      .fw-card {
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        border: 1.5px solid #d5d8dc;
+        background: #f8f9fa;
+        font-family: "Inter", sans-serif;
+      }
+      .fw-card .fw-priority {
+        font-size: 7.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 0.3rem;
+      }
+      .fw-card .fw-title {
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+      }
+      .fw-card .fw-body {
+        font-size: 8.5pt;
+        color: #5d6d7e;
+      }
+      .fw-card.near {
+        border-top: 4px solid #27ae60;
+      }
+      .fw-card.near .fw-priority {
+        color: #1e8449;
+      }
+      .fw-card.medium {
+        border-top: 4px solid #2980b9;
+      }
+      .fw-card.medium .fw-priority {
+        color: #1a5276;
+      }
+      .fw-card.long {
+        border-top: 4px solid #8e44ad;
+      }
+      .fw-card.long .fw-priority {
+        color: #6c3483;
+      }
+
+      /* HEADLINE METRIC STRIP */
+      .metric-strip {
+        display: flex;
+        gap: 1rem;
+        margin: 1.4rem 0;
+        flex-wrap: wrap;
+      }
+      .metric-pill {
+        flex: 1;
+        min-width: 130px;
+        background: linear-gradient(135deg, #2c3e50 0%, #3d5166 100%);
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        text-align: center;
+      }
+      .metric-pill .mp-val {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #fff;
+        display: block;
+      }
+      .metric-pill .mp-label {
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        color: #bdc3c7;
+        display: block;
+        margin-top: 0.2rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .metric-pill .mp-model {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #85c1e9;
+        display: block;
+        margin-top: 0.1rem;
+        font-weight: 600;
+      }
+
+      /* CALLOUTS */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-dark {
+        background: #2c3e50;
+        border-left: 5px solid #85c1e9;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-dark .callout-label {
+        color: #85c1e9;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-dark p {
+        color: #d5d8dc;
+        margin-bottom: 0;
+        text-align: left;
+      }
+      .callout-green p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* PAPER MAP */
+      .paper-map {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.5rem;
+        margin: 1.2rem 0;
+      }
+      .pm-item {
+        background: #f4f6f7;
+        border: 1px solid #d5d8dc;
+        border-radius: 4px;
+        padding: 0.5rem 0.4rem;
+        text-align: center;
+        font-family: "Inter", sans-serif;
+      }
+      .pm-item .pm-num {
+        font-size: 7.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        display: block;
+      }
+      .pm-item .pm-name {
+        font-size: 7pt;
+        color: #7f8c8d;
+        display: block;
+        margin-top: 0.1rem;
+      }
+      .pm-item.done {
+        background: #eafaf1;
+        border-color: #1abc9c;
+      }
+      .pm-item.done .pm-num {
+        color: #1e8449;
+      }
+
+      /* DARK FINAL BOX */
+      .final-box {
+        background: linear-gradient(
+          135deg,
+          #0a0f1a 0%,
+          #1c2e44 50%,
+          #0f1e30 100%
+        );
+        border: 1px solid #2c4a6e;
+        border-radius: 8px;
+        padding: 2rem 2.2rem;
+        margin: 2rem 0;
+        position: relative;
+        overflow: hidden;
+      }
+      .final-box::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #27ae60, #2980b9, #8e44ad, #e67e22);
+      }
+      .final-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #85c1e9;
+        margin-bottom: 1rem;
+      }
+      .final-box p {
+        color: #c8d6e5;
+        margin-bottom: 0.8rem;
+        font-size: 10pt;
+      }
+      .final-box p:last-child {
+        margin-bottom: 0;
+        font-style: italic;
+        color: #7f8c8d;
+        font-size: 9pt;
+      }
+      .final-box strong {
+        color: #fff;
+      }
+
+      /* REFERENCES */
+      .ref-note {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1rem;
+        margin-top: 2rem;
+      }
+
+      /* FOOTER */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .final-box,
+        .metric-strip .metric-pill {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- HEADER -->
+      <header class="paper-header">
+        <div class="paper-label">
+          Academic Conference Paper — Section 10 (Final)
+        </div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════ SECTION 10 ═══════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 10</span>
+          <h2 class="section-title">Conclusion &amp; Future Work</h2>
+        </div>
+
+        <p>
+          This paper presented a comprehensive, end-to-end AI-driven Network
+          Intrusion Detection System that spans rigorous offline benchmarking, a
+          novel 3-class attack taxonomy, and a production-grade real-time
+          inference pipeline. We close with a synthesis of contributions,
+          headline results, future research directions, and the broader
+          implications of this work.
+        </p>
+
+        <!-- ══════════════ 10.1 Conclusion ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">10.1</span>
+            <h3 class="subsection-title">Conclusion</h3>
+          </div>
+
+          <p>
+            We have presented a systematic study comparing five machine learning
+            models — XGBoost, Random Forest, Decision Tree, LSTM, and BiLSTM —
+            for 3-class network intrusion detection on the CICIDS2017 benchmark
+            dataset, evaluated under a mathematically rigorous, leakage-free
+            experimental protocol, and deployed in a production-grade real-time
+            inference pipeline. The study's six core contributions are
+            summarised below:
+          </p>
+
+          <ul class="contrib-list">
+            <li>
+              <span class="c-tag">C1</span>
+              <span class="c-text"
+                ><strong>Per-File Stratified Split:</strong> A temporal-aware
+                data partitioning methodology that independently stratifies each
+                of the 8 CICIDS2017 source files, eliminating temporal data
+                leakage while preserving minority class representation across
+                train/val/test splits. Verified by an 8-check automated data
+                integrity audit.</span
+              >
+            </li>
+            <li>
+              <span class="c-tag">C2</span>
+              <span class="c-text"
+                ><strong>3-Class Attack Taxonomy:</strong> A novel
+                operationally-motivated attack taxonomy (Benign / Volumetric /
+                Semantic) that collapses 15 raw CICIDS2017 labels into
+                interpretable SOC-actionable categories, addressing the
+                fragmentation problem of existing multi-label benchmarks while
+                preserving attack-response relevance.</span
+              >
+            </li>
+            <li>
+              <span class="c-tag">C3</span>
+              <span class="c-text"
+                ><strong>Systematic ML vs DL Comparative Study:</strong> A
+                rigorous 5-model comparison — traditional ML (XGBoost, RF, DT)
+                vs deep learning (LSTM, BiLSTM) — on identical features,
+                identical test sets, and identical evaluation metrics. Key
+                finding: the DL–ML Macro F1 gap is only
+                <strong>0.58 pp</strong> (LSTM: 96.45%, XGBoost: 95.87%), with
+                XGBoost achieving 126,546 samples/sec at 0.008 ms/sample — 37×
+                faster than LSTM.</span
+              >
+            </li>
+            <li>
+              <span class="c-tag">C4</span>
+              <span class="c-text"
+                ><strong>Live Bridge Production Architecture:</strong> A
+                15-component, loosely-coupled microservice pipeline (Scapy →
+                CICFlowMeter → Kafka → AI Consumer) that enables real-time flow
+                feature extraction, 3-class inference, and IP-level automated
+                firewall response — deployable with a single
+                <code>docker-compose up -d</code> command.</span
+              >
+            </li>
+            <li>
+              <span class="c-tag">C5</span>
+              <span class="c-text"
+                ><strong>Zero-Downtime Model Hot-Swap:</strong> A configuration
+                file–driven mechanism that enables runtime switching between any
+                of the six trained models (XGBoost, RF, DT, LSTM, BiLSTM,
+                PyCaret champion) without restarting the Kafka consumer or
+                capture pipeline, enabling direct A/B model comparison against
+                live traffic.</span
+              >
+            </li>
+            <li>
+              <span class="c-tag">C6</span>
+              <span class="c-text"
+                ><strong>MLOps Engineering Stack:</strong> An end-to-end
+                reproducibility and observability stack including: SHAP
+                TreeExplainer (runtime attack explanations), automated data
+                integrity auditing, config-paired model artifacts,
+                Docker-containerised Kafka infrastructure, automated report
+                generation (9 artefact types × 5 models), and an async traffic
+                harvesting pipeline for continual retraining.</span
+              >
+            </li>
+          </ul>
+
+          <!-- Headline metric strip -->
+          <div class="metric-strip">
+            <div class="metric-pill">
+              <span class="mp-val">96.45%</span>
+              <span class="mp-label">Macro F1 (Best)</span>
+              <span class="mp-model">LSTM</span>
+            </div>
+            <div class="metric-pill">
+              <span class="mp-val">0.9991</span>
+              <span class="mp-label">Macro ROC-AUC (Best)</span>
+              <span class="mp-model">XGBoost GPU</span>
+            </div>
+            <div class="metric-pill">
+              <span class="mp-val">97.53%</span>
+              <span class="mp-label">Semantic F1 (Best)</span>
+              <span class="mp-model">Decision Tree</span>
+            </div>
+            <div class="metric-pill">
+              <span class="mp-val">126K</span>
+              <span class="mp-label">Samples/sec</span>
+              <span class="mp-model">XGBoost GPU (0.008ms)</span>
+            </div>
+            <div class="metric-pill">
+              <span class="mp-val">15</span>
+              <span class="mp-label">Pipeline Components</span>
+              <span class="mp-model">Live Bridge Architecture</span>
+            </div>
+          </div>
+
+          <p>
+            Three findings are particularly noteworthy for the research
+            community: (1) the
+            <strong
+              >unidirectional LSTM outperforms the bidirectional BiLSTM</strong
+            >
+            on this task, suggesting that bidirectionality should not be assumed
+            superior for flow-based sequential classification; (2) the
+            <strong
+              >Decision Tree achieves the highest Semantic F1 (97.53%)</strong
+            >
+            — above all deep learning models — demonstrating that simple,
+            interpretable models retain significant value for attack classes
+            with rule-separable flow signatures; and (3) the performance gap
+            between the best traditional ML model (XGBoost) and the best DL
+            model (LSTM) is only <strong>0.58 percentage points</strong>, while
+            XGBoost achieves a 37× throughput advantage, making it the clear
+            recommendation for real-time production deployment.
+          </p>
+
+          <div class="callout callout-dark">
+            <div class="callout-label">📌 Central Thesis</div>
+            <p>
+              In modern AI-driven NIDS, the choice between traditional ML and
+              deep learning is not a question of which model family is
+              <em>categorically superior</em>, but which model best satisfies
+              the specific deployment constraint: Macro F1 fidelity favours
+              LSTM, real-time throughput favours XGBoost, minority-class
+              precision favours Decision Tree, and operational interpretability
+              requires all three — unified under a hot-swappable production
+              architecture such as the Live Bridge.
+            </p>
+          </div>
+        </div>
+        <!-- /10.1 -->
+
+        <!-- ══════════════ 10.2 Future Work ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">10.2</span>
+            <h3 class="subsection-title">Future Work</h3>
+          </div>
+
+          <p>
+            The following research directions are directly motivated by the
+            limitations identified in §9.3 and the open questions raised by the
+            experimental findings. Items are categorised by estimated
+            implementation horizon.
+          </p>
+
+          <div class="fw-grid">
+            <!-- NEAR-TERM -->
+            <div class="fw-card near">
+              <div class="fw-priority">🟢 Near-term (0–6 months)</div>
+              <div class="fw-title">Proper 3-Way DL Split</div>
+              <div class="fw-body">
+                Implement a dedicated 70/15/15 train/validation/test split for
+                LSTM and BiLSTM to eliminate the test-set early stopping bias
+                documented in §9.1. Report corrected Macro F1 to quantify the
+                bias magnitude.
+              </div>
+            </div>
+            <div class="fw-card near">
+              <div class="fw-priority">🟢 Near-term (0–6 months)</div>
+              <div class="fw-title">OvR ROC-AUC for DL Models</div>
+              <div class="fw-body">
+                Extend the evaluation scripts (<code>evaluate_lstm.py</code>,
+                <code>evaluate_bilstm.py</code>) to compute calibrated OvR
+                ROC-AUC scores using the softmax output probabilities, enabling
+                a complete cross-model comparison on this metric.
+              </div>
+            </div>
+            <div class="fw-card near">
+              <div class="fw-priority">🟢 Near-term (0–6 months)</div>
+              <div class="fw-title">Feature Ablation Study</div>
+              <div class="fw-body">
+                Use the existing SHAP explainer (<code>xai_engine.py</code>) to
+                systematically ablate Top-K feature subsets (K=5, 10, 15, 20,
+                30) and measure the impact on Macro F1 and Semantic F1 for each
+                model. Determine the minimum feature set for production
+                deployment.
+              </div>
+            </div>
+            <div class="fw-card near">
+              <div class="fw-priority">🟢 Near-term (0–6 months)</div>
+              <div class="fw-title">Live Attack Simulation Quantification</div>
+              <div class="fw-body">
+                Execute the full attack simulation protocol (Table 14) against
+                the Live Bridge and report end-to-end detection latency, live
+                false positive rate (30-min benign baseline), and per-attack
+                live detection rate for each of the 8 attack scenarios.
+              </div>
+            </div>
+            <!-- MEDIUM-TERM -->
+            <div class="fw-card medium">
+              <div class="fw-priority">🔵 Medium-term (6–18 months)</div>
+              <div class="fw-title">Cross-Dataset Evaluation</div>
+              <div class="fw-body">
+                Train and evaluate all five models on CICIDS2018, UNSW-NB15, and
+                CIC-DDoS2019 using the same per-file stratified split
+                methodology. Measure cross-dataset Macro F1 degradation to
+                quantify the generalisation gap and identify which model
+                architectures transfer most robustly.
+              </div>
+            </div>
+            <div class="fw-card medium">
+              <div class="fw-priority">🔵 Medium-term (6–18 months)</div>
+              <div class="fw-title">
+                eBPF / DPDK Line-Rate Feature Extraction
+              </div>
+              <div class="fw-body">
+                Replace the CICFlowMeter CLI subprocess (which dominates
+                pipeline latency at 10–90 seconds) with a kernel-level eBPF flow
+                exporter or DPDK-based flow meter that can compute equivalent
+                bidirectional flow statistics at line rate. This would unlock
+                true per-flow real-time inference using LSTM.
+              </div>
+            </div>
+            <div class="fw-card medium">
+              <div class="fw-priority">🔵 Medium-term (6–18 months)</div>
+              <div class="fw-title">Adversarial Robustness Evaluation</div>
+              <div class="fw-body">
+                Evaluate all models against adversarial flow perturbations —
+                minimal feature modifications (FGSM-style) designed to evade
+                detection while preserving attack effectiveness. Assess the
+                robustness differential between tree-based and neural models,
+                and implement adversarial training warm-up for DL models.
+              </div>
+            </div>
+            <div class="fw-card medium">
+              <div class="fw-priority">🔵 Medium-term (6–18 months)</div>
+              <div class="fw-title">Continual Learning from Live Traffic</div>
+              <div class="fw-body">
+                Leverage the live traffic harvesting pipeline (§6.6) to collect
+                analyst-labelled flows from production deployment. Implement
+                online fine-tuning protocols for XGBoost incremental trees and
+                LSTM adapter layers to adapt models to local traffic
+                distributions without full retraining.
+              </div>
+            </div>
+            <!-- LONG-TERM -->
+            <div class="fw-card long">
+              <div class="fw-priority">🟣 Long-term (18+ months)</div>
+              <div class="fw-title">
+                Graph Neural Network for Flow Correlation
+              </div>
+              <div class="fw-body">
+                Model network traffic as a temporal flow interaction graph,
+                where nodes are hosts and edges are flows. Apply Graph Attention
+                Networks (GAT) to classify flows based not only on their own
+                features but on their structural position in the network graph —
+                enabling detection of coordinated multi-flow attacks invisible
+                to per-flow classifiers.
+              </div>
+            </div>
+            <div class="fw-card long">
+              <div class="fw-priority">🟣 Long-term (18+ months)</div>
+              <div class="fw-title">
+                Foundation Model Adaptation (LLM for NetFlow)
+              </div>
+              <div class="fw-body">
+                Investigate the adaptation of sequence foundation models (e.g.,
+                pre-trained Transformers) to network flow token sequences,
+                analogous to CodeBERT for source code. Pre-train on large-scale
+                unlabelled NetFlow data and fine-tune on the 3-class taxonomy —
+                exploring whether self-supervised flow representations
+                outperform the supervised LSTM/BiLSTM trained from scratch.
+              </div>
+            </div>
+            <div class="fw-card long">
+              <div class="fw-priority">🟣 Long-term (18+ months)</div>
+              <div class="fw-title">
+                Federated NIDS for Privacy-Preserving Collaboration
+              </div>
+              <div class="fw-body">
+                Design a federated learning protocol where multiple
+                organisations train local NIDS models on their private traffic
+                without centralising raw flows. Aggregate model updates using
+                federated averaging to produce a global model that benefits from
+                diverse attack exposure while satisfying data sovereignty
+                constraints.
+              </div>
+            </div>
+            <div class="fw-card long">
+              <div class="fw-priority">🟣 Long-term (18+ months)</div>
+              <div class="fw-title">Zero-Day Anomaly Detection Integration</div>
+              <div class="fw-body">
+                Augment the supervised 3-class classifier with an unsupervised
+                anomaly detection layer (e.g., Isolation Forest or Variational
+                Autoencoder on flow embeddings). Flows classified as outliers by
+                the anomaly detector but as "Benign" by the classifier trigger a
+                human-review escalation — creating a hybrid system capable of
+                flagging novel attacks unseen in CICIDS2017 training data.
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout-green">
+            <div class="callout-label">
+              ✅ The Road Ahead — Research Continuity
+            </div>
+            <p>
+              The infrastructure built in this work — the Per-File Stratified
+              Split methodology, the Live Bridge pipeline, the async
+              TrafficLogger, the hot-swap consumer, and the SHAP XAI engine — is
+              specifically designed to support the future work directions listed
+              above. The codebase is publicly available at
+              <strong
+                >github.com/betuldanismaz/Network_Anomaly_Detection</strong
+              >
+              and is structured to enable direct extension by the research
+              community without requiring redesign of the core pipeline.
+            </p>
+          </div>
+        </div>
+        <!-- /10.2 -->
+
+        <!-- Paper Map / Completion -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">10.3</span>
+            <h3 class="subsection-title">Paper Completion Status</h3>
+          </div>
+
+          <div class="paper-map">
+            <div class="pm-item done">
+              <span class="pm-num">§0</span
+              ><span class="pm-name">Abstract</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§1</span
+              ><span class="pm-name">Introduction</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§2</span
+              ><span class="pm-name">Related Work</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§3</span
+              ><span class="pm-name">Dataset & Pre-processing</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§4</span
+              ><span class="pm-name">Model Architecture</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§5</span
+              ><span class="pm-name">Experimental Setup</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§6</span
+              ><span class="pm-name">Production Architecture</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§7</span
+              ><span class="pm-name">MLOps Practices</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§8</span
+              ><span class="pm-name">Results & Analysis</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§9</span
+              ><span class="pm-name">Discussion</span>
+            </div>
+            <div class="pm-item done">
+              <span class="pm-num">§10</span
+              ><span class="pm-name">Conclusion</span>
+            </div>
+          </div>
+          <p
+            style="
+              font-family: &quot;Inter&quot;, sans-serif;
+              font-size: 8.5pt;
+              color: #7f8c8d;
+              margin-top: 0.5rem;
+            "
+          >
+            All 11 sections complete. Remaining steps: References, Appendix
+            (optional), final formatting pass.
+          </p>
+        </div>
+
+        <!-- FINAL BOX -->
+        <div class="final-box">
+          <h3>Paper Summary — AI-Driven NIDS: End-to-End Contributions</h3>
+          <p>
+            This work demonstrates that a production-viable AI-driven NIDS
+            requires
+            <strong>simultaneous excellence</strong> across three dimensions
+            that much of the existing literature treats in isolation:
+            <strong>methodological rigour</strong>
+            (per-file stratified split, leakage-free evaluation, 8-check data
+            audit),
+            <strong>predictive performance</strong> (Macro F1 up to 96.45%;
+            ROC-AUC up to 0.9991; Semantic F1 up to 97.53%), and
+            <strong>production readiness</strong>
+            (126,546 samples/sec, zero-downtime hot-swap, SHAP-attributed
+            alerts, automated firewall response, async traffic harvesting for
+            continual improvement).
+          </p>
+          <p>
+            The 0.58 pp Macro F1 gap between the best traditional ML model
+            (XGBoost: 95.87%) and the best deep learning model (LSTM: 96.45%) —
+            measured under a consistent, leakage-free protocol — challenges the
+            common narrative of categorical DL superiority in network intrusion
+            detection.
+            <strong
+              >For real-time production deployment, XGBoost emerges as the
+              Pareto-optimal choice</strong
+            >: near-top Macro F1, best ROC-AUC, and 37× higher throughput. LSTM
+            is preferred for accuracy-maximising offline analysis. Decision Tree
+            offers the most interpretable and surprisingly competitive option
+            for Semantic-class detection.
+          </p>
+          <p>
+            We release all training scripts, preprocessing pipelines, evaluation
+            dashboards, and the complete Live Bridge architecture to support
+            reproducibility and future replication — addressing the
+            reproducibility crisis in AI-driven NIDS research identified in
+            §2.5.
+          </p>
+          <p>
+            B. Danışmaz · M. E. Bıyık — Department of Computer Engineering ·
+            March 2026
+          </p>
+        </div>
+
+        <div class="ref-note">
+          <strong>References (selected):</strong> [43] Wohlin et al.,
+          "Experimentation in Software Engineering," Springer, 2012.
+          &nbsp;|&nbsp; [1] Sharafaldin et al., "Toward Generating a New
+          Intrusion Detection Dataset," ICISSP 2018. &nbsp;|&nbsp; Full
+          reference list to be compiled in the final paper assembly stage.
+        </div>
+      </article>
+
+      <!-- FOOTER -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 10 — Conclusion &amp;
+          Future Work (Final Section)<br />
+          <span class="col-label">Sub-sections:</span> 10.1 Conclusion (6
+          contributions + headline metrics) · 10.2 Future Work (12 items over 3
+          horizons) · 10.3 Paper Map<br />
+          <span class="col-label">Paper Status:</span> All 11 sections complete
+          ✅
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Central Finding:</span> 0.58pp ML–DL gap;
+          XGBoost production-optimal; DT best Semantic; LSTM best overall F1<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

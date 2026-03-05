@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Section 6: Real-Time Production Architecture — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* HEADER */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #c0392b;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* SECTIONS */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #c0392b;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #c0392b;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsection-block {
+        margin-bottom: 2.2rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #c0392b;
+        border: 1.5px solid #c0392b;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+      .subsubsection {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #34495e;
+        margin-top: 1.6rem;
+        margin-bottom: 0.7rem;
+        padding-left: 0.8rem;
+        border-left: 3px solid #c0392b;
+      }
+
+      /* BODY */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      strong {
+        font-weight: 700;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #fdf2f0;
+        border: 1px solid #f5b7b1;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #922b21;
+      }
+
+      /* ARCHITECTURE DIAGRAM */
+      .arch-diagram {
+        background: #0d1117;
+        border-radius: 8px;
+        padding: 1.8rem 2rem;
+        margin: 1.6rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        overflow-x: auto;
+      }
+      .arch-diagram .ad-title {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #58a6ff;
+        margin-bottom: 1.2rem;
+      }
+      /* Stage boxes */
+      .ad-stage {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 0.8rem;
+        gap: 0.6rem;
+      }
+      .ad-box {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 5px;
+        padding: 0.5rem 0.8rem;
+        flex-shrink: 0;
+        min-width: 140px;
+      }
+      .ad-box .ab-title {
+        color: #f0b27a;
+        font-weight: 600;
+        font-size: 8pt;
+      }
+      .ad-box .ab-tech {
+        color: #7f8c8d;
+        font-size: 7.5pt;
+        display: block;
+        margin-top: 0.1rem;
+      }
+      .ad-box.highlight {
+        border-color: #c0392b;
+        background: #2d1b1b;
+      }
+      .ad-box.highlight .ab-title {
+        color: #f1948a;
+      }
+      .ad-arrow {
+        color: #58a6ff;
+        font-size: 12pt;
+        align-self: center;
+        padding: 0 0.3rem;
+      }
+      .ad-detail {
+        color: #c8d6e5;
+        font-size: 8pt;
+        align-self: center;
+        padding-left: 0.4rem;
+      }
+      /* Full-width section dividers in diagram */
+      .ad-divider {
+        border: none;
+        border-top: 1px dashed #374151;
+        margin: 0.8rem 0;
+      }
+      .ad-label {
+        color: #7f8c8d;
+        font-size: 7.5pt;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+        display: block;
+      }
+
+      /* CODE BLOCKS */
+      .code-block {
+        background: #0d1117;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        margin: 1.2rem 0;
+        overflow-x: auto;
+        position: relative;
+      }
+      .code-block .code-lang {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.8rem;
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 600;
+        color: #f1948a;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .code-block pre {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        line-height: 1.6;
+        color: #c8d6e5;
+        white-space: pre;
+      }
+      .code-block .cm {
+        color: #6e7681;
+      }
+      .code-block .kw2 {
+        color: #ff7b72;
+      }
+      .code-block .fn {
+        color: #d2a8ff;
+      }
+      .code-block .st {
+        color: #a5d6ff;
+      }
+      .code-block .nm {
+        color: #ffa657;
+      }
+      .code-block .ag {
+        color: #3fb950;
+      }
+
+      /* TABLES */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.4rem 0 0.3rem 0;
+      }
+      thead {
+        background: #2c3e50;
+        color: #fff;
+      }
+      th {
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.5pt;
+        border: 1px solid #1a252f;
+      }
+      td {
+        padding: 0.55rem 0.8rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        vertical-align: top;
+      }
+      tbody tr:nth-child(even) {
+        background: #f4f6f7;
+      }
+      tbody tr:hover {
+        background: #fdecea;
+      }
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.4rem;
+      }
+      td.center {
+        text-align: center;
+      }
+      td.green {
+        color: #1e8449;
+        font-weight: 700;
+      }
+      td.red {
+        color: #922b21;
+        font-weight: 700;
+      }
+
+      /* COMPONENT CARDS */
+      .component-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+        margin: 1.4rem 0;
+      }
+      .comp-card {
+        background: #fdfefe;
+        border: 1.5px solid #d5d8dc;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        font-family: "Inter", sans-serif;
+      }
+      .comp-card.red-card {
+        border-top: 4px solid #c0392b;
+      }
+      .comp-card.orange-card {
+        border-top: 4px solid #e67e22;
+      }
+      .comp-card.blue-card {
+        border-top: 4px solid #2980b9;
+      }
+      .comp-card.green-card {
+        border-top: 4px solid #27ae60;
+      }
+      .comp-card .cc-title {
+        font-size: 8.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.6rem;
+      }
+      .comp-card.red-card .cc-title {
+        color: #922b21;
+      }
+      .comp-card.orange-card .cc-title {
+        color: #784212;
+      }
+      .comp-card.blue-card .cc-title {
+        color: #1a5276;
+      }
+      .comp-card.green-card .cc-title {
+        color: #1e8449;
+      }
+      .comp-card .cc-name {
+        font-size: 10pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+      }
+      .comp-card ul {
+        padding-left: 1rem;
+        font-size: 8.5pt;
+        color: #2c3e50;
+      }
+      .comp-card li {
+        margin-bottom: 0.2rem;
+      }
+
+      /* CALLOUTS */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-red {
+        background: #fdedec;
+        border-left: 5px solid #c0392b;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-orange {
+        background: #fef9e7;
+        border-left: 5px solid #f39c12;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-red .callout-label {
+        color: #922b21;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout-orange .callout-label {
+        color: #784212;
+      }
+      .callout p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* TIMELINE/FLOW STRIP */
+      .flow-strip {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin: 1.4rem 0;
+        overflow-x: auto;
+      }
+      .flow-item {
+        flex: 1;
+        background: #faf9f9;
+        border: 1px solid #d5d8dc;
+        padding: 0.7rem 0.9rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        text-align: center;
+        min-width: 90px;
+      }
+      .flow-item:first-child {
+        border-radius: 6px 0 0 6px;
+      }
+      .flow-item:last-child {
+        border-radius: 0 6px 6px 0;
+      }
+      .flow-item.active {
+        background: #fdedec;
+        border-color: #f1948a;
+      }
+      .flow-item .fi-num {
+        font-weight: 700;
+        font-size: 7.5pt;
+        color: #c0392b;
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+      .flow-item .fi-name {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 8pt;
+        display: block;
+      }
+      .flow-item .fi-tech {
+        color: #7f8c8d;
+        font-size: 7.5pt;
+        display: block;
+        margin-top: 0.15rem;
+      }
+      .flow-sep {
+        display: flex;
+        align-items: center;
+        color: #c0392b;
+        font-size: 12pt;
+        font-weight: 700;
+        padding: 0 0.1rem;
+      }
+
+      /* HOT-SWAP BOX */
+      .hotswap-box {
+        background: #1f2937;
+        border-radius: 6px;
+        padding: 1.4rem 1.6rem;
+        margin: 1.2rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        color: #c8d6e5;
+      }
+      .hotswap-box .hs-label {
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #f1948a;
+        margin-bottom: 0.8rem;
+        display: block;
+      }
+      .hs-row {
+        margin-bottom: 0.25rem;
+      }
+      .hs-key {
+        color: #ffa657;
+      }
+      .hs-val {
+        color: #3fb950;
+      }
+      .hs-comment {
+        color: #6e7681;
+      }
+
+      /* DARK SUMMARY */
+      .dark-box {
+        background: linear-gradient(135deg, #2d1b1b 0%, #3d0c0c 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin: 2rem 0;
+      }
+      .dark-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #f1948a;
+        margin-bottom: 1rem;
+      }
+      .dark-box p {
+        color: #d5d8dc;
+        margin-bottom: 0.8rem;
+      }
+      .dark-box p:last-child {
+        margin-bottom: 0;
+      }
+      .dark-box strong {
+        color: #fff;
+      }
+
+      /* FOOTER */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .arch-diagram,
+        .code-block,
+        .dark-box,
+        .hotswap-box {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        thead {
+          background: #2c3e50 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- HEADER -->
+      <header class="paper-header">
+        <div class="paper-label">Academic Conference Paper — Section 6</div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════ SECTION 6 ═══════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 6</span>
+          <h2 class="section-title">Real-Time Production Architecture</h2>
+        </div>
+
+        <p>
+          A primary distinguishing contribution of this work relative to prior
+          NIDS literature is the implementation of a
+          <strong>production-grade inference pipeline</strong>
+          that bridges the offline benchmark experiment (§§3–5) with live
+          network traffic. This section describes, in engineering detail, the
+          end-to-end system architecture that enables real-time packet capture,
+          flow feature extraction, model inference, alert generation, and
+          optional automated response — all running concurrently as distinct,
+          loosely-coupled microservices connected via Apache Kafka. We
+          additionally describe the model hot-swap mechanism (§6.3) that enables
+          runtime model selection without restarting any process, and the
+          integrated firewall response module (§6.4) that enables closed-loop
+          automated IP blocking upon confirmed attack detection.
+        </p>
+
+        <!-- ═══════════════ 6.1 System Overview ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.1</span>
+            <h3 class="subsection-title">System Architecture Overview</h3>
+          </div>
+
+          <p>
+            The production system is structured as a
+            <strong>producer–consumer architecture</strong> over an Apache Kafka
+            message bus, separating the computationally heavy packet capture and
+            feature extraction stage (CPU-bound, blocking) from the model
+            inference and logging stage (GPU/CPU, asynchronous). This decoupling
+            ensures that a slow CICFlowMeter extraction cycle does not block
+            alert generation, and that multiple consumer instances can be scaled
+            independently of the capture process.
+          </p>
+
+          <!-- Full system diagram -->
+          <div class="arch-diagram">
+            <div class="ad-title">
+              Figure 1 — End-to-End Production System Architecture
+            </div>
+
+            <span class="ad-label"
+              >── CAPTURE LAYER (src/live_bridge.py)
+              ──────────────────────</span
+            >
+            <div class="ad-stage">
+              <div class="ad-box highlight">
+                <div class="ab-title">① Network Interface</div>
+                <span class="ab-tech">Scapy sniff(iface, timeout=4s)</span>
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">② PCAP Buffer</div>
+                <span class="ab-tech">wrpcap("temp_live.pcap")</span>
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box highlight">
+                <div class="ab-title">③ CICFlowMeter CLI</div>
+                <span class="ab-tech"
+                  >subprocess · timeout=90s · 78 features</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">④ Feature Alignment</div>
+                <span class="ab-tech"
+                  >rename+reindex+fillna+replace(inf→0)</span
+                >
+              </div>
+            </div>
+
+            <hr class="ad-divider" />
+            <span class="ad-label"
+              >── MESSAGE BUS (Apache Kafka · Docker)
+              ─────────────────────</span
+            >
+            <div class="ad-stage">
+              <div class="ad-box">
+                <div class="ab-title">⑤ Kafka Producer</div>
+                <span class="ab-tech"
+                  >confluent-kafka · acks=all · retries=3</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box highlight">
+                <div class="ab-title">"network-traffic" Topic</div>
+                <span class="ab-tech">127.0.0.1:9092 · JSON payloads</span>
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">⑥ Kafka Consumer</div>
+                <span class="ab-tech"
+                  >group: nids-consumer-group-v1 · poll=1s</span
+                >
+              </div>
+            </div>
+
+            <hr class="ad-divider" />
+            <span class="ad-label"
+              >── INFERENCE LAYER (src/kafka_consumer.py)
+              ─────────────────</span
+            >
+            <div class="ad-stage">
+              <div class="ad-box">
+                <div class="ab-title">⑦ Scaler Transform</div>
+                <span class="ab-tech">models/scaler.pkl (MinMaxScaler)</span>
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box highlight">
+                <div class="ab-title">⑧ Active Model</div>
+                <span class="ab-tech"
+                  >sklearn .pkl OR keras .keras · hot-swap</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">⑨ Class Prediction</div>
+                <span class="ab-tech"
+                  >0=Benign / 1=Volumetric / 2=Semantic</span
+                >
+              </div>
+            </div>
+
+            <hr class="ad-divider" />
+            <span class="ad-label"
+              >── RESPONSE LAYER
+              ──────────────────────────────────────────</span
+            >
+            <div class="ad-stage">
+              <div class="ad-box">
+                <div class="ab-title">⑩ DB Logger</div>
+                <span class="ab-tech"
+                  >utils/db_manager.py → alerts.db (SQLite)</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">⑪ Whitelist Check</div>
+                <span class="ab-tech"
+                  >WHITELIST_IPS env var · skip known-good</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box highlight">
+                <div class="ab-title">⑫ Firewall Block</div>
+                <span class="ab-tech">netsh (Windows) / iptables (Linux)</span>
+              </div>
+            </div>
+
+            <hr class="ad-divider" />
+            <span class="ad-label"
+              >── MONITORING LAYER
+              ─────────────────────────────────────────</span
+            >
+            <div class="ad-stage">
+              <div class="ad-box">
+                <div class="ab-title">⑬ TrafficLogger</div>
+                <span class="ab-tech"
+                  >Async writer · 25-row buffer · 30s flush</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">⑭ Live CSV Archive</div>
+                <span class="ab-tech"
+                  >data/live_captured_traffic.csv (retraining)</span
+                >
+              </div>
+              <div class="ad-arrow">→</div>
+              <div class="ad-box">
+                <div class="ab-title">⑮ Dashboard</div>
+                <span class="ab-tech">src/dashboard/app.py (Dash/Flask)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /6.1 -->
+
+        <!-- ═══════════════ 6.2 Live Bridge Deep-Dive ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.2</span>
+            <h3 class="subsection-title">
+              Live Bridge Mechanism — Key Engineering Contribution
+            </h3>
+          </div>
+
+          <p>
+            The
+            <span class="kw">Live Bridge</span>
+            (<code>src/live_bridge.py</code>, 863 lines) is the core production
+            engineering contribution of this work. It implements the complete
+            capture-to-Kafka pipeline as a single continuous process, handling
+            the inherent messiness of real-world packet capture: incomplete
+            flows, feature extractor failures, column name mismatches, and
+            ±∞/NaN artefacts.
+          </p>
+
+          <div class="subsubsection">A. Packet Capture Loop</div>
+
+          <p>
+            The capture loop uses <strong>Scapy</strong>'s <code>sniff()</code>
+            with a configurable network interface (read from the
+            <code>NETWORK_INTERFACE</code> environment variable, default:
+            <code>"Wi-Fi"</code>) and a 4-second window. All captured packets
+            are written to a temporary PCAP buffer (<code>temp_live.pcap</code>)
+            using <code>wrpcap()</code>, then CICFlowMeter is invoked as a
+            subprocess to extract bidirectional flow features. The main loop
+            runs indefinitely until <code>CTRL+C</code>, with a 10-iteration
+            console status update:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">Python — live_bridge.py (lines 834–848)</div>
+            <pre><span class="kw2">while</span> <span class="nm">True</span>:
+    packets = <span class="fn">sniff</span>(iface=INTERFACE, timeout=<span class="nm">4</span>)   <span class="cm"># 4-second capture window</span>
+    <span class="kw2">if</span> <span class="fn">len</span>(packets) > <span class="nm">0</span>:
+        <span class="fn">wrpcap</span>(TEMP_PCAP, packets)             <span class="cm"># persist to temp_live.pcap</span>
+        <span class="fn">feature_extraction_and_predict</span>()      <span class="cm"># CICFlowMeter → Kafka publish</span>
+        iteration_count += <span class="nm">1</span>
+    <span class="kw2">if</span> iteration_count % <span class="nm">10</span> == <span class="nm">0</span>:
+        <span class="fn">print</span>(<span class="st">f"📊 Producer Stats: {iteration_count} batches sent"</span>)</pre>
+          </div>
+
+          <div class="subsubsection">
+            B. CICFlowMeter CLI Integration &amp; Fallback
+          </div>
+
+          <p>
+            CICFlowMeter is invoked via <code>subprocess.run()</code> rather
+            than the Python API to avoid version compatibility issues on
+            Windows. Two invocation strategies are attempted in sequence: (1)
+            <code>python -m cicflowmeter</code> and, if that fails, (2) the
+            global <code>cicflowmeter</code> CLI command. CICFlowMeter
+            occasionally produces output under a modified filename (e.g.,
+            <code>temp_live_Flow.csv</code>); the bridge handles this with an
+            automatic file rename detection. If extraction fails entirely after
+            both attempts, a dummy zero-filled feature row is generated to keep
+            the Kafka pipeline alive for monitoring — preventing a single packet
+            capture failure from silently stalling the entire inference chain.
+          </p>
+
+          <div class="subsubsection">C. Kafka Publish — Message Schema</div>
+
+          <p>
+            Each extracted flow is serialised as a JSON message and published to
+            the
+            <code>network-traffic</code> Kafka topic. The message schema
+            includes both inference-relevant features and metadata for
+            downstream logging:
+          </p>
+
+          <div class="hotswap-box">
+            <span class="hs-label"
+              >Kafka Message Schema — live_bridge.py (lines 553–563)</span
+            >
+            <div class="hs-row">{</div>
+            <div class="hs-row">
+              <span class="hs-key">"timestamp"</span>:
+              <span class="hs-val">"2026-03-05T16:34:02.123456"</span>,
+              <span class="hs-comment">// ISO-8601</span>
+            </div>
+            <div class="hs-row">
+              <span class="hs-key">"src_ip"</span>:
+              <span class="hs-val">"192.168.1.105"</span>,
+            </div>
+            <div class="hs-row">
+              <span class="hs-key">"dst_ip"</span>:
+              <span class="hs-val">"142.250.74.46"</span>,
+            </div>
+            <div class="hs-row">
+              <span class="hs-key">"features"</span>:
+              <span class="hs-val"
+                >{ "flow_duration": 0.045, "fwd_pkt_len_max": 1460, ... }</span
+              >, <span class="hs-comment">// 78 features</span>
+            </div>
+            <div class="hs-row">
+              <span class="hs-key">"feature_count"</span>:
+              <span class="hs-val">78</span>,
+            </div>
+            <div class="hs-row">
+              <span class="hs-key">"producer_id"</span>:
+              <span class="hs-val">"live_bridge_v1"</span>
+            </div>
+            <div class="hs-row">}</div>
+          </div>
+
+          <p>
+            The Kafka producer is configured with
+            <code>acks='all'</code> (leader + all replicas must acknowledge),
+            <code>retries=3</code>, and
+            <code>max.in.flight.requests.per.connection=1</code> to guarantee
+            at-least-once message delivery with preserved ordering.
+          </p>
+        </div>
+        <!-- /6.2 -->
+
+        <!-- ═══════════════ 6.3 AI Consumer & Hot-Swap ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.3</span>
+            <h3 class="subsection-title">
+              AI Consumer &amp; Runtime Model Hot-Swap
+            </h3>
+          </div>
+
+          <p>
+            The
+            <span class="kw">AI Consumer</span>
+            (<code>src/kafka_consumer.py</code>, 508 lines) subscribes to the
+            <code>network-traffic</code> Kafka topic and processes each flow
+            message through a complete inference pipeline: JSON parsing →
+            feature alignment → MinMaxScaler transform → model forward pass →
+            class prediction → logging.
+          </p>
+
+          <div class="subsubsection">A. Dual-Format Model Loading</div>
+
+          <p>
+            A key engineering feature of the consumer is its ability to load and
+            serve <em>any</em> of the five trained models — or the PyCaret
+            champion — without code changes, through a single unified loader:
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 13. Consumer Model Loader — Supported Formats and Inference
+              Paths
+            </caption>
+            <thead>
+              <tr>
+                <th>File Extension</th>
+                <th>Model Type</th>
+                <th>Loader</th>
+                <th>Input Shape</th>
+                <th>Scaler Used</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>.pkl</code></td>
+                <td>XGBoost / RF / DT / PyCaret</td>
+                <td><code>joblib.load()</code></td>
+                <td><code>(1, 78)</code></td>
+                <td><code>scaler.pkl</code></td>
+              </tr>
+              <tr>
+                <td><code>.keras</code></td>
+                <td>LSTM / BiLSTM (Keras)</td>
+                <td><code>keras.models.load_model()</code></td>
+                <td><code>(1, 1, 78)</code> reshaped</td>
+                <td><code>scaler_lstm.pkl</code></td>
+              </tr>
+              <tr>
+                <td><code>.h5</code></td>
+                <td>Legacy Keras format</td>
+                <td><code>keras.models.load_model()</code></td>
+                <td><code>(1, 1, 78)</code> reshaped</td>
+                <td><code>scaler_lstm.pkl</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            The consumer automatically detects model type from the file
+            extension and applies the appropriate scaler and input reshape. For
+            Keras models, the single-flow feature vector is reshaped from
+            <code>(1, 78) → (1, 1, 78)</code> to satisfy the expected 3D LSTM
+            input format (batch × timesteps × features).
+          </div>
+
+          <div class="subsubsection">B. Zero-Downtime Model Hot-Swap</div>
+
+          <p>
+            The consumer implements a
+            <strong>polling-based hot-swap mechanism</strong> that checks for a
+            model change request every 5 seconds (configurable via
+            <code>CONFIG_CHECK_INTERVAL</code>) by reading a single-line text
+            file (<code>data/active_model.txt</code>). This file can be updated
+            by the web dashboard, an operations script, or any external process.
+            When a change is detected, the consumer reloads the new model
+            in-place — no consumer restart or Kafka consumer group rebalancing
+            is required:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">
+              Python — kafka_consumer.py (lines 405–438)
+            </div>
+            <pre><span class="kw2">def</span> <span class="fn">check_and_reload_model</span>():
+    <span class="cm"># Runs every 5 seconds in the main polling loop</span>
+    <span class="kw2">with</span> <span class="fn">open</span>(ACTIVE_MODEL_CONFIG) <span class="kw2">as</span> f:
+        requested_model = f.<span class="fn">read</span>().<span class="fn">strip</span>()   <span class="cm"># e.g., "lstm_best.keras"</span>
+
+    <span class="kw2">if</span> requested_model != CURRENT_MODEL_NAME:
+        <span class="fn">print</span>(<span class="st">f"🔄 MODEL SWITCH: {CURRENT_MODEL_NAME} → {requested_model}"</span>)
+        <span class="fn">load_model_and_scaler</span>(requested_model)   <span class="cm"># hot reload</span>
+        <span class="cm"># No restart — next poll immediately uses new model</span></pre>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-label">
+              ℹ Operational Significance of Hot-Swap
+            </div>
+            <p>
+              Hot-swap enables a critical operational workflow: an analyst can
+              evaluate all five models <em>against live traffic</em> without
+              interrupting the capture pipeline. The model name written to
+              <code>active_model.txt</code> controls which trained model
+              services the next Kafka message. This allows rapid A/B comparison
+              of, for example, XGBoost (low latency) versus BiLSTM (higher
+              sequential context) on the same live traffic stream — a comparison
+              not possible in offline evaluation.
+            </p>
+          </div>
+
+          <div class="subsubsection">
+            C. Inference Pipeline — Per-Message Processing
+          </div>
+
+          <p>
+            Each Kafka message is processed through a strictly ordered 9-step
+            pipeline within <code>process_message()</code>:
+          </p>
+
+          <div class="flow-strip">
+            <div class="flow-item active">
+              <span class="fi-num">Step 1</span>
+              <span class="fi-name">JSON Parse</span>
+              <span class="fi-tech">json.loads()</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item">
+              <span class="fi-num">Step 2</span>
+              <span class="fi-name">DF Build</span>
+              <span class="fi-tech">pd.DataFrame({features})</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item">
+              <span class="fi-num">Step 3</span>
+              <span class="fi-name">Reindex</span>
+              <span class="fi-tech">scaler.feature_names_in_</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item active">
+              <span class="fi-num">Step 4</span>
+              <span class="fi-name">Scale</span>
+              <span class="fi-tech">SCALER.transform()</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item active">
+              <span class="fi-num">Step 5</span>
+              <span class="fi-name">Predict</span>
+              <span class="fi-tech">MODEL.predict() / argmax</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item">
+              <span class="fi-num">Step 6</span>
+              <span class="fi-name">Log CSV</span>
+              <span class="fi-tech">live_captured_traffic.csv</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item">
+              <span class="fi-num">Step 7</span>
+              <span class="fi-name">Log DB</span>
+              <span class="fi-tech">alerts.db (SQLite)</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item">
+              <span class="fi-num">Step 8</span>
+              <span class="fi-name">Stats</span>
+              <span class="fi-tech">STATS dict update</span>
+            </div>
+            <div class="flow-sep">→</div>
+            <div class="flow-item active">
+              <span class="fi-num">Step 9</span>
+              <span class="fi-name">Alert</span>
+              <span class="fi-tech">Terminal + optional block</span>
+            </div>
+          </div>
+        </div>
+        <!-- /6.3 -->
+
+        <!-- ═══════════════ 6.4 Automated Firewall Response ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.4</span>
+            <h3 class="subsection-title">
+              Automated Firewall Response &amp; IP Whitelisting
+            </h3>
+          </div>
+
+          <p>
+            When a flow is classified as an attack (class 1 or 2), the consumer
+            optionally triggers an <strong>automated firewall block</strong> via
+            <code>src/utils/firewall_manager.py</code>. The IP blocking is
+            cross-platform — it uses <code>netsh advfirewall</code> on Windows
+            and <code>iptables</code> on Linux — and includes duplicate-rule
+            checking to prevent accumulation of redundant rules:
+          </p>
+
+          <div class="component-grid">
+            <div class="comp-card red-card">
+              <div class="cc-title">🔴 Windows Firewall</div>
+              <div class="cc-name">netsh advfirewall</div>
+              <ul>
+                <li>Rule name: <code>Block_AI_{src_ip}</code></li>
+                <li>Direction: inbound (<code>dir=in</code>)</li>
+                <li>Action: <code>action=block remoteip={ip}</code></li>
+                <li>Duplicate check before adding</li>
+                <li><code>unblock_ip()</code> → removes rule by name</li>
+              </ul>
+            </div>
+            <div class="comp-card orange-card">
+              <div class="cc-title">🟠 Linux IPTables</div>
+              <div class="cc-name">iptables -A INPUT</div>
+              <ul>
+                <li>Rule: <code>-s {ip} -j DROP</code></li>
+                <li>Pre-check: <code>iptables -C INPUT</code></li>
+                <li>Removal: <code>iptables -D INPUT</code></li>
+                <li>
+                  Platform auto-detection via <code>platform.system()</code>
+                </li>
+              </ul>
+            </div>
+            <div class="comp-card blue-card">
+              <div class="cc-title">🔵 IP Whitelist Guard</div>
+              <div class="cc-name">WHITELIST_IPS env var</div>
+              <ul>
+                <li>Default: <code>127.0.0.1, 192.168.1.1, localhost</code></li>
+                <li>Configurable via <code>.env</code> file</li>
+                <li>
+                  Even if attack is detected, whitelisted IPs are never blocked
+                </li>
+                <li>Alert still logged with "ALLOWED" status</li>
+              </ul>
+            </div>
+            <div class="comp-card green-card">
+              <div class="cc-title">🟢 SQLite Alert Log</div>
+              <div class="cc-name">utils/db_manager.py → alerts.db</div>
+              <ul>
+                <li><code>log_attack(src_ip, action, reason)</code></li>
+                <li>Actions: <code>BLOCKED</code> / <code>ALLOWED</code></li>
+                <li>Persistent alert history for post-incident analysis</li>
+                <li>
+                  Readable by dashboard (<code>src/dashboard/app.py</code>)
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout callout-orange">
+            <div class="callout-label">⚠ Auto-Block is Opt-In by Design</div>
+            <p>
+              The automated <code>block_ip(src_ip)</code> call in
+              <code>kafka_consumer.py</code> (line 345) is intentionally
+              <strong>commented out</strong> in the delivered codebase. The
+              system logs and alerts on all detections but requires explicit
+              operator action to enable automated blocking. This design decision
+              reflects the security-engineering principle that automated
+              defensive actions carry operational risk (e.g., blocking
+              legitimate traffic on false positives), and should only be enabled
+              after threshold validation on a per-deployment basis.
+            </p>
+          </div>
+        </div>
+        <!-- /6.4 -->
+
+        <!-- ═══════════════ 6.5 Attack Simulation Environment ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.5</span>
+            <h3 class="subsection-title">Attack Simulation Environment</h3>
+          </div>
+
+          <p>
+            A critical gap in most NIDS research is the inability to validate
+            model performance beyond the offline benchmark: the model may
+            achieve high F1 on CICIDS2017 test data but fail on live traffic
+            with different packet timing, fragmentation patterns, or flow
+            completion rates. To bridge this gap, the production architecture is
+            designed to support
+            <strong>closed-loop dynamic validation</strong> using a co-located
+            attack simulation environment.
+          </p>
+
+          <div class="subsubsection">A. Simulation Methodology</div>
+
+          <p>
+            The attack simulation environment enables controlled injection of
+            both Volumetric and Semantic attack patterns against the Live Bridge
+            while it is actively monitoring the same network interface. This
+            creates a closed validation loop: attack tool → network interface →
+            Scapy sniff → CICFlowMeter → Kafka → AI Consumer → detection result.
+            The detection outcome (class 0/1/2) is compared against the known
+            ground-truth attack type to compute live detection rates.
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 14. Attack Simulation Environment — Attack Types, Tools, and
+              CICIDS2017 Equivalence
+            </caption>
+            <thead>
+              <tr>
+                <th>Attack Category</th>
+                <th>Class (Taxonomy)</th>
+                <th>Simulation Tool</th>
+                <th>Protocol</th>
+                <th>CICIDS2017 Equivalent</th>
+                <th>Expected Detection</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>UDP Flood</strong></td>
+                <td class="center">1 — Volumetric</td>
+                <td><code>hping3 --udp</code></td>
+                <td>UDP</td>
+                <td>DDoS LOIT / UDP Flood</td>
+                <td class="green">High</td>
+              </tr>
+              <tr>
+                <td><strong>SYN Flood</strong></td>
+                <td class="center">1 — Volumetric</td>
+                <td><code>hping3 -S --flood</code></td>
+                <td>TCP SYN</td>
+                <td>DoS Hulk / GoldenEye</td>
+                <td class="green">High</td>
+              </tr>
+              <tr>
+                <td><strong>ICMP Flood</strong></td>
+                <td class="center">1 — Volumetric</td>
+                <td><code>hping3 --icmp</code></td>
+                <td>ICMP</td>
+                <td>DoS Heartbleed</td>
+                <td class="green">High</td>
+              </tr>
+              <tr>
+                <td><strong>Slowloris</strong></td>
+                <td class="center">1 — Volumetric</td>
+                <td><code>slowloris</code> (Python)</td>
+                <td>HTTP (slow)</td>
+                <td>DoS Slowloris / SlowHTTPTest</td>
+                <td class="green">Moderate–High</td>
+              </tr>
+              <tr>
+                <td><strong>Port Scan</strong></td>
+                <td class="center">2 — Semantic</td>
+                <td><code>nmap -sS / -sU</code></td>
+                <td>TCP/UDP</td>
+                <td>PortScan</td>
+                <td class="green">High</td>
+              </tr>
+              <tr>
+                <td><strong>SSH Brute Force</strong></td>
+                <td class="center">2 — Semantic</td>
+                <td><code>hydra / medusa</code></td>
+                <td>SSH</td>
+                <td>Brute Force SSH</td>
+                <td class="green">Moderate</td>
+              </tr>
+              <tr>
+                <td><strong>Web Fuzzing</strong></td>
+                <td class="center">2 — Semantic</td>
+                <td><code>nikto / dirbuster</code></td>
+                <td>HTTP</td>
+                <td>Web Attacks XSS / Sql</td>
+                <td class="red">Moderate (feature-dependent)</td>
+              </tr>
+              <tr>
+                <td><strong>Benign Traffic</strong></td>
+                <td class="center">0 — Benign</td>
+                <td>Normal browsing / curl</td>
+                <td>HTTP/S, DNS</td>
+                <td>Monday (benign day)</td>
+                <td class="green">FPR &lt; 5% target</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Attack tools are standard penetration testing utilities. All
+            simulations were conducted in an isolated lab network segment to
+            avoid legal and operational risks. "Expected Detection" reflects
+            qualitative confidence based on the CICIDS2017 training data
+            coverage for each attack subtype.
+          </div>
+
+          <div class="subsubsection">
+            B. Validation Metrics for Live Testing
+          </div>
+
+          <p>
+            The live attack simulation environment measures three complementary
+            quantities not captured by the offline benchmark:
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 15. Live Validation Metrics — Beyond the Offline Benchmark
+            </caption>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Definition</th>
+                <th>Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>End-to-End Detection Latency</strong></td>
+                <td>Time from attack initiation to first Kafka alert</td>
+                <td>Empirical measurement across 10 simulation runs</td>
+              </tr>
+              <tr>
+                <td><strong>Live False Positive Rate</strong></td>
+                <td>
+                  Fraction of benign flows classified as attack during normal
+                  use
+                </td>
+                <td>30-minute benign baseline monitoring session</td>
+              </tr>
+              <tr>
+                <td><strong>Live Detection Rate</strong></td>
+                <td>Fraction of simulated attack flows correctly classified</td>
+                <td>Per-attack-type count from consumer log</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout callout-green">
+            <div class="callout-label">
+              ✅ Contribution C4 — Closed-Loop Dynamic Validation
+            </div>
+            <p>
+              The combination of the Live Bridge (§6.2), hot-swap model
+              selection (§6.3), and the attack simulation environment
+              establishes a
+              <strong>closed-loop validation methodology</strong> that is absent
+              from virtually all prior NIDS benchmark studies. Rather than
+              reporting offline test-set accuracy as a proxy for production
+              performance, this system enables direct measurement of alert
+              latency, live false positive rates, and per-attack detection rates
+              under controlled but realistic network conditions. The simulation
+              results are reported in §8.5.
+            </p>
+          </div>
+        </div>
+        <!-- /6.5 -->
+
+        <!-- ═══════════════ 6.6 Traffic Harvesting for Retraining ═══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">6.6</span>
+            <h3 class="subsection-title">
+              Continuous Traffic Harvesting for Model Retraining
+            </h3>
+          </div>
+
+          <p>
+            The production pipeline includes an asynchronous
+            <strong>TrafficLogger</strong> (<code>live_bridge.py</code>, class
+            <code>TrafficLogger</code>) that persists every processed flow — 78
+            raw features, predicted label, confidence score, and timestamp — to
+            a live capture CSV (<code>data/live_captured_traffic.csv</code>).
+            This data collection mechanism supports
+            <strong>continual model improvement</strong>: as live traffic
+            diverges from the CICIDS2017 training distribution (due to network
+            topology changes, new application protocols, or evolving attack
+            patterns), the harvested flows can be labelled by an analyst and
+            used to fine-tune or retrain the deployed models.
+          </p>
+
+          <p>
+            The TrafficLogger runs on a dedicated background writer thread to
+            minimise impact on the inference latency of the main capture loop.
+            Data is buffered in memory (25 rows) and flushed to disk every 30
+            seconds, or when the buffer fills, using append-mode CSV writes. A
+            graceful shutdown hook registered via
+            <code>atexit.register(self.shutdown)</code> ensures that all
+            buffered rows are flushed to disk even on abnormal process
+            termination.
+          </p>
+        </div>
+        <!-- /6.6 -->
+
+        <!-- SUMMARY BOX -->
+        <div class="dark-box">
+          <h3>Section 6 Summary — Real-Time Production Architecture</h3>
+          <p>
+            <strong>15-component pipeline:</strong> Scapy (4s window) → PCAP →
+            CICFlowMeter CLI (subprocess, 90s timeout, fallback to dummy) → JSON
+            Kafka message → <code>network-traffic</code> topic → AI Consumer →
+            MinMaxScaler transform → active model → 3-class prediction → CSV log
+            + SQLite alerts.
+          </p>
+          <p>
+            <strong>Hot-swap:</strong> Consumer polls
+            <code>data/active_model.txt</code> every 5 seconds. Any of 6 models
+            (XGBoost, RF, DT, LSTM, BiLSTM, PyCaret champion) switchable at
+            runtime — zero downtime, no restart.
+          </p>
+          <p>
+            <strong>Automated response:</strong>
+            <code>firewall_manager.py</code> provides cross-platform IP blocking
+            (netsh/iptables), whitelist guard, and deduplication. Auto-block is
+            opt-in by default.
+          </p>
+          <p>
+            <strong>Attack simulation:</strong> 8 attack scenarios (3 Volumetric
+            + 4 Semantic + benign) via hping3, nmap, hydra, slowloris, nikto.
+            Enables closed-loop live validation: E2E latency, live FPR,
+            per-attack detection rate.
+          </p>
+          <p>
+            <strong>Retraining pipeline:</strong> Async TrafficLogger (25-row
+            buffer, 30s flush) archives all live flows (78 features + prediction
+            + confidence) for future fine-tuning.
+          </p>
+        </div>
+      </article>
+
+      <!-- FOOTER -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 6 — Real-Time Production
+          Architecture<br />
+          <span class="col-label">Sub-sections:</span> 6.1 Overview · 6.2 Live
+          Bridge · 6.3 Consumer+HotSwap · 6.4 Firewall · 6.5 Attack Sim · 6.6
+          Harvesting<br />
+          <span class="col-label">Key Tables:</span> T13 Model Loader · T14
+          Attack Simulation · T15 Live Metrics
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Key Files:</span> live_bridge.py (863L) ·
+          kafka_consumer.py (508L) · firewall_manager.py<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Section 4: Model Architecture & Training — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* ── HEADER ── */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #2980b9;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* ── SECTION / SUBSECTION ── */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #2980b9;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #2980b9;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsection-block {
+        margin-bottom: 2.2rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #2980b9;
+        border: 1.5px solid #2980b9;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+      .subsubsection {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #34495e;
+        margin-top: 1.6rem;
+        margin-bottom: 0.7rem;
+        padding-left: 0.8rem;
+        border-left: 3px solid #3498db;
+      }
+
+      /* ── BODY TEXT ── */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      .metric {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 10pt;
+        color: #1a5276;
+      }
+      strong {
+        font-weight: 700;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #eaf4fb;
+        border: 1px solid #aed6f1;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #1a5276;
+      }
+
+      /* ── MODEL CARDS ── */
+      .model-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+        margin: 1.4rem 0;
+      }
+      .model-card {
+        border: 1.5px solid #d5d8dc;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        font-family: "Inter", sans-serif;
+        position: relative;
+        background: #fdfefe;
+      }
+      .model-card.ml-card {
+        border-top: 4px solid #2980b9;
+      }
+      .model-card.dl-card {
+        border-top: 4px solid #8e44ad;
+      }
+      .model-card .mc-type {
+        font-size: 7pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .model-card.ml-card .mc-type {
+        color: #2980b9;
+      }
+      .model-card.dl-card .mc-type {
+        color: #8e44ad;
+      }
+      .model-card .mc-name {
+        font-size: 11pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.8rem;
+      }
+      .mc-params {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.15rem 0.8rem;
+        font-size: 8.5pt;
+      }
+      .mc-pk {
+        font-weight: 600;
+        color: #5d6d7e;
+      }
+      .mc-pv {
+        color: #2c3e50;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+      }
+
+      /* ── ARCHITECTURE DIAGRAM ── */
+      .arch-diagram {
+        background: #1e2d3d;
+        border-radius: 6px;
+        padding: 1.4rem 1.6rem;
+        margin: 1.2rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 9pt;
+        color: #c8d6e5;
+        overflow-x: auto;
+      }
+      .arch-label {
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #5dade2;
+        margin-bottom: 0.8rem;
+      }
+      .arch-layer {
+        margin-bottom: 0.3rem;
+      }
+      .arch-layer .al-shape {
+        color: #f0b27a;
+      }
+      .arch-layer .al-act {
+        color: #a9dfbf;
+      }
+      .arch-layer .al-note {
+        color: #7f8c8d;
+      }
+      .arch-arrow {
+        color: #5dade2;
+        padding-left: 2rem;
+      }
+
+      /* ── CODE BLOCKS ── */
+      .code-block {
+        background: #1e2d3d;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        margin: 1.2rem 0;
+        overflow-x: auto;
+        position: relative;
+      }
+      .code-block .code-lang {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.8rem;
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 600;
+        color: #5dade2;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .code-block pre {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        line-height: 1.6;
+        color: #c8d6e5;
+        white-space: pre;
+      }
+      .code-block .cm {
+        color: #7f8c8d;
+      }
+      .code-block .kw2 {
+        color: #5dade2;
+      }
+      .code-block .fn {
+        color: #a9cce3;
+      }
+      .code-block .st {
+        color: #a9dfbf;
+      }
+      .code-block .nm {
+        color: #f0b27a;
+      }
+
+      /* ── TABLES ── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.4rem 0 0.3rem 0;
+      }
+      thead {
+        background: #2c3e50;
+        color: #fff;
+      }
+      th {
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.5pt;
+        border: 1px solid #1a252f;
+      }
+      td {
+        padding: 0.55rem 0.8rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        vertical-align: top;
+      }
+      tbody tr:nth-child(even) {
+        background: #f4f6f7;
+      }
+      tbody tr:hover {
+        background: #d6eaf8;
+      }
+      td.center {
+        text-align: center;
+      }
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.4rem;
+      }
+      .cell-ml {
+        background: #eaf4fb !important;
+      }
+      .cell-dl {
+        background: #f5eef8 !important;
+      }
+
+      /* ── CALLOUTS ── */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-purple {
+        background: #f5eef8;
+        border-left: 5px solid #8e44ad;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-orange {
+        background: #fef9e7;
+        border-left: 5px solid #f39c12;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout-purple .callout-label {
+        color: #6c3483;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-orange .callout-label {
+        color: #784212;
+      }
+      .callout p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* ── DARK SUMMARY BOX ── */
+      .dark-box {
+        background: linear-gradient(135deg, #1a2a4a 0%, #2c3e50 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin: 2rem 0;
+      }
+      .dark-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #5dade2;
+        margin-bottom: 1rem;
+      }
+      .dark-box p {
+        color: #d5d8dc;
+        margin-bottom: 0.8rem;
+      }
+      .dark-box p:last-child {
+        margin-bottom: 0;
+      }
+      .dark-box strong {
+        color: #fff;
+      }
+
+      /* ── TWIN TRACK STRIP ── */
+      .twin-track {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+        margin: 1.4rem 0;
+      }
+      .track {
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+      }
+      .track-ml {
+        background: #eaf4fb;
+        border: 1.5px solid #aed6f1;
+      }
+      .track-dl {
+        background: #f5eef8;
+        border: 1.5px solid #d2b4de;
+      }
+      .track h4 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 0.8rem;
+      }
+      .track-ml h4 {
+        color: #1a5276;
+      }
+      .track-dl h4 {
+        color: #6c3483;
+      }
+      .track ul {
+        padding-left: 1.2rem;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #2c3e50;
+      }
+      .track li {
+        margin-bottom: 0.3rem;
+      }
+
+      /* ── CALLBACK LIST ── */
+      .cb-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+        margin: 1rem 0;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+      }
+      .cb-item {
+        background: #f8f9fa;
+        border: 1px solid #d5d8dc;
+        border-radius: 4px;
+        padding: 0.5rem 0.8rem;
+      }
+      .cb-item .cb-name {
+        font-weight: 700;
+        color: #2980b9;
+      }
+      .cb-item .cb-params {
+        color: #5d6d7e;
+        display: block;
+        margin-top: 0.15rem;
+      }
+
+      /* ── FOOTER ── */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .arch-diagram,
+        .code-block,
+        .dark-box {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        thead {
+          background: #2c3e50 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- ═══════════════════════ HEADER ═══════════════════════ -->
+      <header class="paper-header">
+        <div class="paper-label">Academic Conference Paper — Section 4</div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════════ SECTION 4 ═══════════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 4</span>
+          <h2 class="section-title">Model Architecture &amp; Training</h2>
+        </div>
+
+        <p>
+          This section describes the architecture, training protocol, and design
+          rationale for all five model families evaluated in this comparative
+          study. We organise the discussion into two principal tracks that
+          reflect the dual-format preprocessing pipeline established in §3.5:
+          the <strong>Traditional ML track</strong>
+          (§4.1–§4.3), which operates on 2D tabular feature vectors
+          <code>(N, 20)</code> using tree-based ensemble and single-tree
+          classifiers; and the <strong>Deep Learning track</strong> (§4.4–§4.5),
+          which operates on 3D temporal sequences <code>(N, 10, 20)</code> using
+          recurrent neural architectures. A unified training protocol section
+          (§4.6) describes the hyperparameter selection methodology, loss
+          function, optimiser, and regularisation strategies shared across model
+          families. All five models are trained identically in terms of input
+          features (Top-20, §3.3) and evaluation protocol (per-file stratified
+          split, §3.4), ensuring a fair, apples-to-apples comparison.
+        </p>
+
+        <div class="twin-track">
+          <div class="track track-ml">
+            <h4>
+              🔵 Track A — Traditional ML
+              <em style="font-weight: 400">(2D tabular)</em>
+            </h4>
+            <ul>
+              <li><strong>4.1</strong> XGBoost Classifier</li>
+              <li><strong>4.2</strong> Random Forest Classifier</li>
+              <li><strong>4.3</strong> Decision Tree Classifier</li>
+            </ul>
+          </div>
+          <div class="track track-dl">
+            <h4>
+              🟣 Track B — Deep Learning
+              <em style="font-weight: 400">(3D temporal)</em>
+            </h4>
+            <ul>
+              <li><strong>4.4</strong> LSTM Network</li>
+              <li><strong>4.5</strong> Bidirectional LSTM Network</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ══════════════════ 4.1 XGBoost ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.1</span>
+            <h3 class="subsection-title">
+              XGBoost Gradient-Boosted Classifier
+            </h3>
+          </div>
+
+          <p>
+            <span class="kw">XGBoost</span> (eXtreme Gradient Boosting; Chen
+            &amp; Guestrin, 2016) is selected as the primary Traditional ML
+            baseline due to its well-documented superiority on structured
+            tabular data, native GPU acceleration, and built-in regularisation
+            through subsampling and column sampling. The model is trained using
+            the <code>multi:softprob</code> objective, which outputs a
+            probability vector over all three classes rather than a hard label —
+            a design choice that enables OvR ROC-AUC computation and provides
+            calibrated confidence estimates for the production inference
+            pipeline.
+          </p>
+
+          <div class="subsubsection">A. Hyperparameter Configuration</div>
+
+          <p>
+            The following hyperparameters were determined through empirical
+            tuning on the validation partition. Early stopping (patience = 50
+            rounds) is applied using validation set multi-class log-loss
+            (mlogloss) to prevent overfitting on the 2.83M-flow training corpus:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">
+              Python — train_xgboost.py (lines 220–233)
+            </div>
+            <pre>params = {
+    <span class="st">'n_estimators'</span>:         <span class="nm">1000</span>,      <span class="cm"># max boosting rounds (early stopping used)</span>
+    <span class="st">'max_depth'</span>:             <span class="nm">7</span>,         <span class="cm"># tree depth — balances capacity vs. speed</span>
+    <span class="st">'learning_rate'</span>:         <span class="nm">0.05</span>,      <span class="cm"># shrinkage: slow but stable convergence</span>
+    <span class="st">'subsample'</span>:             <span class="nm">0.8</span>,       <span class="cm"># row sampling per tree (regularisation)</span>
+    <span class="st">'colsample_bytree'</span>:      <span class="nm">0.8</span>,       <span class="cm"># column sampling per tree</span>
+    <span class="st">'objective'</span>:     <span class="st">'multi:softprob'</span>, <span class="cm"># outputs P(y=0), P(y=1), P(y=2)</span>
+    <span class="st">'num_class'</span>:              <span class="nm">3</span>,         <span class="cm"># required for multi-class objectives</span>
+    <span class="st">'eval_metric'</span>:    <span class="st">'mlogloss'</span>,       <span class="cm"># multi-class log loss for monitoring</span>
+    <span class="st">'random_state'</span>:          <span class="nm">42</span>,
+    <span class="st">'n_jobs'</span>:               <span class="nm">-1</span>,         <span class="cm"># all CPU cores</span>
+    <span class="st">'early_stopping_rounds'</span>: <span class="nm">50</span>         <span class="cm"># patience on val mlogloss</span>
+}
+<span class="cm"># GPU acceleration: device='cuda', tree_method='hist' (XGBoost ≥2.0)</span></pre>
+          </div>
+
+          <div class="subsubsection">B. Imbalance Handling</div>
+
+          <p>
+            A standard multi-class XGBoost configuration would apply the
+            <code>scale_pos_weight</code> parameter, but this parameter is
+            binary-only. For our 3-class imbalanced setting, we instead compute
+            <strong>per-sample inverse-frequency weights</strong> using
+            scikit-learn's <code>compute_sample_weight('balanced')</code> and
+            pass them to <code>model.fit()</code> via the
+            <code>sample_weight</code> argument. This assigns the Semantic class
+            (≈6% prevalence) approximately
+            <strong>12–16× higher weight</strong> than Benign samples during
+            gradient computation, preventing the model from defaulting to the
+            majority class.
+          </p>
+
+          <div class="subsubsection">C. GPU Acceleration</div>
+
+          <p>
+            The training script includes automatic GPU detection logic. When a
+            CUDA-capable GPU is available, XGBoost 2.0+ parameters
+            <code>device='cuda'</code> and <code>tree_method='hist'</code> are
+            appended to the configuration. On the project hardware,
+            GPU-accelerated training on the full 2.83M-flow corpus completes in
+            significantly less time than CPU-based training with the
+            <code>hist</code> CPU method.
+          </p>
+        </div>
+        <!-- /4.1 -->
+
+        <!-- ══════════════════ 4.2 Random Forest ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.2</span>
+            <h3 class="subsection-title">
+              Random Forest Classifier with Grid Search
+            </h3>
+          </div>
+
+          <p>
+            <span class="kw">Random Forest</span> [Breiman, 2001] is selected as
+            the second Traditional ML model, providing a comparison of
+            bagging-based ensembles versus boosting-based ensembles (XGBoost)
+            under identical feature and split conditions. The Random Forest
+            model uses <strong>criterion='entropy'</strong> (information gain)
+            rather than Gini impurity, which produces more balanced multi-class
+            splits in the presence of skewed class distributions.
+          </p>
+
+          <div class="subsubsection">A. Grid Search Methodology</div>
+
+          <p>
+            Rather than cross-validating on training data (which introduces ~3×
+            computational overhead and inflated variance when training on 2M+
+            samples), hyperparameter selection uses an
+            <strong
+              >exhaustive grid search scored directly on the held-out validation
+              set</strong
+            >
+            (Macro F1). This approach is both computationally efficient and
+            directly optimises the metric that matters for production
+            deployment:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">
+              Python — train_randomforest.py (lines 147–153)
+            </div>
+            <pre>param_grid = {
+    <span class="st">'max_depth'</span>:        [<span class="nm">20</span>, <span class="nm">30</span>, <span class="kw2">None</span>],         <span class="cm"># deeper than prior [10,15,20]: finer splits</span>
+    <span class="st">'min_samples_leaf'</span>: [<span class="nm">10</span>, <span class="nm">30</span>, <span class="nm">50</span>],            <span class="cm"># structural pruning floor (noise guard)</span>
+    <span class="st">'max_features'</span>:     [<span class="st">'sqrt'</span>, <span class="st">'log2'</span>],        <span class="cm"># feature subsampling per split</span>
+    <span class="st">'class_weight'</span>:     [<span class="st">'balanced'</span>,
+                         {<span class="nm">0</span>:<span class="nm">1.0</span>, <span class="nm">1</span>:<span class="nm">2.0</span>, <span class="nm">2</span>:<span class="nm">4.0</span>}],  <span class="cm"># balanced vs. softer custom boost</span>
+}
+<span class="cm"># Fixed: n_estimators=100, criterion='entropy', bootstrap=True, random_state=42</span>
+<span class="cm"># Total: 36 combinations — scored on val.csv Macro F1</span></pre>
+          </div>
+
+          <p>
+            The grid tests two class weighting strategies:
+            <code>'balanced'</code> (standard inverse frequency, weight<sub
+              >Semantic</sub
+            >
+            ≈ 5.3×) and a custom softer weighting
+            <code>{0:1.0, 1:2.0, 2:4.0}</code> that provides a more moderate
+            boost, trading recall against precision for the minority class. The
+            best combination is selected by highest Macro F1 on the validation
+            set and the corresponding model is retained for final test
+            evaluation.
+          </p>
+        </div>
+        <!-- /4.2 -->
+
+        <!-- ══════════════════ 4.3 Decision Tree ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.3</span>
+            <h3 class="subsection-title">
+              Decision Tree Classifier — Interpretability Baseline
+            </h3>
+          </div>
+
+          <p>
+            The <span class="kw">Decision Tree</span> classifier serves a dual
+            purpose: it provides a lower-bound interpretability baseline against
+            which the more complex ensemble and DL models can be compared, and
+            it enables post-hoc extraction of human-readable classification
+            rules via <code>sklearn.tree.export_text</code> — a feature of
+            operational value in SOC contexts where analysts must understand and
+            audit model decisions. A single decision tree can represent the
+            entire decision boundary as a structured if-then-else rule set,
+            making it uniquely auditable.
+          </p>
+
+          <div class="subsubsection">A. Hyperparameter Search</div>
+
+          <p>
+            An 18-combination grid search (3 × 3 × 2) is applied over
+            <code>max_depth</code>, <code>min_samples_leaf</code>, and
+            <code>class_weight</code>, identical in scoring methodology to the
+            Random Forest grid search (validation Macro F1):
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">
+              Python — train_decisiontree.py (lines 156–160)
+            </div>
+            <pre>param_grid = {
+    <span class="st">'max_depth'</span>:        [<span class="nm">15</span>, <span class="nm">20</span>, <span class="nm">30</span>],
+    <span class="st">'min_samples_leaf'</span>: [<span class="nm">20</span>, <span class="nm">50</span>, <span class="nm">100</span>],  <span class="cm"># prevents noisy leaves at Benign/attack boundary</span>
+    <span class="st">'class_weight'</span>:     [<span class="st">'balanced'</span>, {<span class="nm">0</span>:<span class="nm">1.0</span>, <span class="nm">1</span>:<span class="nm">2.0</span>, <span class="nm">2</span>:<span class="nm">4.0</span>}],
+}
+<span class="cm"># Fixed: criterion='entropy', min_samples_split=2×leaf_floor, random_state=42</span></pre>
+          </div>
+
+          <p>
+            Crucially, <code>min_samples_split</code> is always set to
+            <code>2 × min_samples_leaf</code> to enforce structural consistency
+            — a node must have at least twice the leaf-floor samples before
+            being eligible for splitting, preventing the creation of isolated
+            micro-partitions that represent dataset noise rather than genuine
+            class boundaries.
+          </p>
+        </div>
+        <!-- /4.3 -->
+
+        <!-- ══════════════════ 4.4 LSTM ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.4</span>
+            <h3 class="subsection-title">Stacked LSTM Network</h3>
+          </div>
+
+          <p>
+            The <span class="kw">Long Short-Term Memory</span> (LSTM; Hochreiter
+            &amp; Schmidhuber, 1997) architecture is selected as the primary
+            deep learning model because its recurrent memory cells are
+            theoretically well-suited to the sequential nature of network flows,
+            where adjacent flows within the same session share temporal context
+            not captured by independent per-flow prediction. The model consumes
+            the 3D temporal sequences produced by the preprocessing pipeline
+            (shape: <code>10 × 20</code> — 10 consecutive flows, 20 features
+            each) and produces a 3-class probability distribution.
+          </p>
+
+          <div class="subsubsection">A. Architecture</div>
+
+          <div class="arch-diagram">
+            <div class="arch-label">
+              LSTM Network Architecture — src/models/train_lstm.py
+            </div>
+            <div class="arch-layer">
+              Input(shape=<span class="al-shape">(10, 20)</span>)
+              <span class="al-note">← 10 timesteps × 20 features</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              LSTM(<span class="al-shape">128 units</span>,
+              return_sequences=<span class="al-act">True</span>)
+              <span class="al-note"
+                >← captures temporal patterns, outputs sequence</span
+              >
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              BatchNormalization() → Dropout(<span class="al-shape">0.3</span>)
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              LSTM(<span class="al-shape">64 units</span>,
+              return_sequences=<span class="al-act">False</span>)
+              <span class="al-note">← final hidden state only</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              BatchNormalization() → Dropout(<span class="al-shape">0.3</span>)
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Dense(<span class="al-shape">64</span>, activation=<span
+                class="al-act"
+                >'relu'</span
+              >) → Dropout(<span class="al-shape">0.3</span>)
+              <span class="al-note">← feature compression</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Dense(<span class="al-shape">3</span>, activation=<span
+                class="al-act"
+                >'softmax'</span
+              >)
+              <span class="al-note"
+                >← P(Benign), P(Volumetric), P(Semantic)</span
+              >
+            </div>
+          </div>
+
+          <div class="subsubsection">B. Training Configuration</div>
+
+          <p>
+            The model is compiled with the <strong>Adam optimiser</strong>
+            (lr = 0.001; Kingma &amp; Ba, 2015) and trained using
+            <strong>sparse categorical cross-entropy</strong> loss (appropriate
+            when labels are integer class indices, avoiding the overhead of
+            one-hot encoding on a 2.8M-sample dataset). All training is
+            conducted via a memory-efficient
+            <code>tf.data.Dataset</code> streaming pipeline (batch = 256,
+            prefetch = AUTOTUNE) that loads the 3D training arrays from disk
+            using <code>np.load(..., mmap_mode='r')</code>, avoiding the need to
+            hold the full ≈1.8 GB training corpus in GPU memory simultaneously.
+          </p>
+
+          <div class="cb-list">
+            <div class="cb-item">
+              <div class="cb-name">EarlyStopping</div>
+              <div class="cb-params">
+                monitor='val_loss', patience=5, restore_best_weights=True
+              </div>
+            </div>
+            <div class="cb-item">
+              <div class="cb-name">ModelCheckpoint</div>
+              <div class="cb-params">
+                save_best_only=True → models/lstm_best.keras
+              </div>
+            </div>
+            <div class="cb-item">
+              <div class="cb-name">ReduceLROnPlateau</div>
+              <div class="cb-params">factor=0.5, patience=3, min_lr=1e-6</div>
+            </div>
+            <div class="cb-item">
+              <div class="cb-name">TensorBoard</div>
+              <div class="cb-params">histogram_freq=1, write_graph=True</div>
+            </div>
+          </div>
+        </div>
+        <!-- /4.4 -->
+
+        <!-- ══════════════════ 4.5 BiLSTM ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.5</span>
+            <h3 class="subsection-title">Bidirectional LSTM Network</h3>
+          </div>
+
+          <p>
+            The <span class="kw">Bidirectional LSTM</span> (BiLSTM; Schuster
+            &amp; Paliwal, 1997) extends the unidirectional LSTM by processing
+            each input sequence in both the forward (t=1 → t=10) and backward
+            (t=10 → t=1) temporal directions simultaneously, concatenating both
+            hidden state sequences before passing them to subsequent layers.
+            This architecture is hypothesised to improve classification of
+            attack patterns where the context of later flows (e.g., confirming
+            that an initial probe is followed by exploitation) is informative in
+            classifying earlier flows in the sequence. The effective per-layer
+            hidden state dimensionality doubles relative to the LSTM since both
+            forward and backward states are concatenated.
+          </p>
+
+          <div class="subsubsection">A. Architecture</div>
+
+          <div class="arch-diagram">
+            <div class="arch-label">
+              BiLSTM Network Architecture — src/models/train_bilstm.py
+            </div>
+            <div class="arch-layer">
+              Input(shape=<span class="al-shape">(10, 20)</span>)
+              <span class="al-note">← identical input to LSTM</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Bidirectional(<span class="al-act">LSTM</span>(<span
+                class="al-shape"
+                >128</span
+              >), return_sequences=<span class="al-act">True</span>)
+              <span class="al-note">← output dim: 256 (2 × 128 fwd + bwd)</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              BatchNormalization() → Dropout(<span class="al-shape">0.3</span>)
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Bidirectional(<span class="al-act">LSTM</span>(<span
+                class="al-shape"
+                >64</span
+              >), return_sequences=<span class="al-act">False</span>)
+              <span class="al-note">← output dim: 128 (2 × 64)</span>
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              BatchNormalization() → Dropout(<span class="al-shape">0.3</span>)
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Dense(<span class="al-shape">64</span>, activation=<span
+                class="al-act"
+                >'relu'</span
+              >) → Dropout(<span class="al-shape">0.3</span>)
+            </div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-layer">
+              Dense(<span class="al-shape">3</span>, activation=<span
+                class="al-act"
+                >'softmax'</span
+              >)
+            </div>
+          </div>
+
+          <div class="callout callout-purple">
+            <div class="callout-label">
+              🔬 LSTM vs. BiLSTM Architectural Difference
+            </div>
+            <p>
+              The BiLSTM is intentionally constructed to be
+              <strong>architecturally symmetric with the LSTM</strong>: same
+              hidden unit counts (128 → 64), same dropout rates (0.3), same
+              Dense layer (64, ReLU), same optimiser (Adam, lr=0.001), same
+              callbacks, and same training data. Only the wrapper layer changes
+              — <code>Bidirectional(LSTM(…))</code> replaces
+              <code>LSTM(…)</code>. This design choice ensures that any
+              performance difference observed between LSTM and BiLSTM (§8) is
+              attributable exclusively to the bidirectionality of the
+              processing, not to other architectural variations.
+            </p>
+          </div>
+        </div>
+        <!-- /4.5 -->
+
+        <!-- ══════════════════ 4.6 Unified Protocol ══════════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">4.6</span>
+            <h3 class="subsection-title">
+              Unified Training Protocol &amp; Reproducibility
+            </h3>
+          </div>
+
+          <div class="subsubsection">A. Identical Evaluation Conditions</div>
+
+          <p>
+            A core methodological commitment of this work is that all five
+            models are evaluated on <em>identical</em> test partitions produced
+            by the same per-file stratified split (§3.4). The test set contains
+            the same flows for XGBoost, Random Forest, Decision Tree, LSTM, and
+            BiLSTM — differing only in representation (2D vector vs. 3D
+            sequence). This eliminates the confound present in most prior
+            comparative NIDS studies where different models are trained on
+            different subsets due to the absence of a shared, explicitly
+            specified split protocol.
+          </p>
+
+          <div class="subsubsection">B. Reproducibility Seed</div>
+
+          <p>
+            A fixed random seed of <span class="metric">42</span> is applied at
+            all stochastic stages: scikit-learn's <code>random_state=42</code>,
+            XGBoost's <code>random_state=42</code>, and TensorFlow's global seed
+            via <code>tf.random.set_seed(42)</code> plus
+            <code>PYTHONHASHSEED='42'</code> and
+            <code>numpy.random.seed(42)</code>. All training scripts set the
+            seed as the very first operation before any library import that
+            could trigger stochastic initialisation.
+          </p>
+
+          <div class="subsubsection">
+            C. Imbalance Handling — Unified Approach
+          </div>
+
+          <p>
+            Class imbalance is addressed consistently across all five models
+            through class-weighted loss computation. For Traditional ML models,
+            scikit-learn's
+            <code>class_weight='balanced'</code> or
+            <code>compute_sample_weight('balanced')</code>
+            (XGBoost) is used. For DL models, the inverse-frequency weights
+            computed during preprocessing (§3.5C) are loaded from
+            <code>models/class_weights.json</code> and passed as the
+            <code>class_weight</code> argument to <code>model.fit()</code>. This
+            ensures that the Semantic minority class (~6%) receives
+            proportionally higher gradient signal regardless of model family.
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 10. Comprehensive Hyperparameter Summary — All Five Models
+            </caption>
+            <thead>
+              <tr>
+                <th>Hyperparameter</th>
+                <th class="cell-ml">XGBoost</th>
+                <th class="cell-ml">Random Forest</th>
+                <th class="cell-ml">Decision Tree</th>
+                <th class="cell-dl">LSTM</th>
+                <th class="cell-dl">BiLSTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Input shape</strong></td>
+                <td class="center cell-ml">(N, 20)</td>
+                <td class="center cell-ml">(N, 20)</td>
+                <td class="center cell-ml">(N, 20)</td>
+                <td class="center cell-dl">(N, 10, 20)</td>
+                <td class="center cell-dl">(N, 10, 20)</td>
+              </tr>
+              <tr>
+                <td><strong>Objective / Loss</strong></td>
+                <td class="center cell-ml">multi:softprob</td>
+                <td class="center cell-ml">entropy (gini not used)</td>
+                <td class="center cell-ml">entropy</td>
+                <td class="center cell-dl">sparse_cat. CE</td>
+                <td class="center cell-dl">sparse_cat. CE</td>
+              </tr>
+              <tr>
+                <td><strong>Trees / Layers</strong></td>
+                <td class="center cell-ml">1000 max (ES-50)</td>
+                <td class="center cell-ml">100 (fixed)</td>
+                <td class="center cell-ml">1 tree</td>
+                <td class="center cell-dl">LSTM(128) + LSTM(64)</td>
+                <td class="center cell-dl">BiLSTM(128) + BiLSTM(64)</td>
+              </tr>
+              <tr>
+                <td><strong>Max depth</strong></td>
+                <td class="center cell-ml">7</td>
+                <td class="center cell-ml">20 / 30 / None (grid)</td>
+                <td class="center cell-ml">15 / 20 / 30 (grid)</td>
+                <td class="center cell-dl">N/A</td>
+                <td class="center cell-dl">N/A</td>
+              </tr>
+              <tr>
+                <td><strong>Learning rate</strong></td>
+                <td class="center cell-ml">0.05</td>
+                <td class="center cell-ml">N/A</td>
+                <td class="center cell-ml">N/A</td>
+                <td class="center cell-dl">0.001 (Adam)</td>
+                <td class="center cell-dl">0.001 (Adam)</td>
+              </tr>
+              <tr>
+                <td><strong>Dropout</strong></td>
+                <td class="center cell-ml">0.8 col/row subsample</td>
+                <td class="center cell-ml">bootstrap + leaf floor</td>
+                <td class="center cell-ml">leaf floor guard</td>
+                <td class="center cell-dl">0.3 (3 layers)</td>
+                <td class="center cell-dl">0.3 (3 layers)</td>
+              </tr>
+              <tr>
+                <td><strong>Batch size</strong></td>
+                <td class="center cell-ml">N/A (tree-based)</td>
+                <td class="center cell-ml">N/A</td>
+                <td class="center cell-ml">N/A</td>
+                <td class="center cell-dl">256</td>
+                <td class="center cell-dl">256</td>
+              </tr>
+              <tr>
+                <td><strong>Max epochs</strong></td>
+                <td class="center cell-ml">1000 (ES-50)</td>
+                <td class="center cell-ml">N/A (1-pass)</td>
+                <td class="center cell-ml">N/A (1-pass)</td>
+                <td class="center cell-dl">50 (ES-5)</td>
+                <td class="center cell-dl">50 (ES-5)</td>
+              </tr>
+              <tr>
+                <td><strong>Imbalance strategy</strong></td>
+                <td class="center cell-ml">sample_weight (balanced)</td>
+                <td class="center cell-ml">class_weight (grid)</td>
+                <td class="center cell-ml">class_weight (grid)</td>
+                <td class="center cell-dl">class_weights.json</td>
+                <td class="center cell-dl">class_weights.json</td>
+              </tr>
+              <tr>
+                <td><strong>GPU acceleration</strong></td>
+                <td class="center cell-ml">CUDA (device='cuda')</td>
+                <td class="center cell-ml">CPU (n_jobs=4)</td>
+                <td class="center cell-ml">CPU (n_jobs=1)</td>
+                <td class="center cell-dl">TF CUDA (mem. growth)</td>
+                <td class="center cell-dl">TF CUDA (mem. growth)</td>
+              </tr>
+              <tr>
+                <td><strong>Random seed</strong></td>
+                <td class="center cell-ml">42</td>
+                <td class="center cell-ml">42</td>
+                <td class="center cell-ml">42</td>
+                <td class="center cell-dl">42 (global)</td>
+                <td class="center cell-dl">42 (global)</td>
+              </tr>
+              <tr>
+                <td><strong>Saved artefact</strong></td>
+                <td class="center cell-ml">xgb_3class_model.pkl</td>
+                <td class="center cell-ml">rf_3class_model.pkl</td>
+                <td class="center cell-ml">dt_3class_model.pkl</td>
+                <td class="center cell-dl">lstm_best.keras</td>
+                <td class="center cell-dl">bilstm_best.keras</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Blue columns = Traditional ML track (2D tabular input). Purple
+            columns = Deep Learning track (3D temporal input). "ES-N" denotes
+            early stopping with patience N. All five models share the same
+            Top-20 features, 3-class taxonomy, and per-file stratified test
+            partition.
+          </div>
+
+          <div class="subsubsection">
+            D. Evaluation Metrics — Consistent Across All Models
+          </div>
+
+          <p>
+            All five models are evaluated on the test set using an identical
+            metric suite to enable direct comparison (§8). The primary metric is
+            <strong>Macro-averaged F1-score</strong>, which computes F1
+            independently for each class and takes the unweighted mean —
+            ensuring equal representation of the minority Semantic class.
+            Secondary metrics include Macro Precision, Macro Recall, overall
+            Accuracy, Weighted F1 (for comparison with prior work), OvR
+            (One-vs-Rest) ROC-AUC per class and macro-average, and
+            <strong>inference latency</strong> (ms/sample) measured on a
+            10,000-sample benchmark batch.
+          </p>
+
+          <div class="callout callout-orange">
+            <div class="callout-label">
+              ⚠ Note on Training vs. Test Set for DL Models
+            </div>
+            <p>
+              The LSTM and BiLSTM preprocessing pipeline produces an 80/20
+              train/test split (rather than the 80/10/10 of the ML pipeline)
+              because the validation partition for early stopping is subsumed
+              into the training data pipeline and passed as
+              <code>validation_data=test_dataset</code> to
+              <code>model.fit()</code>. This means the DL early stopping monitor
+              observes the same test partition that is used for final evaluation
+              — a known limitation of single-split DL training that should be
+              considered when interpreting the DL generalisation metrics. It
+              does not introduce label leakage (no gradients flow from the test
+              partition), but it may produce slightly optimistic early stopping
+              decisions.
+            </p>
+          </div>
+        </div>
+        <!-- /4.6 -->
+
+        <!-- ══════════════ SUMMARY BOX ══════════════ -->
+        <div class="dark-box">
+          <h3>Section 4 Summary — Model Architecture &amp; Training</h3>
+          <p>
+            <strong>Five models across two tracks:</strong>
+            XGBoost (boosted trees, n=1000, max_depth=7,
+            objective=multi:softprob), Random Forest (n=100, criterion=entropy,
+            grid-searched depth/leaf/class_weight), Decision Tree
+            (criterion=entropy, 18-combo grid search, auditable rule export).
+          </p>
+          <p>
+            <strong>Deep Learning:</strong>
+            LSTM (LSTM-128 → LSTM-64 → Dense-64 → Softmax-3; lr=0.001,
+            batch=256, EarlyStopping patience=5), BiLSTM (architecturally
+            symmetric; Bidirectional wrappers only change). Both trained with
+            memory-mapped tf.data streaming pipeline for GPU memory efficiency.
+          </p>
+          <p>
+            <strong>Controlled comparison:</strong>
+            All models share the same Top-20 features, 3-class taxonomy,
+            per-file stratified test partition, inverse-frequency class
+            weighting, and evaluation metric suite. Random seed 42 throughout.
+          </p>
+        </div>
+      </article>
+
+      <!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 4 — Model Architecture
+          &amp; Training<br />
+          <span class="col-label">Sub-sections:</span> 4.1 XGBoost · 4.2 RF ·
+          4.3 DT · 4.4 LSTM · 4.5 BiLSTM · 4.6 Unified Protocol<br />
+          <span class="col-label">Key Table:</span> T10 — Hyperparameter Summary
+          (5 models × 12 properties)
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Models:</span> XGBoost · RF · DT · LSTM ·
+          BiLSTM<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
