@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Section 5: Experimental Setup & AutoML Benchmarking — AI-Driven NIDS
+    </title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* HEADER */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #27ae60;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* SECTIONS */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #27ae60;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #27ae60;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsection-block {
+        margin-bottom: 2.2rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #27ae60;
+        border: 1.5px solid #27ae60;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+      .subsubsection {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #34495e;
+        margin-top: 1.6rem;
+        margin-bottom: 0.7rem;
+        padding-left: 0.8rem;
+        border-left: 3px solid #27ae60;
+      }
+
+      /* BODY */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      .metric {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 10pt;
+        color: #1e8449;
+      }
+      strong {
+        font-weight: 700;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #eafaf1;
+        border: 1px solid #a9dfbf;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #1e8449;
+      }
+
+      /* SPEC GRID */
+      .spec-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+        margin: 1.4rem 0;
+      }
+      .spec-card {
+        background: #f8f9fa;
+        border: 1.5px solid #d5d8dc;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        font-family: "Inter", sans-serif;
+      }
+      .spec-card .sc-head {
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #27ae60;
+        margin-bottom: 0.8rem;
+      }
+      .spec-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.2rem 0.8rem;
+        font-size: 8.5pt;
+        align-items: start;
+      }
+      .spec-k {
+        font-weight: 600;
+        color: #5d6d7e;
+        white-space: nowrap;
+      }
+      .spec-v {
+        color: #2c3e50;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8pt;
+      }
+
+      /* PIPELINE FLOW */
+      .pipeline {
+        display: flex;
+        align-items: center;
+        gap: 0rem;
+        margin: 1.4rem 0;
+        overflow-x: auto;
+      }
+      .pipe-step {
+        background: #1e2d3d;
+        color: #c8d6e5;
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 600;
+        padding: 0.6rem 0.9rem;
+        border-radius: 5px;
+        white-space: nowrap;
+        text-align: center;
+        min-width: 90px;
+      }
+      .pipe-step .ps-sub {
+        font-size: 7pt;
+        font-weight: 400;
+        color: #7f8c8d;
+        display: block;
+        margin-top: 0.2rem;
+      }
+      .pipe-step.highlight {
+        background: #1e8449;
+        color: #fff;
+      }
+      .pipe-step.highlight .ps-sub {
+        color: #a9dfbf;
+      }
+      .pipe-arrow {
+        color: #27ae60;
+        font-size: 14pt;
+        padding: 0 0.3rem;
+        font-weight: 700;
+      }
+
+      /* AUTOML TABLE */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.4rem 0 0.3rem 0;
+      }
+      thead {
+        background: #1e2d3d;
+        color: #fff;
+      }
+      th {
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.5pt;
+        border: 1px solid #1a252f;
+      }
+      td {
+        padding: 0.55rem 0.8rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        vertical-align: top;
+      }
+      tbody tr:nth-child(even) {
+        background: #f4f6f7;
+      }
+      tbody tr:hover {
+        background: #d5f5e3;
+      }
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.4rem;
+      }
+      td.center {
+        text-align: center;
+      }
+      td.best {
+        background: #d5f5e3 !important;
+        font-weight: 700;
+        color: #1e8449;
+      }
+      td.highlight-row {
+        background: #eaf4fb !important;
+      }
+
+      /* CODE */
+      .code-block {
+        background: #1e2d3d;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        margin: 1.2rem 0;
+        overflow-x: auto;
+        position: relative;
+      }
+      .code-block .code-lang {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.8rem;
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 600;
+        color: #a9dfbf;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .code-block pre {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        line-height: 1.6;
+        color: #c8d6e5;
+        white-space: pre;
+      }
+      .code-block .cm {
+        color: #7f8c8d;
+      }
+      .code-block .kw2 {
+        color: #a9dfbf;
+      }
+      .code-block .fn {
+        color: #a9cce3;
+      }
+      .code-block .st {
+        color: #f0b27a;
+      }
+      .code-block .nm {
+        color: #85c1e9;
+      }
+
+      /* CALLOUTS */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-orange {
+        background: #fef9e7;
+        border-left: 5px solid #f39c12;
+      }
+      .callout-red {
+        background: #fdedec;
+        border-left: 5px solid #e74c3c;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout-orange .callout-label {
+        color: #784212;
+      }
+      .callout-red .callout-label {
+        color: #922b21;
+      }
+      .callout p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* METRIC BADGES */
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1.4rem 0;
+      }
+      .metric-card {
+        background: #eafaf1;
+        border: 1.5px solid #a9dfbf;
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        font-family: "Inter", sans-serif;
+        text-align: center;
+      }
+      .metric-card .mc-val {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #1e8449;
+        margin-bottom: 0.3rem;
+      }
+      .metric-card .mc-label {
+        font-size: 8pt;
+        color: #5d6d7e;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .metric-card .mc-desc {
+        font-size: 8pt;
+        color: #7f8c8d;
+        margin-top: 0.3rem;
+      }
+
+      /* ARCH DIAGRAM */
+      .arch-box {
+        background: #1e2d3d;
+        border-radius: 6px;
+        padding: 1.4rem 1.6rem;
+        margin: 1.2rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        color: #c8d6e5;
+      }
+      .arch-label {
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #a9dfbf;
+        margin-bottom: 0.8rem;
+      }
+      .arch-row {
+        margin-bottom: 0.3rem;
+      }
+      .arch-row .ag {
+        color: #a9dfbf;
+      }
+      .arch-row .ao {
+        color: #f0b27a;
+      }
+      .arch-row .ab {
+        color: #85c1e9;
+      }
+      .arch-row .ar {
+        color: #7f8c8d;
+      }
+      .arch-ind {
+        padding-left: 2rem;
+      }
+      .arch-ind2 {
+        padding-left: 4rem;
+      }
+
+      /* DARK SUMMARY */
+      .dark-box {
+        background: linear-gradient(135deg, #0d2818 0%, #1e4d2b 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin: 2rem 0;
+      }
+      .dark-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #a9dfbf;
+        margin-bottom: 1rem;
+      }
+      .dark-box p {
+        color: #d5d8dc;
+        margin-bottom: 0.8rem;
+      }
+      .dark-box p:last-child {
+        margin-bottom: 0;
+      }
+      .dark-box strong {
+        color: #fff;
+      }
+
+      /* FOOTER */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .arch-box,
+        .code-block,
+        .dark-box {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        thead {
+          background: #1e2d3d !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- HEADER -->
+      <header class="paper-header">
+        <div class="paper-label">Academic Conference Paper — Section 5</div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════ SECTION 5 ═══════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 5</span>
+          <h2 class="section-title">
+            Experimental Setup, Infrastructure &amp; AutoML Benchmarking
+          </h2>
+        </div>
+
+        <p>
+          This section documents the complete experimental environment: the
+          hardware and software infrastructure on which all training and
+          evaluation was conducted (§5.1), the evaluation metric suite and
+          latency measurement methodology (§5.2), the AutoML benchmarking
+          procedure using PyCaret (§5.3), and an overview of the live production
+          architecture that motivates the latency constraints imposed on model
+          selection (§5.4). Together, these subsections provide the
+          reproducibility context required to re-implement, verify, and extend
+          the results reported in §8.
+        </p>
+
+        <!-- ══════════════ 5.1 Computational Environment ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">5.1</span>
+            <h3 class="subsection-title">Computational Environment</h3>
+          </div>
+
+          <div class="subsubsection">A. Hardware Configuration</div>
+
+          <p>
+            All training, hyperparameter search, and evaluation experiments were
+            conducted on a single workstation. Deep learning models (LSTM,
+            BiLSTM) leveraged CUDA-accelerated training with TensorFlow memory
+            growth enabled to prevent GPU out-of-memory errors during 1.8 GB
+            sequence data processing. XGBoost training used CUDA via the
+            <code>tree_method='hist'</code> + <code>device='cuda'</code>
+            backend (XGBoost ≥ 2.0). Traditional ML models (Random Forest,
+            Decision Tree) ran on CPU with multi-core parallelism
+            (<code>n_jobs=4</code>).
+          </p>
+
+          <div class="spec-grid">
+            <div class="spec-card">
+              <div class="sc-head">🖥 Hardware</div>
+              <div class="spec-row">
+                <span class="spec-k">OS</span>
+                <span class="spec-v">Windows 11</span>
+                <span class="spec-k">GPU</span>
+                <span class="spec-v">CUDA-capable (VRAM ≥ 4 GB)</span>
+                <span class="spec-k">CPU</span>
+                <span class="spec-v">Multi-core (n_jobs=4 for RF)</span>
+                <span class="spec-k">RAM</span>
+                <span class="spec-v">≥ 16 GB (2.83M-flow dataset)</span>
+                <span class="spec-k">Storage</span>
+                <span class="spec-v">SSD (mmap_mode='r' for LSTM data)</span>
+                <span class="spec-k">GPU Mem. Policy</span>
+                <span class="spec-v">tf.config.set_memory_growth</span>
+              </div>
+            </div>
+            <div class="spec-card">
+              <div class="sc-head">🐍 Software Stack</div>
+              <div class="spec-row">
+                <span class="spec-k">Python</span>
+                <span class="spec-v">3.11 / 3.12</span>
+                <span class="spec-k">TensorFlow</span>
+                <span class="spec-v">≥ 2.x (CUDA backend)</span>
+                <span class="spec-k">XGBoost</span>
+                <span class="spec-v">≥ 2.0.0</span>
+                <span class="spec-k">scikit-learn</span>
+                <span class="spec-v">Latest stable</span>
+                <span class="spec-k">PyCaret</span>
+                <span class="spec-v">3.x (classification module)</span>
+                <span class="spec-k">pandas / numpy</span>
+                <span class="spec-v">float32 dtype (memory opt.)</span>
+                <span class="spec-k">Kafka</span>
+                <span class="spec-v">confluent-kafka (Docker)</span>
+                <span class="spec-k">Capture</span>
+                <span class="spec-v">Scapy + CICFlowMeter CLI</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout-orange">
+            <div class="callout-label">⚠ Memory Engineering Note</div>
+            <p>
+              The full 3D LSTM training corpus (X_train shape: approx.
+              <code>(2,265,000, 10, 20)</code>, float32) occupies approximately
+              <strong>1.8 GB</strong> on disk. Loading this directly into GPU
+              memory would cause OOM errors. The training pipeline mitigates
+              this through a <strong>memory-mapped generator</strong> (<code
+                >np.load(..., mmap_mode='r')</code
+              >) streamed via <code>tf.data.Dataset.from_generator()</code> →
+              <code>batch(256)</code> → <code>prefetch(AUTOTUNE)</code>. This
+              keeps only one batch (~4 MB) in GPU memory at any time, enabling
+              full-dataset training on consumer-grade hardware.
+            </p>
+          </div>
+        </div>
+        <!-- /5.1 -->
+
+        <!-- ══════════════ 5.2 Evaluation Metrics ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">5.2</span>
+            <h3 class="subsection-title">
+              Evaluation Metrics &amp; Measurement Methodology
+            </h3>
+          </div>
+
+          <div class="subsubsection">A. Classification Metrics</div>
+
+          <p>
+            All five models are evaluated using an identical, pre-specified
+            metric suite to enable direct cross-model comparison. All metrics
+            are computed on the held-out test partition produced by the per-file
+            stratified split (§3.4). Macro-averaged metrics are selected as the
+            primary reporting standard because they give equal weight to each
+            class regardless of support, making them sensitive to poor
+            performance on the minority Semantic class (~6%):
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 11. Evaluation Metric Suite — Definitions and Rationale
+            </caption>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Averaging</th>
+                <th>Formula (per-class)</th>
+                <th>Role in this Study</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>F1-Score</strong></td>
+                <td class="center">Macro</td>
+                <td><code>2·P·R / (P+R)</code></td>
+                <td>
+                  <strong>Primary metric</strong> — balances P/R, treats all
+                  classes equally
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Precision</strong></td>
+                <td class="center">Macro</td>
+                <td><code>TP / (TP+FP)</code></td>
+                <td>
+                  Measures false alarm rate; critical for SOC alert fatigue
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Recall</strong></td>
+                <td class="center">Macro</td>
+                <td><code>TP / (TP+FN)</code></td>
+                <td>
+                  Measures attack detection rate; critical for security coverage
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Accuracy</strong></td>
+                <td class="center">Overall</td>
+                <td><code>Σ TP / N</code></td>
+                <td>
+                  Reported for comparison with prior work (biased by class
+                  imbalance)
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Weighted F1</strong></td>
+                <td class="center">Weighted</td>
+                <td>Support-weighted mean</td>
+                <td>
+                  Reported for completeness; not primary due to imbalance bias
+                </td>
+              </tr>
+              <tr>
+                <td><strong>OvR ROC-AUC</strong></td>
+                <td class="center">Macro</td>
+                <td>One-vs-Rest per class</td>
+                <td>
+                  Threshold-independent discriminative power; uses softprob
+                  output
+                </td>
+              </tr>
+              <tr>
+                <td><strong>3×3 Confusion Matrix</strong></td>
+                <td class="center">—</td>
+                <td>Raw counts</td>
+                <td>
+                  Reveals cross-class confusion (Volumetric vs. Semantic
+                  misclassification)
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Inference Latency</strong></td>
+                <td class="center">—</td>
+                <td>ms / sample</td>
+                <td>
+                  Production viability — measured on 10,000-sample benchmark
+                  batch
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Macro-averaging computes the metric independently for each class and
+            takes the unweighted mean, giving Benign (80%), Volumetric (14%),
+            and Semantic (6%) equal influence on the final score. This is the
+            standard recommended by the ML community for imbalanced multi-class
+            evaluation.
+          </div>
+
+          <div class="subsubsection">B. Inference Latency Measurement</div>
+
+          <p>
+            Inference latency is a production-critical metric for any NIDS
+            system: a model that achieves 99% accuracy but requires 500 ms per
+            flow cannot operate in real-time. The measurement protocol (from
+            <code>stress_test.py</code> and the evaluate scripts) benchmarks on
+            a fixed 10,000-sample batch to average out OS scheduling jitter:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">Python — latency measurement protocol</div>
+            <pre><span class="cm"># Consistent across all five model evaluation scripts</span>
+sample_size = <span class="nm">10_000</span>          <span class="cm"># fixed benchmark size</span>
+X_sample = X_test.iloc[:sample_size]
+
+start = time.time()
+_ = model.predict_proba(X_sample)  <span class="cm"># or model.predict()</span>
+elapsed = time.time() - start
+
+latency_ms  = (elapsed / sample_size) * <span class="nm">1000</span>   <span class="cm"># ms per sample</span>
+throughput  = sample_size / elapsed            <span class="cm"># samples / second</span>
+
+<span class="cm"># Thresholds (from stress_test.py):</span>
+<span class="cm"># > 10,000 samples/s → EXCELLENT (live stream capable)</span>
+<span class="cm"># > 2,000  samples/s → GOOD     (normal traffic)</span>
+<span class="cm"># < 2,000  samples/s → CRITICAL (optimisation needed)</span></pre>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric-card">
+              <div class="mc-val">&lt; 0.1 ms</div>
+              <div class="mc-label">Target Latency</div>
+              <div class="mc-desc">Per-flow ML inference (Traditional)</div>
+            </div>
+            <div class="metric-card">
+              <div class="mc-val">&gt; 10 K</div>
+              <div class="mc-label">Target Throughput</div>
+              <div class="mc-desc">Samples/sec for live stream viability</div>
+            </div>
+            <div class="metric-card">
+              <div class="mc-val">10 K</div>
+              <div class="mc-label">Benchmark Batch</div>
+              <div class="mc-desc">
+                Fixed size for jitter-averaged measurement
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /5.2 -->
+
+        <!-- ══════════════ 5.3 AutoML Benchmarking ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">5.3</span>
+            <h3 class="subsection-title">AutoML Benchmarking with PyCaret</h3>
+          </div>
+
+          <p>
+            In addition to the five manually designed and tuned models (§4), we
+            conducted an
+            <span class="kw">AutoML benchmarking experiment</span> using
+            <strong>PyCaret 3.x</strong> (classification module) to produce a
+            comprehensive, automated baseline across 10+ algorithm families
+            simultaneously. The AutoML results serve two purposes: (1) they
+            identify whether the hand-tuned models are competitive with the top
+            of the automated leaderboard, and (2) they provide a reference point
+            for practitioners who wish to evaluate the dataset with minimal
+            engineering effort.
+          </p>
+
+          <div class="subsubsection">A. PyCaret Setup and Configuration</div>
+
+          <p>
+            The PyCaret experiment
+            (<code>experiments/pycaret_setup.ipynb</code>) was configured to use
+            the same 3-class training data produced by the per-file stratified
+            split pipeline. Key setup parameters include:
+          </p>
+
+          <div class="code-block">
+            <div class="code-lang">
+              Python — experiments/pycaret_setup.ipynb
+            </div>
+            <pre><span class="kw2">from</span> pycaret.classification <span class="kw2">import</span> *
+
+<span class="cm"># Setup: 3-class classification on preprocessed training data</span>
+s = <span class="fn">setup</span>(
+    data      = train_df,         <span class="cm"># from data/processed_ml/train.csv</span>
+    target    = <span class="st">'Label'</span>,          <span class="cm"># integer labels: 0, 1, 2</span>
+    session_id = <span class="nm">42</span>,              <span class="cm"># reproducibility seed</span>
+    fold      = <span class="nm">5</span>,               <span class="cm"># 5-fold stratified CV</span>
+    metric    = <span class="st">'F1'</span>,            <span class="cm"># primary optimisation metric (macro)</span>
+    verbose   = <span class="nm">True</span>
+)
+
+<span class="cm"># Compare all available algorithms — ranked by Macro F1</span>
+best_models = <span class="fn">compare_models</span>(sort=<span class="st">'F1'</span>, n_select=<span class="nm">5</span>)</pre>
+          </div>
+
+          <div class="subsubsection">B. Algorithms Evaluated</div>
+
+          <p>
+            PyCaret's <code>compare_models()</code> routine benchmarks all
+            available classification algorithms in a single call, applying each
+            with default hyperparameters and 5-fold stratified cross-validation
+            scored on Macro F1. The algorithms evaluated include:
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 12. PyCaret AutoML Algorithm Pool — Algorithm Families
+              Evaluated
+            </caption>
+            <thead>
+              <tr>
+                <th>PyCaret ID</th>
+                <th>Algorithm</th>
+                <th>Type</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>xgboost</code></td>
+                <td>Extreme Gradient Boosting</td>
+                <td>Boosting</td>
+                <td>Overlap with our hand-tuned XGBoost</td>
+              </tr>
+              <tr>
+                <td><code>lightgbm</code></td>
+                <td>Light Gradient Boosting Machine</td>
+                <td>Boosting</td>
+                <td>Leaf-wise growth; GPU optional</td>
+              </tr>
+              <tr>
+                <td><code>rf</code></td>
+                <td>Random Forest Classifier</td>
+                <td>Bagging</td>
+                <td>Overlap with our hand-tuned RF</td>
+              </tr>
+              <tr>
+                <td><code>et</code></td>
+                <td>Extra Trees Classifier</td>
+                <td>Bagging (randomised)</td>
+                <td>Faster than RF; more random splits</td>
+              </tr>
+              <tr>
+                <td><code>gbc</code></td>
+                <td>Gradient Boosting Classifier</td>
+                <td>Boosting (sklearn)</td>
+                <td>CPU-based sklearn GBM</td>
+              </tr>
+              <tr>
+                <td><code>ada</code></td>
+                <td>Ada Boost Classifier</td>
+                <td>Boosting</td>
+                <td>Weak learner combination</td>
+              </tr>
+              <tr>
+                <td><code>dt</code></td>
+                <td>Decision Tree Classifier</td>
+                <td>Single Tree</td>
+                <td>Overlap with our hand-tuned DT</td>
+              </tr>
+              <tr>
+                <td><code>knn</code></td>
+                <td>K-Nearest Neighbours</td>
+                <td>Instance-based</td>
+                <td>High inference latency at 2.83M scale</td>
+              </tr>
+              <tr>
+                <td><code>nb</code></td>
+                <td>Naïve Bayes (Gaussian)</td>
+                <td>Probabilistic</td>
+                <td>Low capacity; strong independence assumption</td>
+              </tr>
+              <tr>
+                <td><code>lr</code></td>
+                <td>Logistic Regression</td>
+                <td>Linear</td>
+                <td>Lower bound baseline; fast inference</td>
+              </tr>
+              <tr>
+                <td><code>lda</code></td>
+                <td>Linear Discriminant Analysis</td>
+                <td>Linear</td>
+                <td>Dimensionality reduction + classification</td>
+              </tr>
+              <tr>
+                <td><code>qda</code></td>
+                <td>Quadratic Discriminant Analysis</td>
+                <td>Quadratic boundary</td>
+                <td>Relaxed covariance assumption vs. LDA</td>
+              </tr>
+              <tr>
+                <td><code>svm</code></td>
+                <td>SVM (RBF kernel)</td>
+                <td>Kernel method</td>
+                <td>Computationally prohibitive at 2.83M; may be excluded</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Algorithms marked as "overlap" with hand-tuned models differ in
+            default hyperparameters and use 5-fold CV rather than the held-out
+            validation set — making direct comparison informative for
+            quantifying the benefit of hand-tuning and GPU acceleration.
+          </div>
+
+          <div class="subsubsection">
+            C. Champion Model and Artefact Persistence
+          </div>
+
+          <p>
+            Following completion of the leaderboard comparison, the top-ranked
+            model (the PyCaret <em>champion</em>) was serialised using PyCaret's
+            native <code>save_model()</code> and persisted to
+            <code>models/pycaret_champion.pkl</code>. This artefact enables the
+            production Live Bridge (§5.4) to optionally load and invoke the
+            PyCaret champion at runtime — all five trained models plus the
+            PyCaret champion are hot-swappable within the inference pipeline
+            without restarting the server.
+          </p>
+
+          <div class="callout callout-blue">
+            <div class="callout-label">ℹ Role of AutoML in This Study</div>
+            <p>
+              The PyCaret benchmarking is not intended to produce the final
+              production model. Rather, it serves as an
+              <strong>automated breadth-first sweep</strong> across the
+              algorithm space: if the top AutoML leaderboard entry significantly
+              outperforms our hand-tuned models, that signals a gap in manual
+              tuning. If the hand-tuned models outperform or match the AutoML
+              champion, it validates that the hyperparameter search effort
+              (§4.1–§4.3) and training protocol (GPU acceleration, custom
+              imbalance handling) were effective. The comparison is documented
+              in §8.4.
+            </p>
+          </div>
+        </div>
+        <!-- /5.3 -->
+
+        <!-- ══════════════ 5.4 Production Architecture Overview ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">5.4</span>
+            <h3 class="subsection-title">
+              Production Architecture Overview — Live Bridge Mechanism
+            </h3>
+          </div>
+
+          <p>
+            The experimental models described in §4 were designed with
+            production deployment as an explicit constraint. This section
+            provides an overview of the
+            <strong>Live Bridge Mechanism</strong> — the real-time inference
+            pipeline that connects raw network traffic to model predictions — to
+            contextualise the latency and throughput requirements that motivated
+            the model design choices. A detailed description of the full
+            production architecture is presented in §6.
+          </p>
+
+          <div class="subsubsection">A. Pipeline Architecture</div>
+
+          <p>
+            The Live Bridge implements a five-stage streaming pipeline
+            (<code>src/live_bridge.py</code>):
+          </p>
+
+          <div class="pipeline">
+            <div class="pipe-step">
+              Network Interface
+              <span class="ps-sub">Scapy sniff() · Wi-Fi/ETH</span>
+            </div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step">
+              PCAP Buffer
+              <span class="ps-sub">temp_live.pcap · 60s window</span>
+            </div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step highlight">
+              CICFlowMeter CLI
+              <span class="ps-sub">78 bidirectional features</span>
+            </div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step highlight">
+              Kafka Producer
+              <span class="ps-sub"
+                >Topic: network-traffic · 127.0.0.1:9092</span
+              >
+            </div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step">
+              AI Consumer
+              <span class="ps-sub">Model inference · 3-class prediction</span>
+            </div>
+          </div>
+
+          <div class="subsubsection">B. Feature Alignment Bridge</div>
+
+          <p>
+            A key engineering challenge in the production pipeline is the
+            <strong>column naming mismatch</strong> between CICFlowMeter's
+            output (snake_case, e.g. <code>fwd_pkt_len_max</code>) and the
+            training data schema (Title Case, e.g.
+            <code>Fwd Packet Length Max</code>). The Live Bridge implements a
+            deterministic column rename map (<code>COLUMN_RENAME_MAP</code> in
+            <code>live_bridge.py</code>, lines 389–466) covering all 78
+            CICFlowMeter feature names, followed by
+            <code>reindex(columns=EXPECTED_FEATURES, fill_value=0)</code> to
+            handle any residual missing columns. Additionally,
+            <code>±inf</code> and <code>NaN</code> values from the live feature
+            extractor are replaced with 0 — exactly mirroring the preprocessing
+            applied during offline training (§3.3).
+          </p>
+
+          <div class="arch-box">
+            <div class="arch-label">
+              Live Bridge Feature Alignment Protocol — live_bridge.py
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 1:</span> df.columns.str.strip()
+              <span class="ar"># remove leading/trailing whitespace</span>
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 2:</span> df.drop(DROP_COLS, ...)
+              <span class="ar"
+                ># remove metadata (IP, port, timestamp, labels)</span
+              >
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 3:</span> df.rename(COLUMN_RENAME_MAP)
+              <span class="ar"># snake_case → Title Case (78 mappings)</span>
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 4:</span> df["Fwd Header Length.1"] = ...
+              <span class="ar"># synthesise duplicate column</span>
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 5:</span> df.reindex(EXPECTED_FEATURES,
+              fill_value=0) <span class="ar"># align to Top-20 subset</span>
+            </div>
+            <div class="arch-row">
+              <span class="ag">Step 6:</span> df.replace([±inf], 0).fillna(0)
+              <span class="ar"># identical to offline preprocessing</span>
+            </div>
+          </div>
+
+          <div class="subsubsection">C. Kafka Integration</div>
+
+          <p>
+            The Live Bridge uses <strong>Confluent Kafka</strong> as the message
+            bus between the packet capture process and the AI consumer
+            (inference) process. Each extracted flow is serialised as a JSON
+            message (including the 78-feature vector plus metadata: timestamp,
+            src/dst IP) and published to the <code>network-traffic</code> topic
+            on the local broker (<code>127.0.0.1:9092</code>). The Kafka
+            producer is configured with <code>acks='all'</code>,
+            <code>retries=3</code>, and
+            <code>max.in.flight.requests.per.connection=1</code> to guarantee
+            delivery ordering and prevent message reordering under rare network
+            conditions. A background <code>TrafficLogger</code> thread
+            asynchronously archives all flows to
+            <code>data/live_captured_traffic.csv</code> via a 25-row buffer with
+            a 30-second flush interval, enabling post-hoc analysis and model
+            retraining on captured live traffic.
+          </p>
+
+          <div class="subsubsection">D. Implication for Model Selection</div>
+
+          <p>
+            The production pipeline imposes a hard latency ceiling on model
+            selection. Flows are extracted in overlapping 60-second windows by
+            CICFlowMeter; the AI consumer must classify all flows within that
+            window before the next window arrives. This constrains the
+            acceptable per-sample inference latency to well under 1 ms for any
+            model intended for production deployment. This constraint directly
+            motivates the latency emphasis in §5.2 and the discussion of
+            accuracy-versus-latency trade-offs in §8.3.
+          </p>
+
+          <div class="callout callout-green">
+            <div class="callout-label">
+              ✅ Design Principle — Same Features, Same Transform
+            </div>
+            <p>
+              The Live Bridge applies an
+              <em>identical feature transformation sequence</em> to live traffic
+              as was applied during offline preprocessing (§3.3): the same 78
+              feature names, the same ±inf/NaN → 0 substitution, and the same
+              MinMaxScaler (loaded from <code>models/scaler.pkl</code>, fitted
+              on training data only in §3.4). This one-to-one correspondence
+              between the offline preprocessing pipeline and the production
+              serving pipeline is a necessary condition for valid real-time
+              inference and is enforced at code level through shared constants
+              and serialised scaler artefacts.
+            </p>
+          </div>
+        </div>
+        <!-- /5.4 -->
+
+        <!-- SUMMARY BOX -->
+        <div class="dark-box">
+          <h3>Section 5 Summary — Experimental Infrastructure</h3>
+          <p>
+            <strong>Hardware:</strong> CUDA GPU + multi-core CPU; TensorFlow
+            memory growth enabled; mmap-mode streaming for 1.8 GB LSTM corpus
+            (batch=256, prefetch=AUTOTUNE).
+          </p>
+          <p>
+            <strong>Metrics:</strong> Primary = Macro F1; Secondary = Macro P/R,
+            Accuracy, Weighted F1, OvR ROC-AUC per class. Latency: 10K-sample
+            benchmark giving ms/sample and samples/sec throughput. Threshold:
+            &gt;10K samples/sec = live-stream viable.
+          </p>
+          <p>
+            <strong>AutoML (PyCaret):</strong> 13+ algorithm families
+            benchmarked via 5-fold stratified CV, sorted by Macro F1. Champion
+            saved to <code>models/pycaret_champion.pkl</code> — hot-swappable in
+            production inference. Serves as an automated reference baseline for
+            validating hand-tuned model effectiveness (§8.4).
+          </p>
+          <p>
+            <strong>Live Bridge:</strong> Scapy → PCAP → CICFlowMeter CLI (78
+            features) → Kafka (<code>acks='all'</code>,
+            <code>network-traffic</code> topic) → AI consumer. Column rename map
+            (78 entries) bridges CICFlowMeter snake_case to training Title Case
+            schema. Async TrafficLogger archives live flows for future
+            retraining.
+          </p>
+        </div>
+      </article>
+
+      <!-- FOOTER -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 5 — Experimental Setup,
+          Infrastructure &amp; AutoML<br />
+          <span class="col-label">Sub-sections:</span> 5.1 Hardware · 5.2
+          Metrics · 5.3 PyCaret AutoML · 5.4 Live Bridge Overview<br />
+          <span class="col-label">Key Tables:</span> T11 — Metric Suite · T12 —
+          PyCaret Algorithm Pool (13 families)
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Key Files:</span> live_bridge.py ·
+          experiments/pycaret_setup.ipynb · stress_test.py<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

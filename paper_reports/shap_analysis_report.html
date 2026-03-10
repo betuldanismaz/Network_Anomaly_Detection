@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SHAP Explainability Analysis — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #6c3483;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+      }
+
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+        margin-top: 2rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #6c3483;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 13pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #6c3483;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsubsection {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #34495e;
+        margin-top: 1.6rem;
+        margin-bottom: 0.7rem;
+        padding-left: 0.8rem;
+        border-left: 3px solid #6c3483;
+      }
+
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      strong {
+        font-weight: 700;
+      }
+      em {
+        font-style: italic;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #f5eef8;
+        border: 1px solid #d2b4de;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #6c3483;
+      }
+
+      /* PIPELINE STRIP */
+      .pipeline {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin: 1.4rem 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+      .p-step {
+        background: #f5eef8;
+        border: 1.5px solid #d2b4de;
+        border-radius: 5px;
+        padding: 0.55rem 0.85rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 600;
+        color: #6c3483;
+        white-space: nowrap;
+        text-align: center;
+      }
+      .p-step .ps {
+        font-size: 7pt;
+        color: #7f8c8d;
+        display: block;
+        font-weight: 400;
+        margin-top: 0.1rem;
+      }
+      .p-step.active {
+        background: #6c3483;
+        color: #fff;
+      }
+      .p-step.active .ps {
+        color: #d2b4de;
+      }
+      .p-arr {
+        color: #6c3483;
+        font-size: 14pt;
+        padding: 0 0.4rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      /* CODE BLOCK */
+      .code-block {
+        background: #0d1117;
+        border-radius: 6px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.2rem 0;
+        overflow-x: auto;
+        position: relative;
+      }
+      .code-block .code-lang {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.8rem;
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 600;
+        color: #d2a8ff;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .code-block pre {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        line-height: 1.6;
+        color: #c8d6e5;
+        white-space: pre;
+      }
+      .code-block .cm {
+        color: #6e7681;
+      }
+      .code-block .kw {
+        color: #ff7b72;
+      }
+      .code-block .fn {
+        color: #d2a8ff;
+      }
+      .code-block .st {
+        color: #a5d6ff;
+      }
+      .code-block .nm {
+        color: #ffa657;
+      }
+      .code-block .ag {
+        color: #3fb950;
+      }
+
+      /* FEATURE TABLE */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.2rem 0;
+      }
+      thead {
+        background: #6c3483;
+        color: #fff;
+      }
+      th {
+        padding: 0.55rem 0.7rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.3pt;
+        border: 1px solid #4a235a;
+      }
+      th.c {
+        text-align: center;
+      }
+      td {
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+      }
+      tbody tr:nth-child(even) {
+        background: #f5eef8;
+      }
+      td.c {
+        text-align: center;
+      }
+      td.bold {
+        font-weight: 700;
+      }
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.2rem;
+      }
+      .bar {
+        display: inline-block;
+        height: 10px;
+        background: #6c3483;
+        border-radius: 2px;
+        vertical-align: middle;
+        margin-left: 4px;
+      }
+      .bar-sm {
+        background: #a569bd;
+      }
+      .bar-xs {
+        background: #d2b4de;
+      }
+
+      /* ALERT OUTPUT BOX */
+      .alert-box {
+        background: #0d1117;
+        border: 1.5px solid #30363d;
+        border-radius: 6px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.2rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+      }
+      .ab-title {
+        font-family: "Inter", sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        color: #58a6ff;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.8rem;
+      }
+      .ab-key {
+        color: #7ee787;
+      }
+      .ab-val {
+        color: #a5d6ff;
+      }
+      .ab-num {
+        color: #ffa657;
+      }
+      .ab-high {
+        color: #f85149;
+        font-weight: 700;
+      }
+      .ab-med {
+        color: #e3b341;
+      }
+      .ab-low {
+        color: #3fb950;
+      }
+
+      /* CALLOUTS */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-purple {
+        background: #f5eef8;
+        border-left: 5px solid #6c3483;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-purple .callout-label {
+        color: #6c3483;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* FIGURE */
+      .fig-wrap {
+        text-align: center;
+        margin: 1.8rem 0;
+      }
+      .fig-wrap img {
+        max-width: 100%;
+        border: 1.5px solid #d5d8dc;
+        border-radius: 6px;
+      }
+      .fig-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-top: 0.6rem;
+      }
+
+      /* DARK SUMMARY */
+      .dark-box {
+        background: linear-gradient(135deg, #1a0533 0%, #2d1158 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin: 2rem 0;
+      }
+      .dark-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #d2a8ff;
+        margin-bottom: 1rem;
+      }
+      .dark-box p {
+        color: #d5d8dc;
+        margin-bottom: 0.8rem;
+      }
+      .dark-box p:last-child {
+        margin-bottom: 0;
+      }
+      .dark-box strong {
+        color: #fff;
+      }
+
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .code-block,
+        .alert-box,
+        .dark-box {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="paper-header">
+        <div class="paper-label">
+          Paper Supplement — Explainable AI Analysis
+        </div>
+        <h1 class="paper-title">
+          SHAP-Based Explainability in the AI-Driven NIDS Pipeline
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık &nbsp;·&nbsp; March
+          2026
+        </div>
+      </header>
+
+      <!-- SECTION: OVERVIEW -->
+      <div class="section-number-bar">
+        <span class="section-num">XAI §1</span>
+        <h2 class="section-title">Overview &amp; Motivation</h2>
+      </div>
+
+      <p>
+        A core limitation of black-box machine learning classifiers in Security
+        Operations Centre (SOC) workflows is their inability to articulate
+        <em>why</em> a specific network flow was flagged as an attack. Without
+        interpretable justification, analysts cannot distinguish a genuine
+        intrusion from a false alarm, correlate the alert with other signals, or
+        produce a defensible incident report. To address this, the NIDS pipeline
+        integrates a <strong>SHAP (SHapley Additive exPlanations)</strong>
+        explainability engine that produces per-prediction feature attributions
+        for every classified flow at inference time.
+      </p>
+
+      <p>
+        SHAP is grounded in cooperative game theory: the Shapley value of
+        feature
+        <em>i</em> for a given prediction is the average marginal contribution
+        of feature <em>i</em> across all possible feature coalitions [Lundberg
+        &amp; Lee, 2017]. For tree-based models, exact Shapley values can be
+        computed in polynomial time using the <em>TreeSHAP</em> algorithm,
+        avoiding the exponential-time sampling required by the model-agnostic
+        KernelSHAP variant.
+      </p>
+
+      <!-- Pipeline strip -->
+      <div class="pipeline">
+        <div class="p-step">
+          Trained Model<span class="ps">RF / XGBoost</span>
+        </div>
+        <div class="p-arr">→</div>
+        <div class="p-step active">
+          TreeExplainer<span class="ps">model_optimizer.py</span>
+        </div>
+        <div class="p-arr">→</div>
+        <div class="p-step active">
+          shap_explainer.pkl<span class="ps">models/</span>
+        </div>
+        <div class="p-arr">→</div>
+        <div class="p-step active">
+          explain_attack()<span class="ps">xai_engine.py</span>
+        </div>
+        <div class="p-arr">→</div>
+        <div class="p-step">Alert Store<span class="ps">alerts.db</span></div>
+        <div class="p-arr">→</div>
+        <div class="p-step">Dashboard<span class="ps">Streamlit</span></div>
+      </div>
+
+      <!-- SECTION: OFFLINE EXPLAINER GENERATION -->
+      <div class="section-number-bar">
+        <span class="section-num">XAI §2</span>
+        <h2 class="section-title">Offline SHAP Explainer Generation</h2>
+      </div>
+
+      <p>
+        The SHAP explainer is built <em>once</em> after model training by
+        <code>src/utils/model_optimizer.py</code> and persisted to disk as
+        <code>models/shap_explainer.pkl</code>. This offline step ensures that
+        the expensive TreeSHAP initialisation is never repeated at inference
+        time.
+      </p>
+
+      <div class="subsubsection">A. Feature Importance Ranking (Step 1)</div>
+
+      <p>
+        Before constructing the SHAP explainer, the script ranks all available
+        features using the trained model's built-in
+        <code>feature_importances_</code> attribute (Gini importance for
+        tree-based models). The <strong>Top-20 features</strong> are selected
+        and saved to <code>models/top_20_features.json</code>. This list serves
+        as the canonical feature set for all downstream preprocessing,
+        inference, and SHAP reporting:
+      </p>
+
+      <div class="code-block">
+        <div class="code-lang">Python — model_optimizer.py (lines 61–66)</div>
+        <pre>importances = pd.<span class="fn">Series</span>(model.feature_importances_, index=feature_names)
+top_features = importances.<span class="fn">sort_values</span>(ascending=<span class="kw">False</span>).<span class="fn">head</span>(args.top_k)  <span class="cm"># k=20</span>
+
+<span class="kw">with</span> <span class="fn">open</span>(args.top_features_path, <span class="st">"w"</span>) <span class="kw">as</span> fp:
+    json.<span class="fn">dump</span>({<span class="st">"top_features"</span>: top_features.index.<span class="fn">tolist</span>()}, fp)</pre>
+      </div>
+
+      <div class="subsubsection">B. TreeExplainer Initialisation (Step 2)</div>
+
+      <p>
+        A <code>shap.TreeExplainer</code> is instantiated using the trained
+        model and a <strong>500-sample background dataset</strong> sampled from
+        the training partition (<code>random_state=42</code>). The background
+        dataset defines the reference distribution against which marginal
+        feature contributions are computed — it represents the "expected" model
+        output when feature values are unknown, directly analogous to the
+        baseline in Shapley value theory:
+      </p>
+
+      <div class="code-block">
+        <div class="code-lang">Python — model_optimizer.py (lines 77–81)</div>
+        <pre><span class="cm"># 500-sample background from training data (Top-20 features only)</span>
+background = shap.utils.<span class="fn">sample</span>(
+    df[top_features.index],
+    args.background_samples,   <span class="cm"># default: 500</span>
+    random_state=<span class="nm">42</span>
+)
+explainer = shap.<span class="fn">TreeExplainer</span>(model, background)
+joblib.<span class="fn">dump</span>(explainer, args.shap_path)  <span class="cm"># → models/shap_explainer.pkl</span></pre>
+      </div>
+
+      <div class="callout callout-blue">
+        <div class="callout-label">ℹ Why 500 background samples?</div>
+        <p>
+          The background dataset is used to marginalise over "missing" feature
+          values when computing Shapley contributions. 500 samples provides a
+          statistically stable estimate of the marginal distribution at a
+          fraction of the full training set size (~2.27M rows), keeping
+          explainer initialisation under 10 seconds on CPU.
+        </p>
+      </div>
+
+      <!-- SECTION: RUNTIME XAI -->
+      <div class="section-number-bar">
+        <span class="section-num">XAI §3</span>
+        <h2 class="section-title">
+          Runtime Feature Attribution — xai_engine.py
+        </h2>
+      </div>
+
+      <p>
+        At production inference time, the XAI engine
+        (<code>src/utils/xai_engine.py</code>) provides the
+        <code>explain_attack()</code> function, called for every flow classified
+        as Volumetric or Semantic by the Kafka Consumer. The engine is designed
+        for low-overhead serving: the explainer and feature list are loaded once
+        at module import (<em>warm-up on import</em>, line 40) and cached in
+        module-level globals — subsequent calls incur only the cost of the
+        Shapley value computation itself.
+      </p>
+
+      <div class="subsubsection">A. Explanation Algorithm</div>
+
+      <div class="code-block">
+        <div class="code-lang">
+          Python — xai_engine.py (lines 44–91, simplified)
+        </div>
+        <pre><span class="kw">def</span> <span class="fn">explain_attack</span>(input_vector, feature_names,
+                    attack_class_index=<span class="nm">1</span>, top_n=<span class="nm">3</span>) → List[dict]:
+
+    vector = np.<span class="fn">asarray</span>(input_vector, dtype=np.float64).<span class="fn">reshape</span>(<span class="nm">1</span>, -<span class="nm">1</span>)
+    shap_values = _EXPLAINER(vector)           <span class="cm"># exact TreeSHAP computation</span>
+    attack_values = shap_values[attack_class_index][<span class="nm">0</span>]  <span class="cm"># per-class SHAP array</span>
+
+    contributions = []
+    <span class="kw">for</span> name, value <span class="kw">in</span> <span class="fn">zip</span>(feature_names, attack_values):
+        <span class="kw">if</span> name <span class="kw">not in</span> top_features: <span class="kw">continue</span>   <span class="cm"># filter to Top-20 only</span>
+        contributions.<span class="fn">append</span>({
+            <span class="st">"feature"</span>: name,
+            <span class="st">"direction"</span>: <span class="st">"positive"</span> <span class="kw">if</span> value >= <span class="nm">0</span> <span class="kw">else</span> <span class="st">"negative"</span>,
+            <span class="st">"impact"</span>: <span class="fn">abs</span>(<span class="fn">float</span>(value))
+        })
+
+    contributions.<span class="fn">sort</span>(key=<span class="kw">lambda</span> x: x[<span class="st">"impact"</span>], reverse=<span class="kw">True</span>)
+
+    <span class="cm"># Classify magnitude: High ≥ 0.5 | Medium ≥ 0.2 | Low &lt; 0.2</span>
+    <span class="kw">return</span> top_n_formatted_results</pre>
+      </div>
+
+      <p>
+        The function returns the
+        <strong>Top-3 contributing features</strong> (default
+        <code>top_n=3</code>) restricted to the curated Top-20 feature set,
+        ranked by absolute SHAP value |φᵢ|. Each feature is assigned a magnitude
+        classification:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Magnitude Class</th>
+            <th class="c">|SHAP| Threshold</th>
+            <th>Interpretation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>High</strong></td>
+            <td class="c">≥ 0.5</td>
+            <td>
+              Dominant driver of the attack prediction — primary indicator for
+              the analyst
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Medium</strong></td>
+            <td class="c">0.2 – 0.5</td>
+            <td>Significant secondary signal, corroborates the alert</td>
+          </tr>
+          <tr>
+            <td><strong>Low</strong></td>
+            <td class="c">&lt; 0.2</td>
+            <td>Minor contributing factor, context only</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="subsubsection">B. Example Alert Output</div>
+
+      <div class="alert-box">
+        <div class="ab-title">
+          Example SHAP Attribution — Detected Volumetric Attack (Class 1)
+        </div>
+        <pre>[
+  { <span class="ab-key">"feature"</span>: <span class="ab-val">"Bwd Packet Length Std"</span>,  <span class="ab-high">"impact": "High (positive |SHAP|=0.7142)"</span> },
+  { <span class="ab-key">"feature"</span>: <span class="ab-val">"Fwd IAT Std"</span>,           <span class="ab-med">"impact": "Medium (negative |SHAP|=0.3214)"</span> },
+  { <span class="ab-key">"feature"</span>: <span class="ab-val">"Total Fwd Packets"</span>,     <span class="ab-low">"impact": "Low (positive |SHAP|=0.0891)"</span> }
+]</pre>
+      </div>
+
+      <p>
+        This structured output is serialised to JSON and stored alongside every
+        alert record in <code>alerts.db</code>, ensuring that each alert carries
+        a complete, auditable explanation accessible from the Streamlit
+        dashboard — enabling SOC analysts to validate or dismiss alerts based on
+        the feature evidence without requiring access to the model source code.
+      </p>
+
+      <!-- SECTION: FEATURE IMPORTANCE CHART -->
+      <div class="section-number-bar">
+        <span class="section-num">XAI §4</span>
+        <h2 class="section-title">Top-20 Feature Importance Chart</h2>
+      </div>
+
+      <p>
+        Figure 1 shows the Gini-based feature importances used to derive the
+        Top-20 feature set, ranked by importance score. The chart was generated
+        by
+        <code>model_optimizer.py</code> and saved to
+        <code>reports/data/top20_features.png</code>.
+      </p>
+
+      <div class="fig-wrap">
+        <img
+          src="../reports/data/top20_features.png"
+          alt="Top-20 Feature Importances — Gini scores ranked descending"
+        />
+        <div class="fig-caption">
+          <strong>Figure 1.</strong> Top-20 feature importance scores (Gini
+          impurity reduction) derived from the trained Random Forest model.
+          <em>Bwd Packet Length Std</em> is the dominant discriminative feature
+          (importance ≈ 0.127), reflecting that backward packet length
+          variability is the strongest separator between benign and attack
+          traffic. Backward packet statistics (positions 1–7) collectively
+          dominate — consistent with the observation that attack responses
+          differ more strongly from benign in the backward direction.
+        </div>
+      </div>
+
+      <div class="subsubsection">Feature Category Analysis</div>
+
+      <table>
+        <caption
+          style="
+            font-family: &quot;Inter&quot;, sans-serif;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-align: left;
+            padding-bottom: 0.4rem;
+            color: #2c3e50;
+          "
+        >
+          Table A. Top-20 Features Grouped by Category and Importance Band
+        </caption>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Feature</th>
+            <th class="c">Category</th>
+            <th class="c">Importance</th>
+            <th>Relative Strength</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="c bold">1</td>
+            <td>Bwd Packet Length Std</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.127</td>
+            <td><span class="bar" style="width: 100px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">2</td>
+            <td>Bwd Packet Length Mean</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.070</td>
+            <td><span class="bar" style="width: 55px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">3</td>
+            <td>Packet Length Std</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.052</td>
+            <td><span class="bar" style="width: 41px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">4</td>
+            <td>Packet Length Variance</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.051</td>
+            <td><span class="bar" style="width: 40px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">5</td>
+            <td>Bwd Packet Length Max</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.046</td>
+            <td><span class="bar" style="width: 36px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">6</td>
+            <td>Subflow Bwd Bytes</td>
+            <td class="c">Byte Volume</td>
+            <td class="c">0.045</td>
+            <td><span class="bar" style="width: 35px"></span></td>
+          </tr>
+          <tr>
+            <td class="c bold">7</td>
+            <td>Avg Bwd Segment Size</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.044</td>
+            <td><span class="bar" style="width: 35px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">8</td>
+            <td>Packet Length Mean</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.039</td>
+            <td><span class="bar bar-sm" style="width: 31px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">9</td>
+            <td>Average Packet Size</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.039</td>
+            <td><span class="bar bar-sm" style="width: 31px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">10</td>
+            <td>Max Packet Length</td>
+            <td class="c">Packet Size</td>
+            <td class="c">0.037</td>
+            <td><span class="bar bar-sm" style="width: 29px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">11</td>
+            <td>Total Length of Bwd Packets</td>
+            <td class="c">Byte Volume</td>
+            <td class="c">0.031</td>
+            <td><span class="bar bar-sm" style="width: 24px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">12</td>
+            <td>Fwd IAT Std</td>
+            <td class="c">Inter-Arrival Time</td>
+            <td class="c">0.026</td>
+            <td><span class="bar bar-sm" style="width: 20px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">13</td>
+            <td>Total Fwd Packets</td>
+            <td class="c">Flow Count</td>
+            <td class="c">0.025</td>
+            <td><span class="bar bar-sm" style="width: 20px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">14</td>
+            <td>Total Backward Packets</td>
+            <td class="c">Flow Count</td>
+            <td class="c">0.022</td>
+            <td><span class="bar bar-sm" style="width: 17px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">15</td>
+            <td>Bwd Packets/s</td>
+            <td class="c">Flow Rate</td>
+            <td class="c">0.019</td>
+            <td><span class="bar bar-xs" style="width: 15px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">16</td>
+            <td>Idle Min</td>
+            <td class="c">Timing</td>
+            <td class="c">0.018</td>
+            <td><span class="bar bar-xs" style="width: 14px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">17</td>
+            <td>Fwd IAT Mean</td>
+            <td class="c">Inter-Arrival Time</td>
+            <td class="c">0.018</td>
+            <td><span class="bar bar-xs" style="width: 14px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">18</td>
+            <td>Subflow Fwd Packets</td>
+            <td class="c">Flow Count</td>
+            <td class="c">0.017</td>
+            <td><span class="bar bar-xs" style="width: 13px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">19</td>
+            <td>Total Length of Fwd Packets</td>
+            <td class="c">Byte Volume</td>
+            <td class="c">0.015</td>
+            <td><span class="bar bar-xs" style="width: 12px"></span></td>
+          </tr>
+          <tr>
+            <td class="c">20</td>
+            <td>Fwd IAT Max</td>
+            <td class="c">Inter-Arrival Time</td>
+            <td class="c">0.014</td>
+            <td><span class="bar bar-xs" style="width: 11px"></span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-caption">
+        Feature importance scores are Gini impurity reduction values averaged
+        across all trees in the Random Forest.
+        <strong>Top-7 features are all packet size statistics</strong> —
+        confirming that attack traffic is primarily distinguished by anomalous
+        payload size distributions rather than by timing or count features.
+      </div>
+
+      <!-- SECTION: SCIENTIFIC INTERPRETATION -->
+      <div class="section-number-bar">
+        <span class="section-num">XAI §5</span>
+        <h2 class="section-title">
+          Scientific Interpretation &amp; SOC Relevance
+        </h2>
+      </div>
+
+      <div class="subsubsection">Why Backward Packet Statistics Dominate</div>
+
+      <p>
+        The dominance of <em>backward</em> packet statistics (Ranks 1, 2, 5, 6,
+        7, 11) in the feature importance ranking is consistent with the
+        asymmetric nature of intrusion traffic: attack tools such as LOIC,
+        hping3, and Slowloris generate floods of
+        <em>forward</em> (source→target) packets with minimal or no legitimate
+        <em>backward</em> (target→source) responses. This produces anomalous
+        backward packet length distributions — high standard deviation and mean
+        when partial responses are elicited, near-zero when no response occurs.
+        The model effectively learns that
+        <strong
+          >abnormal backward communication is the most reliable signature of
+          malicious flows</strong
+        >.
+      </p>
+
+      <div class="subsubsection">
+        SHAP Direction — Positive vs Negative Contributions
+      </div>
+
+      <p>
+        The <code>direction</code> field in each SHAP attribution indicates
+        whether the feature value <em>increased</em> (positive) or
+        <em>decreased</em>
+        (negative) the model's confidence in the predicted attack class:
+      </p>
+
+      <ul style="margin: 0 0 1em 1.6em; font-size: 10.5pt; line-height: 1.8">
+        <li>
+          <strong>Positive SHAP (direction: positive):</strong> The observed
+          feature value is higher than the background mean in a way that
+          strongly indicates attack. E.g., unusually high
+          <em>Bwd Packet Length Std</em>.
+        </li>
+        <li>
+          <strong>Negative SHAP (direction: negative):</strong> The feature
+          value is anomalously low compared to the background, which the model
+          associates with attack behaviour. E.g., near-zero
+          <em>Fwd IAT Std</em> in a DDoS flow.
+        </li>
+      </ul>
+
+      <div class="callout callout-green">
+        <div class="callout-label">✅ Operational Value for SOC Analysts</div>
+        <p>
+          Each SHAP-attributed alert transforms from a binary alarm into a
+          structured evidence report. An analyst receiving a Volumetric alert
+          with attribution
+          <em>"Bwd Packet Length Std: High positive impact"</em>
+          immediately knows the flow has anomalous response packet variability —
+          consistent with a DDoS flood receiving intermittent server responses.
+          This is directly actionable: the analyst can cross-reference with
+          netflow counters and confirm or dismiss the alert without accessing
+          the raw model internals.
+        </p>
+      </div>
+
+      <div class="callout callout-purple">
+        <div class="callout-label">📖 Citation</div>
+        <p>
+          Lundberg, S. M., &amp; Lee, S. I. (2017).
+          <em>A unified approach to interpreting model predictions.</em>
+          Advances in Neural Information Processing Systems (NeurIPS), 30.
+          &nbsp;|&nbsp; TreeSHAP algorithm: Lundberg, S. M., et al. (2020).
+          <em
+            >From local explanations to global understanding with explainable AI
+            for trees.</em
+          >
+          Nature Machine Intelligence, 2(1), 56–67.
+        </p>
+      </div>
+
+      <!-- DARK SUMMARY -->
+      <div class="dark-box">
+        <h3>SHAP Implementation Summary</h3>
+        <p>
+          <strong>Explainer type:</strong> <code>shap.TreeExplainer</code> —
+          exact Shapley values (no approximation), polynomial-time computation
+          for tree-based models (Random Forest, XGBoost, Decision Tree).
+        </p>
+        <p>
+          <strong>Background dataset:</strong> 500 samples drawn from the
+          training partition (<code>random_state=42</code>), restricted to the
+          Top-20 feature columns, defining the marginal reference distribution
+          for Shapley value computation.
+        </p>
+        <p>
+          <strong>Feature scope:</strong> SHAP values computed over all input
+          features, but attributions reported only for the curated Top-20 set
+          (<code>top_20_features.json</code>), ensuring consistency with the
+          training feature schema.
+        </p>
+        <p>
+          <strong>Output format:</strong> Top-3 features ranked by |φᵢ|
+          (absolute SHAP value), each classified as High (≥0.5), Medium (≥0.2),
+          or Low (&lt;0.2) with direction (positive/negative), serialised to
+          JSON and stored in <code>alerts.db</code> per alert.
+        </p>
+        <p>
+          <strong>Serving pattern:</strong> Warm-up on module import (single
+          <code>joblib.load()</code> at startup), then O(1) lookup per inference
+          call — no per-prediction I/O overhead.
+        </p>
+      </div>
+
+      <footer class="paper-footer">
+        <span class="col-label">Files:</span> src/utils/xai_engine.py (100
+        lines) · src/utils/model_optimizer.py (90 lines) ·
+        models/top_20_features.json · models/shap_explainer.pkl<br />
+        <span class="col-label">References:</span> Lundberg &amp; Lee (NeurIPS
+        2017) · Lundberg et al. (Nature MI 2020) · shap v0.4x library<br />
+        <span class="col-label">Date:</span> March 2026
+      </footer>
+    </div>
+  </body>
+</html>

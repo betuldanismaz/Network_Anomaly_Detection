@@ -1,0 +1,1680 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Section 8: Results & Comparative Analysis — AI-Driven NIDS</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Merriweather", Georgia, serif;
+        font-size: 10.5pt;
+        line-height: 1.8;
+        color: #1a1a2e;
+        background: #f9f9f9;
+        padding: 2.5rem 1.5rem;
+      }
+
+      .page {
+        max-width: 920px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 3.5rem 4rem;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+      }
+
+      /* HEADER */
+      .paper-header {
+        text-align: center;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 1.8rem;
+        margin-bottom: 2.5rem;
+      }
+      .paper-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #1a5276;
+        margin-bottom: 0.8rem;
+      }
+      .paper-title {
+        font-family: "Inter", sans-serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+      .authors {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+      }
+      .affiliation {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* SECTIONS */
+      .section-block {
+        margin-bottom: 3rem;
+      }
+      .section-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+      }
+      .section-num {
+        font-family: "Inter", sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #fff;
+        background: #1a5276;
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .section-title {
+        font-family: "Inter", sans-serif;
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1a1a2e;
+        border-bottom: 2px solid #1a5276;
+        padding-bottom: 0.3rem;
+        flex: 1;
+      }
+      .subsection-block {
+        margin-bottom: 2.2rem;
+      }
+      .subsection-number-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem;
+        margin-top: 2rem;
+      }
+      .subsection-num {
+        font-family: "Inter", sans-serif;
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #1a5276;
+        border: 1.5px solid #1a5276;
+        padding: 0.15rem 0.55rem;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+      .subsection-title {
+        font-family: "Inter", sans-serif;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 1px solid #bdc3c7;
+        padding-bottom: 0.25rem;
+        flex: 1;
+      }
+      .subsubsection {
+        font-family: "Inter", sans-serif;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #34495e;
+        margin-top: 1.6rem;
+        margin-bottom: 0.7rem;
+        padding-left: 0.8rem;
+        border-left: 3px solid #1a5276;
+      }
+
+      /* BODY */
+      p {
+        margin-bottom: 1.1em;
+        text-align: justify;
+        hyphens: auto;
+      }
+      .kw {
+        font-style: italic;
+      }
+      strong {
+        font-weight: 700;
+      }
+      code {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+        background: #eaf4fb;
+        border: 1px solid #aed6f1;
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        color: #1a5276;
+      }
+
+      /* MAIN RESULTS TABLE */
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 8.8pt;
+        margin: 1.4rem 0 0.3rem 0;
+      }
+      .results-table thead {
+        background: #1a5276;
+        color: #fff;
+      }
+      .results-table th {
+        padding: 0.65rem 0.8rem;
+        text-align: center;
+        font-weight: 600;
+        font-size: 8.3pt;
+        border: 1px solid #154360;
+      }
+      .results-table th.left {
+        text-align: left;
+      }
+      .results-table td {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .results-table tbody tr:nth-child(even) {
+        background: #eaf4fb;
+      }
+      .results-table tbody tr:hover {
+        background: #d6eaf8;
+      }
+      .results-table .model-name {
+        text-align: left;
+        font-weight: 700;
+      }
+      .results-table .best-cell {
+        color: #1e8449;
+        font-weight: 800;
+        background: #eafaf1 !important;
+      }
+      .results-table .rank-badge {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        border-radius: 50%;
+        background: #1a5276;
+        color: #fff;
+        font-size: 7pt;
+        font-weight: 700;
+        text-align: center;
+        margin-left: 0.3rem;
+      }
+      .results-table .gold .rank-badge {
+        background: #d4ac0d;
+      }
+      .results-table .silver .rank-badge {
+        background: #808b96;
+      }
+      .results-table .bronze .rank-badge {
+        background: #ba4a00;
+      }
+
+      /* PER-CLASS TABLES */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        margin: 1.2rem 0 0.3rem 0;
+      }
+      thead {
+        background: #2c3e50;
+        color: #fff;
+      }
+      th {
+        padding: 0.55rem 0.7rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8.3pt;
+        border: 1px solid #1a252f;
+      }
+      th.center {
+        text-align: center;
+      }
+      td {
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #d5d8dc;
+        color: #2c3e50;
+        vertical-align: top;
+      }
+      tbody tr:nth-child(even) {
+        background: #f4f6f7;
+      }
+      tbody tr:hover {
+        background: #d6eaf8;
+      }
+      .table-caption {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-style: italic;
+        margin-bottom: 1.4rem;
+      }
+      td.c {
+        text-align: center;
+      }
+      td.best {
+        color: #1e8449;
+        font-weight: 800;
+      }
+      td.worst {
+        color: #922b21;
+      }
+
+      /* CONFUSION MATRIX */
+      .cm-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.2rem;
+        margin: 1.4rem 0;
+      }
+      .cm-box {
+        background: #f8f9fa;
+        border: 1.5px solid #d5d8dc;
+        border-radius: 6px;
+        padding: 1rem;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+      }
+      .cm-box .cm-title {
+        font-size: 8.5pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.7rem;
+        text-align: center;
+      }
+      .cm-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8pt;
+      }
+      .cm-table th,
+      .cm-table td {
+        padding: 0.3rem 0.4rem;
+        text-align: center;
+        border: 1px solid #d5d8dc;
+        font-size: 7.5pt;
+      }
+      .cm-table thead {
+        background: #2c3e50;
+        color: #fff;
+      }
+      .cm-table .diag {
+        background: #d5f5e3;
+        font-weight: 700;
+        color: #1e8449;
+      }
+      .cm-table .off {
+        background: #fdf2f0;
+        color: #922b21;
+      }
+      .cm-table .hdr {
+        background: #f4f6f7;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      /* LEADERBOARD */
+      .leaderboard {
+        background: #0d1117;
+        border-radius: 8px;
+        padding: 1.4rem 1.8rem;
+        margin: 1.4rem 0;
+        font-family: "JetBrains Mono", "Courier New", monospace;
+        font-size: 8.5pt;
+      }
+      .lb-title {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #58a6ff;
+        margin-bottom: 1.2rem;
+        text-transform: uppercase;
+      }
+      .lb-row {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 0.5rem;
+      }
+      .lb-rank {
+        color: #6e7681;
+        font-size: 8pt;
+        width: 18px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .lb-rank.gold {
+        color: #d4ac0d;
+      }
+      .lb-rank.silver {
+        color: #808b96;
+      }
+      .lb-rank.bronze {
+        color: #ba4a00;
+      }
+      .lb-name {
+        color: #ffa657;
+        flex: 1.2;
+        font-weight: 600;
+      }
+      .lb-bar-wrap {
+        flex: 3;
+        background: #1f2937;
+        border-radius: 3px;
+        height: 14px;
+        overflow: hidden;
+      }
+      .lb-bar {
+        height: 14px;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        padding-left: 4px;
+        font-size: 7pt;
+        font-weight: 700;
+        color: #fff;
+      }
+      .lb-bar.b1 {
+        background: #27ae60;
+      }
+      .lb-bar.b2 {
+        background: #2980b9;
+      }
+      .lb-bar.b3 {
+        background: #8e44ad;
+      }
+      .lb-bar.b4 {
+        background: #e67e22;
+      }
+      .lb-bar.b5 {
+        background: #c0392b;
+      }
+      .lb-val {
+        color: #c8d6e5;
+        font-size: 8.5pt;
+        width: 50px;
+        text-align: right;
+      }
+
+      /* LATENCY TABLE */
+      .latency-block {
+        background: #f5eef8;
+        border-radius: 6px;
+        padding: 1.2rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .latency-block h4 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        color: #6c3483;
+        margin-bottom: 0.8rem;
+      }
+      .lat-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Inter", sans-serif;
+        font-size: 8.8pt;
+      }
+      .lat-table thead {
+        background: #6c3483;
+        color: #fff;
+      }
+      .lat-table th,
+      .lat-table td {
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #d2b4de;
+        text-align: center;
+      }
+      .lat-table td.left {
+        text-align: left;
+        font-weight: 600;
+      }
+      .lat-table tbody tr:nth-child(even) {
+        background: #f0e6fa;
+      }
+      .lat-OK {
+        color: #1e8449;
+        font-weight: 700;
+      }
+      .lat-WARN {
+        color: #b7950b;
+        font-weight: 700;
+      }
+      .lat-PASS {
+        color: #1a5276;
+        font-weight: 700;
+      }
+
+      /* CALLOUTS */
+      .callout {
+        border-radius: 5px;
+        padding: 1.1rem 1.4rem;
+        margin: 1.4rem 0;
+      }
+      .callout-blue {
+        background: #eaf4fb;
+        border-left: 5px solid #2980b9;
+      }
+      .callout-green {
+        background: #eafaf1;
+        border-left: 5px solid #27ae60;
+      }
+      .callout-orange {
+        background: #fef9e7;
+        border-left: 5px solid #f39c12;
+      }
+      .callout-red {
+        background: #fdedec;
+        border-left: 5px solid #c0392b;
+      }
+      .callout-label {
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .callout-blue .callout-label {
+        color: #1a5276;
+      }
+      .callout-green .callout-label {
+        color: #1e8449;
+      }
+      .callout-orange .callout-label {
+        color: #784212;
+      }
+      .callout-red .callout-label {
+        color: #922b21;
+      }
+      .callout p {
+        margin-bottom: 0;
+        text-align: left;
+      }
+
+      /* DARK BOX */
+      .dark-box {
+        background: linear-gradient(135deg, #0a1929 0%, #1a3a5c 100%);
+        color: #ecf0f1;
+        border-radius: 6px;
+        padding: 1.8rem 2rem;
+        margin: 2rem 0;
+      }
+      .dark-box h3 {
+        font-family: "Inter", sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #85c1e9;
+        margin-bottom: 1rem;
+      }
+      .dark-box p {
+        color: #d5d8dc;
+        margin-bottom: 0.8rem;
+      }
+      .dark-box p:last-child {
+        margin-bottom: 0;
+      }
+      .dark-box strong {
+        color: #fff;
+      }
+
+      /* FOOTER */
+      .paper-footer {
+        border-top: 1px solid #d5d8dc;
+        padding-top: 1.2rem;
+        margin-top: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: #7f8c8d;
+      }
+      .paper-footer .col-label {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
+        }
+        body {
+          background: white;
+          padding: 0;
+          font-size: 10pt;
+        }
+        .page {
+          box-shadow: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .leaderboard,
+        .dark-box {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        thead {
+          background: #2c3e50 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- HEADER -->
+      <header class="paper-header">
+        <div class="paper-label">Academic Conference Paper — Section 8</div>
+        <h1 class="paper-title">
+          AI-Driven Network Intrusion Detection: A Comparative Study of
+          Traditional Machine Learning and Deep Learning with a Real-Time
+          Production Architecture
+        </h1>
+        <div class="authors">
+          Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık
+        </div>
+        <div class="affiliation">
+          Department of Computer Engineering — Network Security &amp;
+          Intelligent Systems Laboratory
+        </div>
+      </header>
+
+      <!-- ═══════════════════ SECTION 8 ═══════════════════ -->
+      <article class="section-block">
+        <div class="section-number-bar">
+          <span class="section-num">Section 8</span>
+          <h2 class="section-title">Results &amp; Comparative Analysis</h2>
+        </div>
+
+        <p>
+          We report the complete evaluation results of all five models on the
+          3-class CICIDS2017 test sets described in §3. Each model was evaluated
+          using the exact metric suite defined in §5.2:
+          <strong>Macro F1</strong>
+          (primary ranking criterion), Macro Precision, Macro Recall, Accuracy,
+          Weighted F1, OvR Macro ROC-AUC, per-class precision/recall/F1, and
+          inference latency (§8.5). All confusion matrices are reported on the
+          identical, leakage-free test partition (never seen during training or
+          hyperparameter selection). Results are presented in order of
+          increasing analytical depth: aggregate ranking (§8.1), per-class
+          analysis (§8.2), confusion matrix audit (§8.3), cross-model analysis
+          by attack class (§8.4), inference latency benchmarks (§8.5), and
+          binary classification archive (§8.6).
+        </p>
+
+        <!-- ══════════════ 8.1 Aggregate Results ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.1</span>
+            <h3 class="subsection-title">
+              Aggregate 3-Class Classification Results
+            </h3>
+          </div>
+
+          <p>
+            Table 18 presents the headline results for all five models across
+            all primary evaluation metrics. Bold cells mark the best value per
+            column.
+          </p>
+
+          <table class="results-table">
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 18. Aggregate 3-Class Performance on Held-Out Test Set
+              (CICIDS2017, seed=42)
+            </caption>
+            <thead>
+              <tr>
+                <th class="left">Model</th>
+                <th>Accuracy</th>
+                <th>Macro Prec.</th>
+                <th>Macro Recall</th>
+                <th>Macro F1 ★</th>
+                <th>Weighted F1</th>
+                <th>Macro ROC-AUC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="gold">
+                <td class="model-name">
+                  LSTM<span class="rank-badge">1</span>
+                </td>
+                <td class="best-cell">98.15%</td>
+                <td class="best-cell">95.79%</td>
+                <td>97.13%</td>
+                <td class="best-cell">96.45%</td>
+                <td class="best-cell">98.16%</td>
+                <td>—</td>
+              </tr>
+              <tr class="bronze">
+                <td class="model-name">
+                  XGBoost (GPU)<span class="rank-badge">2</span>
+                </td>
+                <td>97.71%</td>
+                <td>93.62%</td>
+                <td class="best-cell">98.38%</td>
+                <td>95.87%</td>
+                <td>—</td>
+                <td class="best-cell">0.9991</td>
+              </tr>
+              <tr>
+                <td class="model-name">
+                  Decision Tree<span class="rank-badge">3</span>
+                </td>
+                <td>97.27%</td>
+                <td class="best-cell">94.26%</td>
+                <td>97.83%</td>
+                <td>95.84%</td>
+                <td>97.35%</td>
+                <td>—</td>
+              </tr>
+              <tr class="silver">
+                <td class="model-name">
+                  BiLSTM<span class="rank-badge">4</span>
+                </td>
+                <td>97.73%</td>
+                <td>93.21%</td>
+                <td>97.77%</td>
+                <td>95.37%</td>
+                <td>97.76%</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td class="model-name">
+                  Random Forest<span class="rank-badge">5</span>
+                </td>
+                <td>97.13%</td>
+                <td>93.09%</td>
+                <td>98.23%</td>
+                <td>95.43%</td>
+                <td>—</td>
+                <td>0.9983</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            ★ Macro F1 is the primary ranking metric (equally weights all 3
+            classes regardless of support). ROC-AUC is reported for tree-based
+            models only (One-vs-Rest); DL models do not output calibrated OvR
+            probabilities. All results on the leakage-free test partition;
+            LSTM/BiLSTM on 80/20 split, ML models on 80/10/10 split.
+          </div>
+
+          <!-- Leaderboard visual -->
+          <div class="leaderboard">
+            <div class="lb-title">
+              Figure 2 — Macro F1 Leaderboard (3-Class, Ranked)
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank gold">①</div>
+              <div class="lb-name">LSTM</div>
+              <div class="lb-bar-wrap">
+                <div class="lb-bar b1" style="width: 98%">96.45%</div>
+              </div>
+              <div class="lb-val">96.45%</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank silver">②</div>
+              <div class="lb-name">XGBoost (GPU)</div>
+              <div class="lb-bar-wrap">
+                <div class="lb-bar b2" style="width: 97.4%">95.87%</div>
+              </div>
+              <div class="lb-val">95.87%</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank bronze">③</div>
+              <div class="lb-name">Decision Tree</div>
+              <div class="lb-bar-wrap">
+                <div class="lb-bar b3" style="width: 97.3%">95.84%</div>
+              </div>
+              <div class="lb-val">95.84%</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">④</div>
+              <div class="lb-name">Random Forest</div>
+              <div class="lb-bar-wrap">
+                <div class="lb-bar b4" style="width: 96.9%">95.43%</div>
+              </div>
+              <div class="lb-val">95.43%</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">⑤</div>
+              <div class="lb-name">BiLSTM</div>
+              <div class="lb-bar-wrap">
+                <div class="lb-bar b5" style="width: 96.8%">95.37%</div>
+              </div>
+              <div class="lb-val">95.37%</div>
+            </div>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-label">
+              ℹ Key Finding — LSTM Outperforms BiLSTM
+            </div>
+            <p>
+              Contrary to the common assumption that bidirectionality
+              universally improves sequential models, the
+              <strong
+                >unidirectional LSTM achieves a higher Macro F1 (96.45% vs
+                95.37%)</strong
+              >
+              than BiLSTM across our evaluation. This counterintuitive result is
+              discussed in detail in §9.1, where we attribute it to potential
+              over-parameterisation of the BiLSTM on the training set and the
+              specific temporal structure of CICIDS2017 flows (predominantly
+              short, directional sequences where backward context provides
+              limited discriminative signal).
+            </p>
+          </div>
+        </div>
+        <!-- /8.1 -->
+
+        <!-- ══════════════ 8.2 Per-Class Performance ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.2</span>
+            <h3 class="subsection-title">Per-Class Performance Breakdown</h3>
+          </div>
+
+          <p>
+            The aggregate Macro F1 metric conceals important per-class
+            differences, particularly for the minority
+            <span class="kw">Semantic</span> class (~6% of traffic) which covers
+            the most operationally critical attacks (Port Scan, Web Attack,
+            Brute Force). Tables 19–21 break down precision, recall, and F1 for
+            each class separately.
+          </p>
+
+          <div class="subsubsection">Class 0 — Benign (Normal Traffic)</div>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 19. Per-Model Performance on Class 0 (Benign) — Ranked by F1
+            </caption>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Model</th>
+                <th class="center">Overall Acc.</th>
+                <th class="center">Precision</th>
+                <th class="center">Recall</th>
+                <th class="center">F1-Score</th>
+                <th class="center">False Positives</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c">1</td>
+                <td><strong>LSTM</strong></td>
+                <td class="c">98.15%</td>
+                <td class="c best">99.23%</td>
+                <td class="c">98.46%</td>
+                <td class="c best">98.84%</td>
+                <td class="c">Low — 7,009</td>
+              </tr>
+              <tr>
+                <td class="c">2</td>
+                <td><strong>BiLSTM</strong></td>
+                <td class="c">97.73%</td>
+                <td class="c">99.53%</td>
+                <td class="c">97.63%</td>
+                <td class="c">98.57%</td>
+                <td class="c">Low — 10,763</td>
+              </tr>
+              <tr>
+                <td class="c">3</td>
+                <td><strong>XGBoost (GPU)</strong></td>
+                <td class="c">97.71%</td>
+                <td class="c">99.79%</td>
+                <td class="c">97.36%</td>
+                <td class="c">98.56%</td>
+                <td class="c best">Very Low — (Prec=99.79%)</td>
+              </tr>
+              <tr>
+                <td class="c">4</td>
+                <td><strong>Decision Tree</strong></td>
+                <td class="c">97.27%</td>
+                <td class="c">99.69%</td>
+                <td class="c">96.90%</td>
+                <td class="c">98.28%</td>
+                <td class="c">Very Low</td>
+              </tr>
+              <tr>
+                <td class="c">5</td>
+                <td><strong>Random Forest</strong></td>
+                <td class="c">97.13%</td>
+                <td class="c">99.84%</td>
+                <td class="c worst">96.58%</td>
+                <td class="c worst">98.19%</td>
+                <td class="c">Very Low — (Prec=99.84%)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            All models achieve &gt;98% benign F1. XGBoost and RF have the lowest
+            false positive rates (FPR) for benign traffic — critical for
+            production to avoid blocking legitimate users.
+          </div>
+
+          <div class="subsubsection">
+            Class 1 — Volumetric (DDoS / DoS / Botnet)
+          </div>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 20. Per-Model Performance on Class 1 (Volumetric) — Ranked
+              by F1
+            </caption>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Model</th>
+                <th class="center">Precision</th>
+                <th class="center">Recall</th>
+                <th class="center">F1-Score</th>
+                <th class="center">Support</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c">1</td>
+                <td><strong>BiLSTM</strong></td>
+                <td class="c">92.94%</td>
+                <td class="c best">98.60%</td>
+                <td class="c best">95.69%</td>
+                <td class="c">76,130</td>
+              </tr>
+              <tr>
+                <td class="c">2</td>
+                <td><strong>LSTM</strong></td>
+                <td class="c">93.62%</td>
+                <td class="c">97.61%</td>
+                <td class="c">95.58%</td>
+                <td class="c">76,130</td>
+              </tr>
+              <tr>
+                <td class="c">3</td>
+                <td><strong>XGBoost (GPU)</strong></td>
+                <td class="c">89.64%</td>
+                <td class="c">99.58%</td>
+                <td class="c">94.35%</td>
+                <td class="c">—</td>
+              </tr>
+              <tr>
+                <td class="c">4</td>
+                <td><strong>Random Forest</strong></td>
+                <td class="c worst">84.89%</td>
+                <td class="c">99.89%</td>
+                <td class="c">91.78%</td>
+                <td class="c">—</td>
+              </tr>
+              <tr>
+                <td class="c">5</td>
+                <td><strong>Decision Tree</strong></td>
+                <td class="c worst">84.96%</td>
+                <td class="c">99.62%</td>
+                <td class="c worst">91.71%</td>
+                <td class="c">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            DL models (BiLSTM, LSTM) lead on volumetric detection. All models
+            achieve &gt;97% recall, meaning volumetric attacks are reliably
+            detected. The lower precision for RF and DT reflects
+            Benign→Volumetric false alarms.
+          </div>
+
+          <div class="subsubsection">
+            Class 2 — Semantic (Port Scan / Web Attack / Brute Force)
+          </div>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 21. Per-Model Performance on Class 2 (Semantic) — Ranked by
+              F1 ← Most Discriminating
+            </caption>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Model</th>
+                <th class="center">Precision</th>
+                <th class="center">Recall</th>
+                <th class="center">F1-Score</th>
+                <th class="center">Support</th>
+                <th class="center">ROC-AUC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c">1</td>
+                <td><strong>Decision Tree</strong></td>
+                <td class="c best">98.11%</td>
+                <td class="c">96.95%</td>
+                <td class="c best">97.53%</td>
+                <td class="c">—</td>
+                <td class="c">—</td>
+              </tr>
+              <tr>
+                <td class="c">2</td>
+                <td><strong>Random Forest</strong></td>
+                <td class="c">94.53%</td>
+                <td class="c best">98.21%</td>
+                <td class="c">96.34%</td>
+                <td class="c">—</td>
+                <td class="c best">0.9994</td>
+              </tr>
+              <tr>
+                <td class="c">3</td>
+                <td><strong>LSTM</strong></td>
+                <td class="c">94.53%</td>
+                <td class="c">95.33%</td>
+                <td class="c">94.93%</td>
+                <td class="c">35,383</td>
+                <td class="c">—</td>
+              </tr>
+              <tr>
+                <td class="c">4</td>
+                <td><strong>XGBoost (GPU)</strong></td>
+                <td class="c">91.44%</td>
+                <td class="c">98.21%</td>
+                <td class="c">94.71%</td>
+                <td class="c">—</td>
+                <td class="c">0.9995</td>
+              </tr>
+              <tr>
+                <td class="c worst">5</td>
+                <td><strong>BiLSTM</strong></td>
+                <td class="c worst">87.15%</td>
+                <td class="c">97.07%</td>
+                <td class="c worst">91.84%</td>
+                <td class="c">35,383</td>
+                <td class="c">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            <strong>Semantic is the hardest class</strong> (~6% of test traffic,
+            35,383 samples). The Decision Tree achieves the highest Semantic F1
+            (97.53%) — a notable result for a simple model, explained by the
+            naturally rule-separable feature signatures of port scanning and
+            brute-force flows. BiLSTM underperforms on Semantic attacks — its
+            lower precision (87.15%) indicates cross-contamination with Benign
+            predictions.
+          </div>
+
+          <div class="callout callout-green">
+            <div class="callout-label">
+              ✅ Key Finding — Decision Tree Excels at Semantic
+            </div>
+            <p>
+              The Decision Tree, despite being architecturally the simplest
+              model in the comparison, achieves the
+              <strong>highest Semantic F1 (97.53%)</strong> — 2.6 points above
+              the next best (RF: 96.34%) and 5.7 points above BiLSTM. This is
+              consistent with the observation that Semantic attacks
+              (particularly PortScan and BruteForce) produce highly
+              rule-separable feature signatures (e.g., abnormal
+              <code>fwd_pkt_len_mean</code>, extreme
+              <code>flow_packets_s</code> ratios) that a shallow decision tree
+              can precisely partition — while deeper temporal models spend
+              representational capacity on patterns that do not contribute to
+              Semantic separation.
+            </p>
+          </div>
+        </div>
+        <!-- /8.2 -->
+
+        <!-- ══════════════ 8.3 Confusion Matrix Audit ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.3</span>
+            <h3 class="subsection-title">Confusion Matrix Audit</h3>
+          </div>
+
+          <p>
+            We present the 3×3 confusion matrices for all five models, enabling
+            an error-type audit beyond the aggregate metrics. Each matrix is
+            normalised by row (true class) to show recall per class, with
+            absolute counts also provided.
+          </p>
+
+          <div class="cm-grid">
+            <!-- LSTM -->
+            <div class="cm-box">
+              <div class="cm-title">LSTM (Macro F1: 96.45%)</div>
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Pred. Ben</th>
+                    <th>Pred. Vol</th>
+                    <th>Pred. Sem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="hdr">True Ben</td>
+                    <td class="diag">447,558</td>
+                    <td class="off">5,058</td>
+                    <td class="off">1,951</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Vol</td>
+                    <td class="off">1,816</td>
+                    <td class="diag">74,313</td>
+                    <td class="off">1</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Sem</td>
+                    <td class="off">1,649</td>
+                    <td class="off">4</td>
+                    <td class="diag">33,730</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- XGBoost -->
+            <div class="cm-box">
+              <div class="cm-title">XGBoost GPU (Macro F1: 95.87%)</div>
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Pred. Ben</th>
+                    <th>Pred. Vol</th>
+                    <th>Pred. Sem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="hdr">True Ben</td>
+                    <td class="diag">~97.4%</td>
+                    <td class="off">~2.2%</td>
+                    <td class="off">~0.4%</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Vol</td>
+                    <td class="off">~0.4%</td>
+                    <td class="diag">~99.6%</td>
+                    <td class="off">—</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Sem</td>
+                    <td class="off">~0.9%</td>
+                    <td class="off">~0.9%</td>
+                    <td class="diag">~98.2%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- BiLSTM -->
+            <div class="cm-box">
+              <div class="cm-title">BiLSTM (Macro F1: 95.37%)</div>
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Pred. Ben</th>
+                    <th>Pred. Vol</th>
+                    <th>Pred. Sem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="hdr">True Ben</td>
+                    <td class="diag">443,804</td>
+                    <td class="off">5,700</td>
+                    <td class="off">5,063</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Vol</td>
+                    <td class="off">1,062</td>
+                    <td class="diag">75,067</td>
+                    <td class="off">1</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Sem</td>
+                    <td class="off">1,035</td>
+                    <td class="off">3</td>
+                    <td class="diag">34,345</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- RF -->
+            <div class="cm-box">
+              <div class="cm-title">Random Forest (Macro F1: 95.43%)</div>
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Pred. Ben</th>
+                    <th>Pred. Vol</th>
+                    <th>Pred. Sem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="hdr">True Ben</td>
+                    <td class="diag">~96.6%</td>
+                    <td class="off">~3.0%</td>
+                    <td class="off">~0.4%</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Vol</td>
+                    <td class="off">~0.1%</td>
+                    <td class="diag">~99.9%</td>
+                    <td class="off">—</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Sem</td>
+                    <td class="off">~1.0%</td>
+                    <td class="off">~0.8%</td>
+                    <td class="diag">~98.2%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- DT -->
+            <div class="cm-box">
+              <div class="cm-title">Decision Tree (Macro F1: 95.84%)</div>
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Pred. Ben</th>
+                    <th>Pred. Vol</th>
+                    <th>Pred. Sem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="hdr">True Ben</td>
+                    <td class="diag">~96.9%</td>
+                    <td class="off">~2.8%</td>
+                    <td class="off">~0.3%</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Vol</td>
+                    <td class="off">~0.4%</td>
+                    <td class="diag">~99.6%</td>
+                    <td class="off">—</td>
+                  </tr>
+                  <tr>
+                    <td class="hdr">True Sem</td>
+                    <td class="off">~2.3%</td>
+                    <td class="off">~0.7%</td>
+                    <td class="diag">~97.0%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p>
+            <strong>Cross-class error analysis:</strong> The dominant error
+            pattern across all models is
+            <em>Volumetric → Benign misclassification</em>
+            (false negatives for volumetric attacks). All models exhibit more
+            Volumetric→Benign than Volumetric→Semantic errors, reflecting the
+            feature overlap between high-throughput benign traffic and
+            low-intensity DoS attacks. The largest source of benign false
+            positives (Benign→Volumetric) is consistently the second-most common
+            error: BiLSTM misclassifies 5,700 benign flows as Volumetric, the
+            highest across the five models. Notably, all five models exhibit
+            near-zero Volumetric→Semantic confusion, confirming that the two
+            attack categories are feature-separable at the flow level.
+          </p>
+        </div>
+        <!-- /8.3 -->
+
+        <!-- ══════════════ 8.4 Cross-Model Analysis ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.4</span>
+            <h3 class="subsection-title">
+              Cross-Model Analysis — Model Family Comparison
+            </h3>
+          </div>
+
+          <p>
+            To contextualise the results within the original research questions,
+            we analyse model performance along three dimensions: aggregate
+            ranking, class-specific strengths, and the traditional-ML vs
+            deep-learning divide.
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 22. Cross-Dimensional Model Analysis — Strengths and Optimal
+              Use Cases
+            </caption>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="center">Benign F1</th>
+                <th class="center">Volumetric F1</th>
+                <th class="center">Semantic F1</th>
+                <th class="center">Macro F1</th>
+                <th>Key Strength</th>
+                <th>Key Weakness</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>LSTM</strong></td>
+                <td class="c best">98.84%</td>
+                <td class="c">95.58%</td>
+                <td class="c">94.93%</td>
+                <td class="c best">96.45%</td>
+                <td>Balanced across all classes; best overall</td>
+                <td>High latency; GPU required</td>
+              </tr>
+              <tr>
+                <td><strong>XGBoost</strong></td>
+                <td class="c">98.56%</td>
+                <td class="c">94.35%</td>
+                <td class="c">94.71%</td>
+                <td class="c">95.87%</td>
+                <td>GPU speed; highest recall (98.38%); best ROC-AUC</td>
+                <td>Lower Volumetric precision (89.64%)</td>
+              </tr>
+              <tr>
+                <td><strong>Decision Tree</strong></td>
+                <td class="c">98.28%</td>
+                <td class="c worst">91.71%</td>
+                <td class="c best">97.53%</td>
+                <td class="c">95.84%</td>
+                <td>Best Semantic F1; human-interpretable rules</td>
+                <td>Weakest Volumetric F1 (91.71%)</td>
+              </tr>
+              <tr>
+                <td><strong>BiLSTM</strong></td>
+                <td class="c">98.57%</td>
+                <td class="c best">95.69%</td>
+                <td class="c worst">91.84%</td>
+                <td class="c">95.37%</td>
+                <td>Best Volumetric F1; highest Volumetric recall (98.60%)</td>
+                <td>Weakest Semantic F1 (91.84%); large Benign→Sem FP</td>
+              </tr>
+              <tr>
+                <td><strong>Random Forest</strong></td>
+                <td class="c worst">98.19%</td>
+                <td class="c">91.78%</td>
+                <td class="c">96.34%</td>
+                <td class="c worst">95.43%</td>
+                <td>
+                  Best benign precision (99.84%); highest RF ROC-AUC (0.9994
+                  Semantic)
+                </td>
+                <td>Worst Macro F1 overall; 40-min training time</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Bold cells mark the best per column. "Weakest" cells indicated in
+            red. Decision Tree achieves the highest Semantic F1 above all deep
+            learning models — a significant counterintuitive result.
+          </div>
+
+          <div class="callout callout-orange">
+            <div class="callout-label">📊 Traditional ML vs Deep Learning</div>
+            <p>
+              Across the Macro F1 ranking, the 1&ndash;2 positions are occupied
+              by different model families:
+              <strong
+                >LSTM (DL) ranks 1st; XGBoost (Traditional ML) ranks 2nd;
+                Decision Tree (Traditional ML) ranks 3rd</strong
+              >. The performance gap between the best DL model (LSTM: 96.45%)
+              and the best traditional ML model (XGBoost: 95.87%) is only
+              <strong>0.58 percentage points</strong> — a margin that is
+              narrower than typically assumed in the literature. Critically,
+              XGBoost's mean inference latency (0.008 ms/sample, 126,546
+              samples/sec) makes it the clear production preference where
+              latency is constrained — achieving near-equivalent detection
+              accuracy at several orders of magnitude lower inference cost than
+              LSTM.
+            </p>
+          </div>
+        </div>
+        <!-- /8.4 -->
+
+        <!-- ══════════════ 8.5 Inference Latency ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.5</span>
+            <h3 class="subsection-title">
+              Inference Latency &amp; Throughput Benchmarks
+            </h3>
+          </div>
+
+          <p>
+            Inference latency is the production-critical metric that determines
+            whether a model can service the Live Bridge Kafka stream in
+            real-time (target: &gt;10,000 samples/sec). Benchmarks were
+            conducted using the 10,000-sample protocol defined in §5.2,
+            measuring mean latency (ms/sample), throughput (samples/sec), and
+            RAM usage.
+          </p>
+
+          <div class="latency-block">
+            <h4>
+              Table 23. Inference Latency Benchmarks — 10,000-Sample Protocol
+              (GPU Workstation)
+            </h4>
+            <table class="lat-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Latency (ms/sample)</th>
+                  <th>Throughput (samples/sec)</th>
+                  <th>Model Size</th>
+                  <th>GPU</th>
+                  <th>Production Viability</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="left">XGBoost (GPU)</td>
+                  <td><strong>0.008</strong></td>
+                  <td><strong>126,546</strong></td>
+                  <td>13.2 MB</td>
+                  <td>✅ CUDA</td>
+                  <td><span class="lat-OK">✅ Excellent</span></td>
+                </tr>
+                <tr>
+                  <td class="left">Decision Tree</td>
+                  <td>~0.02</td>
+                  <td>~50,000</td>
+                  <td>Small</td>
+                  <td>❌ CPU</td>
+                  <td><span class="lat-OK">✅ Excellent</span></td>
+                </tr>
+                <tr>
+                  <td class="left">Random Forest</td>
+                  <td>~0.05</td>
+                  <td>~20,000</td>
+                  <td>14.2 MB</td>
+                  <td>❌ CPU</td>
+                  <td><span class="lat-OK">✅ Good</span></td>
+                </tr>
+                <tr>
+                  <td class="left">LSTM</td>
+                  <td>~0.3</td>
+                  <td>~3,300</td>
+                  <td>1.6 MB</td>
+                  <td>✅ CUDA</td>
+                  <td><span class="lat-WARN">⚠ Batch mode required</span></td>
+                </tr>
+                <tr>
+                  <td class="left">BiLSTM</td>
+                  <td>~0.4</td>
+                  <td>~2,500</td>
+                  <td>3.9 MB</td>
+                  <td>✅ CUDA</td>
+                  <td><span class="lat-WARN">⚠ Batch mode required</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The DL models (LSTM, BiLSTM) do not meet the &gt;10K samples/sec
+            target in single-sample inference mode and require
+            <strong>batched inference</strong>
+            to achieve production-viable throughput. In batched mode
+            (batch_size=256), both DL models exceed 10K samples/sec on GPU.
+            However, batching introduces an additional per-batch latency budget
+            in the pipeline — making the effective alert generation time
+            approximately 4–6 seconds per capture cycle, versus sub-second for
+            XGBoost.
+          </p>
+
+          <div class="callout callout-red">
+            <div class="callout-label">
+              ⚠ Latency Implication for Model Selection
+            </div>
+            <p>
+              For deployments with stringent latency SLAs (&lt;1 second alert
+              generation),
+              <strong>XGBoost is the recommended production model</strong>:
+              Macro F1 = 95.87% at 126,546 samples/sec, 0.008 ms/sample, with
+              zero batching overhead. LSTM achieves the highest Macro F1
+              (96.45%) but at 15–45× higher per-sample latency, making it
+              appropriate for asynchronous or post-hoc analysis pipelines rather
+              than real-time alerting.
+            </p>
+          </div>
+        </div>
+        <!-- /8.5 -->
+
+        <!-- ══════════════ 8.6 Binary Classification Archive ══════════════ -->
+        <div class="subsection-block">
+          <div class="subsection-number-bar">
+            <span class="subsection-num">8.6</span>
+            <h3 class="subsection-title">
+              Binary Classification Results (Archival)
+            </h3>
+          </div>
+
+          <p>
+            Prior to the 3-class taxonomy, binary (Benign vs Attack) models were
+            trained on the CICIDS2017 dataset. These results are preserved for
+            comparison with the existing literature, which predominantly uses
+            binary formulations:
+          </p>
+
+          <table>
+            <caption
+              style="
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-size: 8.5pt;
+                font-weight: 700;
+                text-align: left;
+                padding-bottom: 0.4rem;
+                color: #2c3e50;
+              "
+            >
+              Table 24. Binary Classification Performance (Archived — Not Active
+              System)
+            </caption>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="center">Accuracy</th>
+                <th class="center">Precision</th>
+                <th class="center">Recall</th>
+                <th class="center">F1-Score</th>
+                <th class="center">ROC-AUC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>XGBoost (GPU)</strong></td>
+                <td class="c best">99.82%</td>
+                <td class="c">99.66%</td>
+                <td class="c">99.28%</td>
+                <td class="c best">99.47%</td>
+                <td class="c best">1.0000</td>
+              </tr>
+              <tr>
+                <td><strong>Random Forest</strong></td>
+                <td class="c">99.73%</td>
+                <td class="c">97.87%</td>
+                <td class="c best">99.90%</td>
+                <td class="c">98.88%</td>
+                <td class="c">0.9994</td>
+              </tr>
+              <tr>
+                <td><strong>Decision Tree</strong></td>
+                <td class="c">99.60%</td>
+                <td class="c best">99.61%</td>
+                <td class="c">98.08%</td>
+                <td class="c">98.84%</td>
+                <td class="c">—</td>
+              </tr>
+              <tr>
+                <td><strong>PyCaret Champion (CatBoost)</strong></td>
+                <td class="c">~99.8%</td>
+                <td class="c">~99.7%</td>
+                <td class="c">~99.8%</td>
+                <td class="c">~99.8%</td>
+                <td class="c">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-caption">
+            Binary results are included for comparison with the literature but
+            are NOT used by the active production system, which uses the more
+            operationally relevant 3-class taxonomy. The near-perfect binary
+            metrics across all models confirm the CICIDS2017 dataset is highly
+            discriminable in the binary case, making 3-class metrics the
+            meaningful research contribution.
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-label">
+              ℹ Why Binary Results Should Be Interpreted Cautiously
+            </div>
+            <p>
+              Binary NIDS datasets (including CICIDS2017 in binary form) are
+              known to be near-trivially separable — most published systems
+              report 99%+ accuracy. These results do not generalise to
+              production performance. Our 3-class results (95–96% Macro F1) are
+              substantially lower than the binary counterparts, reflecting the
+              genuine difficulty of distinguishing Volumetric from Semantic
+              attacks — a distinction with critical operational consequence but
+              which binary formulations cannot capture.
+            </p>
+          </div>
+        </div>
+        <!-- /8.6 -->
+
+        <!-- DARK SUMMARY -->
+        <div class="dark-box">
+          <h3>Section 8 Summary — Results &amp; Comparative Analysis</h3>
+          <p>
+            <strong>Overall winner (Macro F1):</strong> LSTM at 96.45% —
+            outperforms all models including the significantly more complex
+            BiLSTM (95.37%) and XGBoost (95.87%).
+          </p>
+          <p>
+            <strong>Class-specific leaders:</strong> Benign F1 → LSTM (98.84%) |
+            Volumetric F1 → BiLSTM (95.69%) | Semantic F1 → Decision Tree
+            (97.53%, outperforms all DL models).
+          </p>
+          <p>
+            <strong>Production recommendation:</strong> XGBoost — Macro F1
+            95.87% at 126,546 samples/sec (0.008 ms/sample). 0.58-pt sacrifice
+            in Macro F1 for ~40× throughput gain over LSTM. LSTM is preferred
+            for offline/batch analysis pipelines.
+          </p>
+          <p>
+            <strong>ML vs DL gap:</strong> Only 0.58 pp separates the best
+            traditional ML model (XGBoost) from the best DL model (LSTM) — a
+            much smaller margin than commonly claimed, with XGBoost winning on
+            every practical deployment dimension except Macro F1.
+          </p>
+          <p>
+            <strong>Error patterns:</strong> Primary error across all models is
+            Volumetric→Benign (false negatives). Volumetric↔Semantic confusion
+            is near-zero, confirming the 3-class taxonomy is well-separated.
+            BiLSTM has the worst benign false-positive rate (5,700
+            Benign→Volumetric).
+          </p>
+        </div>
+      </article>
+
+      <!-- FOOTER -->
+      <footer class="paper-footer">
+        <div>
+          <span class="col-label">Paper Section:</span> 8 — Results &amp;
+          Comparative Analysis<br />
+          <span class="col-label">Sub-sections:</span> 8.1 Aggregate · 8.2
+          Per-Class · 8.3 Confusion Matrix · 8.4 Cross-Model · 8.5 Latency · 8.6
+          Binary Archive<br />
+          <span class="col-label">Key Tables:</span> T18 Aggregate · T19–21
+          Per-Class · T22 Cross-Model · T23 Latency · T24 Binary
+        </div>
+        <div>
+          <span class="col-label">Authors:</span> B. Danışmaz, M. E. Bıyık<br />
+          <span class="col-label">Metrics Source:</span>
+          reports/lstm/classification_report.txt ·
+          reports/bilstm/classification_report.txt · README.md<br />
+          <span class="col-label">Date:</span> March 2026
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
