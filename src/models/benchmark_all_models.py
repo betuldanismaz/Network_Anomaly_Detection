@@ -142,7 +142,7 @@ def bench_lstm(X_dl):
 def bench_bilstm(X_dl):
     print("\n" + "═" * 60)
     print("⚡ BiLSTM")
-    path = os.path.join(MODELS_DIR, "bilstm_best.keras")
+    path = os.path.join(MODELS_DIR, "bilstm_model.keras")
     if not os.path.exists(path):
         print(f"   ❌ Model not found: {path}")
         return None
