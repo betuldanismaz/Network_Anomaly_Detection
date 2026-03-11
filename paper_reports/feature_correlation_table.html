@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Top-20 Feature Correlation Analysis — AI-Driven NIDS</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap");
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Merriweather",Georgia,serif;font-size:10.5pt;line-height:1.75;color:#1a1a2e;background:#f9f9f9;padding:2rem 1.5rem}
+.page{max-width:980px;margin:0 auto;background:#fff;padding:3rem 3.5rem;box-shadow:0 4px 32px rgba(0,0,0,.1);border-radius:6px}
+.paper-label{font-family:"Inter",sans-serif;font-size:8.5pt;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#2980b9;margin-bottom:.8rem}
+.paper-title{font-family:"Inter",sans-serif;font-size:16pt;font-weight:700;color:#1a1a2e;line-height:1.3;margin-bottom:.8rem}
+.authors{font-family:"Inter",sans-serif;font-size:10pt;color:#34495e;margin-bottom:.2rem}
+.affil{font-family:"Inter",sans-serif;font-size:9pt;color:#7f8c8d;font-style:italic}
+.paper-header{text-align:center;border-bottom:2px solid #2c3e50;padding-bottom:1.8rem;margin-bottom:2.5rem}
+h2.sec{font-family:"Inter",sans-serif;font-size:12pt;font-weight:700;color:#1a1a2e;border-bottom:2px solid #2980b9;padding-bottom:.3rem;margin:2rem 0 1rem}
+h3.subsec{font-family:"Inter",sans-serif;font-size:10.5pt;font-weight:700;color:#2c3e50;border-bottom:1px solid #bdc3c7;padding-bottom:.25rem;margin:1.8rem 0 .9rem}
+p{margin-bottom:1em;text-align:justify}
+.kw{font-style:italic}
+.metric{font-family:"Inter",sans-serif;font-weight:600;color:#1a5276}
+/* tables */
+table{width:100%;border-collapse:collapse;font-family:"Inter",sans-serif;font-size:8.7pt;margin:1rem 0}
+thead{background:#2c3e50;color:#fff}
+th{padding:.55rem .7rem;text-align:center;font-weight:600;font-size:8pt;border:1px solid #1a252f}
+th:first-child{text-align:left}
+td{padding:.45rem .7rem;border:1px solid #d5d8dc;color:#2c3e50;vertical-align:middle}
+td:first-child{text-align:left;font-weight:600;color:#1a1a2e}
+tbody tr:nth-child(even){background:#f4f6f7}
+tbody tr:hover{background:#d6eaf8}
+.best{color:#1e8449;font-weight:700}
+.high{color:#1a5276;font-weight:600}
+.neg{color:#c0392b}
+.tbl-note{font-size:8pt;color:#7f8c8d;font-style:italic;margin-top:.3rem}
+/* category badges */
+.badge{display:inline-block;font-family:"Inter",sans-serif;font-size:7.5pt;font-weight:700;padding:.15rem .5rem;border-radius:3px;text-transform:uppercase;letter-spacing:.4px}
+.b-pkt{background:#d6eaf8;color:#1a5276;border:1px solid #aed6f1}
+.b-iat{background:#d5f5e3;color:#1e8449;border:1px solid #a9dfbf}
+.b-flow{background:#fdebd0;color:#784212;border:1px solid #f5cba7}
+.b-idle{background:#e8daef;color:#6c3483;border:1px solid #d2b4de}
+/* heatmap cells */
+.hm-vhigh{background:#154360;color:#fff}
+.hm-high{background:#1f618d;color:#fff}
+.hm-med{background:#2980b9;color:#fff}
+.hm-low{background:#85c1e9;color:#1a1a2e}
+.hm-vlow{background:#d6eaf8;color:#1a1a2e}
+.hm-zero{background:#f8f9fa;color:#7f8c8d}
+.hm-neg{background:#fadbd8;color:#922b21}
+/* callout */
+.callout{border-radius:5px;padding:1rem 1.3rem;margin:1.2rem 0}
+.callout-orange{background:#fef9e7;border-left:5px solid #f39c12}
+.callout-blue{background:#eaf4fb;border-left:5px solid #2980b9}
+.callout-red{background:#fdedec;border-left:5px solid #c0392b}
+.callout-label{font-family:"Inter",sans-serif;font-size:8pt;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:.4rem;color:#784212}
+.callout-blue .callout-label{color:#1a5276}
+.callout-red .callout-label{color:#922b21}
+.callout p{margin:0;font-size:9.5pt}
+footer.pf{border-top:1px solid #d5d8dc;padding-top:1rem;margin-top:2.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-family:"Inter",sans-serif;font-size:8.5pt;color:#7f8c8d}
+.col-label{font-weight:600;color:#2c3e50}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="paper-header">
+  <div class="paper-label">Academic Conference Paper — Feature Engineering Section</div>
+  <h1 class="paper-title">Top-20 Feature Selection &amp; Correlation Analysis<br>
+  <span style="font-size:13pt;font-weight:500;color:#2c3e50">AI-Driven Network Intrusion Detection System (NIDS) — CICIDS2017</span></h1>
+  <div class="authors">Betül Danışmaz &nbsp;·&nbsp; Mustafa Emre Bıyık</div>
+  <div class="affil">Department of Computer Engineering — Network Security &amp; Intelligent Systems Laboratory</div>
+</header>
+
+<!-- ===== SIMPLE 2-COL TABLE ===== -->
+<h2 class="sec" style="margin-top:0">Öznitelik — Korelasyon Değeri</h2>
+<p style="font-size:9pt;color:#7f8c8d;margin-bottom:.8rem">Pearson korelasyon katsayısı (<em>r</em>), eğitim seti üzerinden hesaplanmıştır. Hedef değişken: Label (0=Benign, 1=Volumetric, 2=Semantic).</p>
+
+<table style="max-width:540px">
+  <thead>
+    <tr>
+      <th style="text-align:left;width:70%">Öznitelik</th>
+      <th style="width:30%">Korelasyon Değeri (r)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Bwd Packet Length Std</td><td class="best">+0.3169</td></tr>
+    <tr><td>Bwd Packet Length Max</td><td class="best">+0.2994</td></tr>
+    <tr><td>Packet Length Variance</td><td class="high">+0.2882</td></tr>
+    <tr><td>Bwd Packet Length Mean</td><td class="high">+0.2876</td></tr>
+    <tr><td>Avg Bwd Segment Size</td><td class="high">+0.2876</td></tr>
+    <tr><td>Packet Length Std</td><td class="high">+0.2820</td></tr>
+    <tr><td>Max Packet Length</td><td class="high">+0.2705</td></tr>
+    <tr><td>Fwd IAT Std</td><td class="high">+0.2623</td></tr>
+    <tr><td>Fwd IAT Max</td><td class="high">+0.2351</td></tr>
+    <tr><td>Packet Length Mean</td><td class="high">+0.2322</td></tr>
+    <tr><td>Idle Min</td><td class="high">+0.2318</td></tr>
+    <tr><td>Average Packet Size</td><td class="high">+0.2301</td></tr>
+    <tr><td>Bwd Packets/s</td><td>+0.0862</td></tr>
+    <tr><td>Fwd IAT Mean</td><td>+0.0778</td></tr>
+    <tr><td>Total Length of Fwd Packets</td><td class="neg">−0.0152</td></tr>
+    <tr><td>Total Fwd Packets</td><td>−0.0035</td></tr>
+    <tr><td>Subflow Fwd Packets</td><td>−0.0035</td></tr>
+    <tr><td>Total Backward Packets</td><td>−0.0034</td></tr>
+    <tr><td>Subflow Bwd Bytes</td><td>−0.0025</td></tr>
+    <tr><td>Total Length of Bwd Packets</td><td>−0.0025</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note" style="margin-bottom:2rem">✦ Yeşil = en güçlü pozitif korelasyon. Kırmızı = negatif korelasyon. Sıralama: |r| büyükten küçüğe.</p>
+
+<!-- ===== SECTION 1: OVERVIEW ===== -->
+<h2 class="sec">1. Özellik Seçimi — Genel Bakış</h2>
+<p>CICFlowMeter aracıyla CICIDS2017 veri setinden elde edilen 80'den fazla ham akış özelliğinden, XGBoost önem sıralaması (<span class="kw">feature importance ranking</span>) ve yüksek korelasyon eleme adımları uygulanarak <strong>20 özellik</strong> seçilmiştir. Bu özellikler; paket uzunluğu istatistikleri, akış zamanlaması (IAT) ve akış sayım metrikleri olmak üzere üç ana kategoride toplanmaktadır. Seçilen özellikler hem geleneksel ML modellerine (XGBoost, Random Forest, Decision Tree) hem de derin öğrenme modellerine (LSTM, BiLSTM) girdi olarak verilmektedir. Tüm özellikler <span class="kw">MinMaxScaler</span> ile [0, 1] aralığına normalize edilmiştir; ölçeklendirici yalnızca eğitim verisi üzerinde <code>fit</code> edilerek veri sızıntısı engellenmiştir.</p>
+
+<div class="callout callout-blue">
+  <div class="callout-label">ℹ Yöntem Notu</div>
+  <p>Korelasyon değerleri, <strong>Per-File Stratified Split</strong> protokolüyle oluşturulmuş ve MinMaxScaler ile normalize edilmiş <strong>eğitim seti</strong> üzerinden hesaplanmıştır (toplam ~2.27 milyon akış). Pearson korelasyon katsayısı (<em>r</em>) kullanılmıştır.</p>
+</div>
+
+<!-- ===== SECTION 2: FEATURE TABLE ===== -->
+<h2 class="sec">2. Seçilen 20 Özellik — Açıklamalar ve Hedef Korelasyonları</h2>
+
+<p>Aşağıdaki tabloda her özelliğin CICFlowMeter tanımı, ait olduğu kategori, seçim sırası ve hedef değişken (Label: 0=Benign, 1=Volumetric, 2=Semantic) ile Pearson korelasyonu (<em>r</em>) yer almaktadır.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Özellik Adı</th>
+      <th>Kategori</th>
+      <th>Açıklama</th>
+      <th>r (Label)</th>
+      <th>|r| Güç</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align:center">1</td>
+      <td>Bwd Packet Length Std</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Geri yönlü paketlerin uzunluk standart sapması</td>
+      <td class="best">+0.3169</td>
+      <td>⬛⬛⬛⬛⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">2</td>
+      <td>Bwd Packet Length Mean</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Geri yönlü paketlerin ortalama uzunluğu</td>
+      <td class="high">+0.2876</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">3</td>
+      <td>Packet Length Std</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Tüm paketlerin uzunluk standart sapması (çift yön)</td>
+      <td class="high">+0.2820</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">4</td>
+      <td>Packet Length Variance</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Tüm paketlerin uzunluk varyansı (Std²)</td>
+      <td class="high">+0.2882</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">5</td>
+      <td>Bwd Packet Length Max</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Geri yönlü paketlerin maksimum uzunluğu</td>
+      <td class="high">+0.2994</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">6</td>
+      <td>Subflow Bwd Bytes</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Alt-akışın geri yönde taşıdığı toplam bayt sayısı</td>
+      <td>−0.0025</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">7</td>
+      <td>Avg Bwd Segment Size</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Geri yönlü ortalama segment boyutu (≡ Bwd Packet Length Mean)</td>
+      <td class="high">+0.2876</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">8</td>
+      <td>Packet Length Mean</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Çift yönlü tüm paketlerin ortalama uzunluğu</td>
+      <td class="high">+0.2322</td>
+      <td>⬛⬛⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">9</td>
+      <td>Average Packet Size</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Akıştaki paketlerin ortalama boyutu (bayt)</td>
+      <td class="high">+0.2301</td>
+      <td>⬛⬛⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">10</td>
+      <td>Max Packet Length</td>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td>Akıştaki en büyük paket uzunluğu</td>
+      <td class="high">+0.2705</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">11</td>
+      <td>Total Length of Bwd Packets</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Geri yönlü tüm paketlerin toplam bayt uzunluğu</td>
+      <td>−0.0025</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">12</td>
+      <td>Fwd IAT Std</td>
+      <td><span class="badge b-iat">Zamanlama (IAT)</span></td>
+      <td>İleri yönlü paketler arası geliş süresi standart sapması</td>
+      <td class="high">+0.2623</td>
+      <td>⬛⬛⬛⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">13</td>
+      <td>Total Fwd Packets</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Akışta ileri yönde iletilen toplam paket sayısı</td>
+      <td>−0.0035</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">14</td>
+      <td>Total Backward Packets</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Akışta geri yönde iletilen toplam paket sayısı</td>
+      <td>−0.0034</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">15</td>
+      <td>Bwd Packets/s</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Saniyede geri yönde iletilen paket hızı</td>
+      <td>+0.0862</td>
+      <td>⬛⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">16</td>
+      <td>Idle Min</td>
+      <td><span class="badge b-idle">Bekleme</span></td>
+      <td>Akışın bekleme (idle) sürelerinin minimumu</td>
+      <td class="high">+0.2318</td>
+      <td>⬛⬛⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">17</td>
+      <td>Fwd IAT Mean</td>
+      <td><span class="badge b-iat">Zamanlama (IAT)</span></td>
+      <td>İleri yönlü paketler arası ortalama geliş süresi</td>
+      <td>+0.0778</td>
+      <td>⬛⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">18</td>
+      <td>Subflow Fwd Packets</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>Alt-akışın ileri yönde taşıdığı ortalama paket sayısı</td>
+      <td>−0.0035</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">19</td>
+      <td>Total Length of Fwd Packets</td>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td>İleri yönlü tüm paketlerin toplam bayt uzunluğu</td>
+      <td class="neg">−0.0152</td>
+      <td>⬜⬜⬜⬜⬜</td>
+    </tr>
+    <tr>
+      <td style="text-align:center">20</td>
+      <td>Fwd IAT Max</td>
+      <td><span class="badge b-iat">Zamanlama (IAT)</span></td>
+      <td>İleri yönlü paketler arası maksimum geliş süresi</td>
+      <td class="high">+0.2351</td>
+      <td>⬛⬛⬜⬜⬜</td>
+    </tr>
+  </tbody>
+</table>
+<p class="tbl-note">
+  ✦ <strong>r (Label)</strong> = Pearson korelasyonu (hedef: Label 0/1/2). 
+  &nbsp;⬛=yüksek katkı, ⬜=düşük katkı (her kare ≈ 0.08 birim).
+  &nbsp;Tüm değerler normalize edilmiş eğitim seti üzerinden hesaplanmıştır.
+</p>
+
+<!-- ===== SECTION 3: LABEL CORRELATION RANKING ===== -->
+<h2 class="sec">3. Hedef Değişken (Label) ile Pearson Korelasyon Sıralaması</h2>
+
+<p>Aşağıdaki tablo, özellik seçimindeki en kritik ölçütü göstermektedir: her özelliğin sınıf etiketiyle doğrusal ilişkisi. Pozitif değerler özellik değeri arttıkça saldırı sınıfına (özellikle Semantic=2) geçiş eğilimi olduğunu göstermektedir.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Sıra</th>
+      <th>Özellik</th>
+      <th>r (Label)</th>
+      <th>|r|</th>
+      <th>Yorum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="text-align:center">1</td><td>Bwd Packet Length Std</td><td class="best">+0.3169</td><td>0.3169</td><td>En güçlü ayırt edici — saldırılarda geri yönlü paket boyutu değişkenliği artar</td></tr>
+    <tr><td style="text-align:center">2</td><td>Bwd Packet Length Max</td><td class="best">+0.2994</td><td>0.2994</td><td>Büyük geri yönlü paketler saldırı davranışıyla ilişkili</td></tr>
+    <tr><td style="text-align:center">3</td><td>Packet Length Variance</td><td class="high">+0.2882</td><td>0.2882</td><td>Paket boyutu varyansı saldırılarda belirgin şekilde yükselir</td></tr>
+    <tr><td style="text-align:center">4</td><td>Bwd Packet Length Mean</td><td class="high">+0.2876</td><td>0.2876</td><td>Avg Bwd Segment Size ile özdeş (r=1.000)</td></tr>
+    <tr><td style="text-align:center">5</td><td>Avg Bwd Segment Size</td><td class="high">+0.2876</td><td>0.2876</td><td>Bwd Packet Length Mean'in CICFlowMeter alternatif adı</td></tr>
+    <tr><td style="text-align:center">6</td><td>Packet Length Std</td><td class="high">+0.2820</td><td>0.2820</td><td>Çift yönlü paket boyutu değişkenliği</td></tr>
+    <tr><td style="text-align:center">7</td><td>Max Packet Length</td><td class="high">+0.2705</td><td>0.2705</td><td>Akıştaki en büyük paket saldırı tipini işaret eder</td></tr>
+    <tr><td style="text-align:center">8</td><td>Fwd IAT Std</td><td class="high">+0.2623</td><td>0.2623</td><td>Düzensiz zamanlama — saldırı araçları tutarsız paket aralıkları üretir</td></tr>
+    <tr><td style="text-align:center">9</td><td>Fwd IAT Max</td><td class="high">+0.2351</td><td>0.2351</td><td>Uzun maksimum bekleme süresi Semantic saldırılarla örtüşür</td></tr>
+    <tr><td style="text-align:center">10</td><td>Packet Length Mean</td><td class="high">+0.2322</td><td>0.2322</td><td>Ortalama paket boyutu sınıflar arası ayrım sağlar</td></tr>
+    <tr><td style="text-align:center">11</td><td>Idle Min</td><td class="high">+0.2318</td><td>0.2318</td><td>Minimum bekleme süresi Semantic akışlarda yüksek</td></tr>
+    <tr><td style="text-align:center">12</td><td>Average Packet Size</td><td class="high">+0.2301</td><td>0.2301</td><td>Packet Length Mean ile neredeyse özdeş (r=0.998)</td></tr>
+    <tr><td style="text-align:center">13</td><td>Bwd Packets/s</td><td>+0.0862</td><td>0.0862</td><td>Orta güç; Volumetric saldırılarda yükselen geri yönlü paket hızı</td></tr>
+    <tr><td style="text-align:center">14</td><td>Fwd IAT Mean</td><td>+0.0778</td><td>0.0778</td><td>Ortalama paket aralığı sınıflar arasında ılımlı fark gösterir</td></tr>
+    <tr><td style="text-align:center">15</td><td>Total Length of Fwd Packets</td><td class="neg">−0.0152</td><td>0.0152</td><td>Doğrusal katkı çok zayıf; ağaç modellerinde yüksek önem (doğrusal olmayan ilişki)</td></tr>
+    <tr><td style="text-align:center">16</td><td>Total Fwd Packets</td><td>−0.0035</td><td>0.0035</td><td>Neredeyle sıfır korelasyon; doğrusal olmayan örüntüler için seçilmiş</td></tr>
+    <tr><td style="text-align:center">17</td><td>Subflow Fwd Packets</td><td>−0.0035</td><td>0.0035</td><td>Total Fwd Packets ile özdeş (r=1.000)</td></tr>
+    <tr><td style="text-align:center">18</td><td>Total Backward Packets</td><td>−0.0034</td><td>0.0034</td><td>Yüksek karşılıklı korelasyon (r≈1.000 grubu); birlikte entropi sağlarlar</td></tr>
+    <tr><td style="text-align:center">19</td><td>Subflow Bwd Bytes</td><td>−0.0025</td><td>0.0025</td><td>Total Length of Bwd Packets ile özdeş (r=1.000)</td></tr>
+    <tr><td style="text-align:center">20</td><td>Total Length of Bwd Packets</td><td>−0.0025</td><td>0.0025</td><td>Subflow Bwd Bytes ile özdeş — ağaç modellerinde sınır belirleme değeri taşır</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">✦ Pozitif r → özellik değeri arttıkça saldırı (özellikle Semantic) sınıfına eğilim. Negative r → Benign sınıfına hafif eğilim. Düşük doğrusal r, ağaç tabanlı modellerde doğrusal olmayan katkıyı dışlamaz.</p>
+
+<!-- ===== SECTION 4: HIGH CORRELATION PAIRS ===== -->
+<h2 class="sec">4. Yüksek Özellikler-Arası Korelasyon Çiftleri (|r| &gt; 0.85)</h2>
+
+<div class="callout callout-orange">
+  <div class="callout-label">⚠ Önemli Bulgu</div>
+  <p>Birbirleriyle çok yüksek korelasyona sahip 3 tam özdeş (r=1.000) çift mevcuttur. Bu özellikler doğrusal modellerde çoklu doğrusallık (<em>multicollinearity</em>) yaratabilse de XGBoost ve Random Forest gibi ağaç tabanlı modeller bu durumdan negatif etkilenmez; önerilen herhangi bir kaldırma işlemi gereksizdir.</p>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Özellik A</th>
+      <th>Özellik B</th>
+      <th>r</th>
+      <th>İlişki Türü</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="text-align:center">1</td><td>Bwd Packet Length Mean</td><td>Avg Bwd Segment Size</td><td class="best">1.0000</td><td>CICFlowMeter aynı değeri iki farklı sütunda raporlar</td></tr>
+    <tr><td style="text-align:center">2</td><td>Subflow Bwd Bytes</td><td>Total Length of Bwd Packets</td><td class="best">1.0000</td><td>Alt-akış bayt toplamı = paket uzunluk toplamı</td></tr>
+    <tr><td style="text-align:center">3</td><td>Total Fwd Packets</td><td>Subflow Fwd Packets</td><td class="best">1.0000</td><td>Tek alt-akışlı akışlarda toplam = alt-akış değeri</td></tr>
+    <tr><td style="text-align:center">4</td><td>Total Fwd Packets</td><td>Total Backward Packets</td><td class="high">0.9991</td><td>Simetrik akışlarda ileri/geri paket sayıları orantılı artar</td></tr>
+    <tr><td style="text-align:center">5</td><td>Total Backward Packets</td><td>Subflow Fwd Packets</td><td class="high">0.9991</td><td>Aynı simetri ilişkisi</td></tr>
+    <tr><td style="text-align:center">6</td><td>Packet Length Mean</td><td>Average Packet Size</td><td class="high">0.9978</td><td>CICFlowMeter'ın iki farklı hesaplama yöntemi — fiilen özdeş</td></tr>
+    <tr><td style="text-align:center">7</td><td>Subflow Bwd Bytes</td><td>Total Fwd Packets</td><td class="high">0.9973</td><td>Bayt yoğunluğu paket yoğunluğuyla doğal orantılı</td></tr>
+    <tr><td style="text-align:center">8</td><td>Subflow Bwd Bytes</td><td>Subflow Fwd Packets</td><td class="high">0.9973</td><td>Aynı örüntü</td></tr>
+    <tr><td style="text-align:center">9</td><td>Total Length of Bwd Packets</td><td>Total Fwd Packets</td><td class="high">0.9973</td><td>r=1.000 özdeşliği zinciri</td></tr>
+    <tr><td style="text-align:center">10</td><td>Total Length of Bwd Packets</td><td>Subflow Fwd Packets</td><td class="high">0.9973</td><td>Aynı örüntü</td></tr>
+    <tr><td style="text-align:center">11</td><td>Subflow Bwd Bytes</td><td>Total Backward Packets</td><td class="high">0.9952</td><td>Geri yönlü bayt/paket orantısı</td></tr>
+    <tr><td style="text-align:center">12</td><td>Total Length of Bwd Packets</td><td>Total Backward Packets</td><td class="high">0.9952</td><td>Aynı örüntü</td></tr>
+    <tr><td style="text-align:center">13</td><td>Packet Length Std</td><td>Max Packet Length</td><td class="high">0.9844</td><td>Yüksek varyans → büyük maksimum paket</td></tr>
+    <tr><td style="text-align:center">14</td><td>Bwd Packet Length Std</td><td>Bwd Packet Length Max</td><td class="high">0.9827</td><td>Geri yönlü varyans → maksimum uzunluk</td></tr>
+    <tr><td style="text-align:center">15</td><td>Bwd Packet Length Mean</td><td>Bwd Packet Length Max</td><td class="high">0.9590</td><td>Ortalama ve maksimum birlikte yükselir</td></tr>
+    <tr><td style="text-align:center">16</td><td>Bwd Packet Length Max</td><td>Avg Bwd Segment Size</td><td class="high">0.9590</td><td>Aynı ilişki (Avg Bwd ≡ Bwd Mean)</td></tr>
+    <tr><td style="text-align:center">17</td><td>Idle Min</td><td>Fwd IAT Max</td><td class="high">0.9493</td><td>Uzun bekleme süresi → büyük maksimum paket aralığı</td></tr>
+    <tr><td style="text-align:center">18</td><td>Bwd Packet Length Max</td><td>Max Packet Length</td><td class="high">0.9486</td><td>Geri yönlü maks ≈ genel maksimum</td></tr>
+    <tr><td style="text-align:center">19</td><td>Packet Length Std</td><td>Packet Length Mean</td><td class="high">0.9437</td><td>Yüksek ortalama → yüksek dağılım</td></tr>
+    <tr><td style="text-align:center">20</td><td>Packet Length Std</td><td>Average Packet Size</td><td class="high">0.9437</td><td>Aynı ilişki (Mean ≡ Average Packet Size)</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note">✦ Tüm çiftler |r| &gt; 0.85 eşiğini aşmaktadır. Ağaç tabanlı modellerde çoklu doğrusallık sorun yaratmaz. Lojistik regresyon gibi doğrusal modellerde bu özellikler VIF analizi gerektirebilir.</p>
+
+<!-- ===== SECTION 5: CATEGORY SUMMARY ===== -->
+<h2 class="sec">5. Kategoriye Göre Özet</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kategori</th>
+      <th>Özellik Sayısı</th>
+      <th>Ortalama |r| (Label)</th>
+      <th>En Yüksek r</th>
+      <th>Yorumu</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge b-pkt">Paket Uzunluğu</span></td>
+      <td style="text-align:center">8</td>
+      <td style="text-align:center" class="best">0.274</td>
+      <td class="best">0.317 (Bwd Pkt Len Std)</td>
+      <td>En güçlü kategori — saldırılar anormal paket boyutu profili üretir</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-iat">Zamanlama (IAT)</span></td>
+      <td style="text-align:center">3</td>
+      <td style="text-align:center" class="high">0.258</td>
+      <td class="high">0.262 (Fwd IAT Std)</td>
+      <td>Saldırı araçları düzensiz paket zamanlaması üretir</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-idle">Bekleme</span></td>
+      <td style="text-align:center">1</td>
+      <td style="text-align:center" class="high">0.232</td>
+      <td class="high">0.232 (Idle Min)</td>
+      <td>Semantic saldırılar uzun bekleme dönemlerini takip eder</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-flow">Akış Sayımı</span></td>
+      <td style="text-align:center">8</td>
+      <td style="text-align:center">0.012</td>
+      <td>0.086 (Bwd Packets/s)</td>
+      <td>Düşük doğrusal r; ağaç modellerinde doğrusal olmayan sınır değerleri üretir</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-blue">
+  <div class="callout-label">ℹ Akademik Yorum</div>
+  <p>Akış sayım özelliklerinin (Subflow Bwd Bytes, Total Fwd Packets vb.) etiketle <em>doğrusal</em> korelasyonu zayıf görünse de XGBoost önem skorlarında üst sıralarda yer almaktadır. Bu, söz konusu özelliklerin doğrusal olmayan karar sınırları (<em>non-linear decision boundaries</em>) oluşturduğuna işaret eder — Pearson korelasyonu bu örüntüyü yakalayamaz.</p>
+</div>
+
+<!-- FOOTER -->
+<footer class="pf">
+  <div>
+    <span class="col-label">Veri Seti:</span> CICIDS2017 (2.83M akış, 5 gün)<br/>
+    <span class="col-label">Özellik Çıkarımı:</span> CICFlowMeter<br/>
+    <span class="col-label">Normalizasyon:</span> MinMaxScaler [0,1] — leakage-free
+  </div>
+  <div>
+    <span class="col-label">Yazarlar:</span> B. Danışmaz, M. E. Bıyık<br/>
+    <span class="col-label">Korelasyon Yöntemi:</span> Pearson r — Eğitim seti (~2.27M örnek)<br/>
+    <span class="col-label">Tarih:</span> Mart 2026
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
