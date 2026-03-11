@@ -1,0 +1,40 @@
+{
+  "benchmark_protocol": "10000_samples",
+  "results": [
+    {
+      "model": "XGBoost (GPU)",
+      "latency_ms": 0.007021099999999958,
+      "throughput": 142427.82469983422,
+      "sample_size": 10000,
+      "gpu": "CUDA"
+    },
+    {
+      "model": "Random Forest",
+      "latency_ms": 0.0031308899999999526,
+      "throughput": 319397.99865214527,
+      "sample_size": 10000,
+      "gpu": "CPU"
+    },
+    {
+      "model": "Decision Tree",
+      "latency_ms": 0.0001327200000000417,
+      "throughput": 7534659.433391243,
+      "sample_size": 10000,
+      "gpu": "CPU"
+    },
+    {
+      "model": "LSTM",
+      "latency_ms": 0.05752623000000003,
+      "throughput": 17383.37450585584,
+      "sample_size": 10000,
+      "gpu": "CUDA (if available)"
+    },
+    {
+      "model": "BiLSTM",
+      "latency_ms": 0.10854895000000014,
+      "throughput": 9212.433653204373,
+      "sample_size": 10000,
+      "gpu": "CUDA (if available)"
+    }
+  ]
+}
