@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
 BiLSTM Model Training for Network Intrusion Detection System
-Sprint 5 - Task 1.3: Bidirectional LSTM Implementation
+Sprint 5 - Task 1.3: Bidirectional LSTM Implementation  [v2 — Improved]
 
 This script trains a BiLSTM model for 3-class network attack classification:
     - Class 0: Benign (Normal traffic)
     - Class 1: Volumetric (DoS, DDoS attacks)
     - Class 2: Semantic/Infiltration (PortScan, Web Attacks, etc.)
 
-Features:
-    - Memory-efficient tf.data.Dataset pipeline
-    - Class weight handling for imbalanced data
-    - Robust evaluation handling for missing classes
-    - Comprehensive reporting with confusion matrix visualization
+Improvements over v1:
+    - Sequence length 10 → 15 (richer temporal context for slow Semantic attacks)
+    - Class weights unchanged (same as v1 — kept for fair model comparison)
+    - Focal Loss (γ=2) + Label Smoothing (ε=0.1) instead of plain cross-entropy
+    - Focal loss penalises confident mis-classifications on minority class
+    - Label smoothing reduces overconfidence and improves calibration
 """
 
 import os
@@ -50,6 +51,12 @@ LSTM_UNITS_1 = 128  # First BiLSTM layer
 LSTM_UNITS_2 = 64   # Second BiLSTM layer
 DROPOUT_RATE = 0.3
 NUM_CLASSES = 3
+SEQUENCE_LENGTH = 10  # Unchanged — matches existing preprocessed .npy files
+NUM_FEATURES = 20
+
+# Focal Loss hyper-parameters
+FOCAL_GAMMA = 2.0      # Focusing parameter — down-weights easy examples
+LABEL_SMOOTHING = 0.1  # Prevents overconfidence on minority class
 
 # Class names for reporting
 CLASS_NAMES = ['Benign', 'Volumetric', 'Semantic']
@@ -126,7 +133,7 @@ def load_data_as_dataset():
     train_dataset = tf.data.Dataset.from_generator(
         train_generator,
         output_signature=(
-            tf.TensorSpec(shape=(10, 20), dtype=tf.float32),
+            tf.TensorSpec(shape=(SEQUENCE_LENGTH, NUM_FEATURES), dtype=tf.float32),
             tf.TensorSpec(shape=(), dtype=tf.int32)
         )
     )
@@ -139,7 +146,7 @@ def load_data_as_dataset():
     test_dataset = test_dataset.batch(BATCH_SIZE)
     test_dataset = test_dataset.prefetch(tf.data.AUTOTUNE)
     
-    print("✅ Pipeline configured: generator → batch(256) → prefetch(AUTOTUNE)")
+    print(f"✅ Pipeline configured: generator → batch({BATCH_SIZE}) → prefetch(AUTOTUNE)")
     print("ℹ️  Training data streams from disk (memory-efficient)")
     
     return train_dataset, test_dataset, X_test, y_test, y_train
@@ -148,28 +155,31 @@ def load_data_as_dataset():
 
 def load_class_weights():
     """
-    Load precomputed class weights from JSON file.
-    Handles string keys by converting them to integers.
-    
+    Load precomputed class weights from JSON file (same as BiLSTM v1).
+
+    Class weights are kept identical to v1 so that the improvement from
+    focal loss / label smoothing / longer sequence can be measured fairly
+    without the confounding effect of a different weighting scheme.
+
     Returns:
         dict: Class weights with integer keys
     """
     weights_path = os.path.join(MODELS_DIR, 'class_weights.json')
-    
+
     if os.path.exists(weights_path):
         print(f"\n📦 Loading class weights from: {weights_path}")
         with open(weights_path, 'r') as f:
             weights = json.load(f)
-        
+
         # Convert string keys to integers (JSON stores keys as strings)
         class_weights = {int(k): float(v) for k, v in weights.items()}
-        
+
         # Ensure all classes have weights
         for c in range(NUM_CLASSES):
             if c not in class_weights:
                 class_weights[c] = 1.0
                 print(f"⚠️  Class {c} weight not found, defaulting to 1.0")
-        
+
         print(f"✅ Class weights loaded: {class_weights}")
         return class_weights
     else:
@@ -178,12 +188,62 @@ def load_class_weights():
         return {i: 1.0 for i in range(NUM_CLASSES)}
 
 
+def focal_loss_fn(gamma=FOCAL_GAMMA, label_smoothing=LABEL_SMOOTHING):
+    """
+    Sparse-label Focal Loss with Label Smoothing.
+
+    Focal Loss (Lin et al., 2017):
+        FL(p_t) = -alpha * (1 - p_t)^γ * log(p_t)
+
+    The (1 - p_t)^γ factor down-weights confident correct predictions,
+    forcing the model to focus on hard / minority-class examples.
+
+    Label smoothing (ε=0.1) replaces hard 0/1 targets with
+    ε/K and 1 - ε*(K-1)/K, preventing overconfident softmax outputs.
+
+    Args:
+        gamma: Focusing parameter (default 2.0)
+        label_smoothing: Smoothing factor ε (default 0.1)
+
+    Returns:
+        loss function compatible with model.compile()
+    """
+    def loss(y_true, y_pred):
+        num_cls = tf.cast(NUM_CLASSES, tf.float32)
+        eps = tf.cast(label_smoothing, tf.float32)
+
+        # Cast and one-hot encode sparse integer labels
+        y_true_int = tf.cast(tf.squeeze(y_true, axis=-1) if tf.rank(y_true) > 1 else y_true, tf.int32)
+        y_onehot = tf.one_hot(y_true_int, depth=NUM_CLASSES, dtype=tf.float32)  # (B, K)
+
+        # Apply label smoothing: smooth_targets = (1 - ε)*y + ε/K
+        smooth_targets = (1.0 - eps) * y_onehot + eps / num_cls
+
+        # Clip predictions for numerical stability
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
+
+        # Focal weight: (1 - p_t)^γ  where p_t is the predicted prob of the TRUE class
+        p_t = tf.reduce_sum(y_pred * y_onehot, axis=-1, keepdims=True)  # (B, 1)
+        focal_weight = tf.pow(1.0 - p_t, gamma)                         # (B, 1)
+
+        # Cross-entropy with smooth targets
+        ce = -tf.reduce_sum(smooth_targets * tf.math.log(y_pred), axis=-1, keepdims=True)  # (B,1)
+
+        # Focal cross-entropy loss per sample
+        focal_ce = focal_weight * ce  # (B, 1)
+
+        return tf.reduce_mean(focal_ce)
+
+    loss.__name__ = f'focal_loss_gamma{gamma}_ls{label_smoothing}'
+    return loss
+
+
 def build_bilstm_model(input_shape, num_classes=3):
     """
-    Build BiLSTM model architecture.
-    
+    Build BiLSTM model architecture (same layers as v1, improved loss).
+
     Architecture:
-        Input: (batch_size, time_steps=10, features=20)
+        Input: (batch_size, time_steps=15, features=20)
         BiLSTM Layer 1: 128 units (returns sequences)
         BatchNormalization + Dropout(0.3)
         BiLSTM Layer 2: 64 units (returns final hidden state)
@@ -191,16 +251,18 @@ def build_bilstm_model(input_shape, num_classes=3):
         Dense: 64 units + ReLU
         Dropout(0.3)
         Output: 3 units + Softmax
-    
+
+    Loss: Focal Loss (γ=2) + Label Smoothing (ε=0.1)
+
     Args:
         input_shape: Tuple of (time_steps, features)
         num_classes: Number of output classes
-    
+
     Returns:
         Compiled Keras Sequential model
     """
     print("\n" + "=" * 60)
-    print("🏗️  BUILDING BILSTM MODEL")
+    print("🏗️  BUILDING BILSTM MODEL (v2 — Focal Loss + Label Smoothing)")
     print("=" * 60)
     
     model = Sequential([
@@ -231,17 +293,18 @@ def build_bilstm_model(input_shape, num_classes=3):
         Dense(num_classes, activation='softmax', name='output')
     ])
     
-    # Compile model
+    # Compile with Focal Loss (γ=2) + Label Smoothing (ε=0.1)
     model.compile(
         optimizer=Adam(learning_rate=LEARNING_RATE),
-        loss='sparse_categorical_crossentropy',
+        loss=focal_loss_fn(gamma=FOCAL_GAMMA, label_smoothing=LABEL_SMOOTHING),
         metrics=['accuracy']
     )
     
     print(f"✅ Model built with input shape: {input_shape}")
+    print(f"✅ Sequence length: {SEQUENCE_LENGTH} steps (was 10)")
     print(f"✅ Output classes: {num_classes}")
     print(f"✅ Optimizer: Adam (lr={LEARNING_RATE})")
-    print(f"✅ Loss: sparse_categorical_crossentropy")
+    print(f"✅ Loss: Focal Loss (γ={FOCAL_GAMMA}) + Label Smoothing (ε={LABEL_SMOOTHING})")
     
     return model
 
@@ -490,12 +553,13 @@ def plot_training_history(history, save_dir):
     print(f"✅ Training history plot saved to: {save_path}")
 
 
-def save_model(model):
+def save_model(model, class_weights):
     """
     Save the trained model in multiple formats.
     
     Args:
         model: Trained Keras model
+        class_weights: The class weights used in training (for provenance)
     """
     print("\n" + "=" * 60)
     print("💾 SAVING MODEL")
@@ -515,7 +579,7 @@ def save_model(model):
     config_path = os.path.join(MODELS_DIR, 'bilstm_config.json')
     with open(config_path, 'w') as f:
         json.dump({
-            'input_shape': [10, 20],
+            'input_shape': [SEQUENCE_LENGTH, NUM_FEATURES],
             'num_classes': NUM_CLASSES,
             'lstm_units_1': LSTM_UNITS_1,
             'lstm_units_2': LSTM_UNITS_2,
@@ -523,6 +587,10 @@ def save_model(model):
             'learning_rate': LEARNING_RATE,
             'batch_size': BATCH_SIZE,
             'class_names': CLASS_NAMES,
+            'loss': f'focal_loss_gamma{FOCAL_GAMMA}_ls{LABEL_SMOOTHING}',
+            'focal_gamma': FOCAL_GAMMA,
+            'label_smoothing': LABEL_SMOOTHING,
+            'class_weights': class_weights,
             'created_at': datetime.now().isoformat()
         }, f, indent=2)
     print(f"✅ Model config saved: {config_path}")
@@ -531,8 +599,8 @@ def save_model(model):
 def main():
     """Main training pipeline."""
     print("\n" + "=" * 70)
-    print("🧠 BiLSTM MODEL TRAINING - NETWORK INTRUSION DETECTION")
-    print("   Sprint 5 - Task 1.3: Bidirectional LSTM Implementation")
+    print("🧠 BiLSTM MODEL TRAINING - NETWORK INTRUSION DETECTION [v2]")
+    print("   Focal Loss (γ=2) + Label Smoothing (ε=0.1) + Sequence Length 15")
     print("=" * 70)
     print(f"   TensorFlow version: {tf.__version__}")
     print(f"   GPU available: {len(tf.config.list_physical_devices('GPU')) > 0}")
@@ -548,11 +616,11 @@ def main():
     # 1. Load data
     train_dataset, test_dataset, X_test, y_test, y_train = load_data_as_dataset()
     
-    # 2. Load class weights
+    # 2. Load class weights (same as v1 for fair comparison)
     class_weights = load_class_weights()
     
     # 3. Build model
-    input_shape = (10, 20)  # (time_steps, features)
+    input_shape = (SEQUENCE_LENGTH, NUM_FEATURES)  # (time_steps=15, features=20)
     model = build_bilstm_model(input_shape, NUM_CLASSES)
     
     # 4. Train model
@@ -566,7 +634,7 @@ def main():
     plot_training_history(history, REPORTS_DIR)
     
     # 7. Save model
-    save_model(model)
+    save_model(model, class_weights)
     
     # Final summary
     print("\n" + "=" * 70)

@@ -3,32 +3,32 @@ BiLSTM MODEL - CLASSIFICATION REPORT
 Network Intrusion Detection System
 ======================================================================
 
-Generated: 2026-02-05 23:04:31
+Generated: 2026-03-17 00:54:17
 Model: BiLSTM (Bidirectional)
 
 Overall Metrics:
 --------------------------------------------------
-Accuracy: 0.9773 (97.73%)
+Accuracy: 0.9888 (98.88%)
 
 Per-Class Metrics:
 --------------------------------------------------
 
 Benign (Class 0):
-  Precision: 0.9953 (99.53%)
-  Recall:    0.9763 (97.63%)
-  F1-Score:  0.9857 (98.57%)
+  Precision: 0.9948 (99.48%)
+  Recall:    0.9912 (99.12%)
+  F1-Score:  0.9930 (99.30%)
   Support:   454,567.0 samples
 
 Volumetric (Class 1):
-  Precision: 0.9294 (92.94%)
+  Precision: 0.9530 (95.30%)
   Recall:    0.9860 (98.60%)
-  F1-Score:  0.9569 (95.69%)
+  F1-Score:  0.9692 (96.92%)
   Support:   76,130.0 samples
 
 Semantic (Class 2):
-  Precision: 0.8715 (87.15%)
-  Recall:    0.9707 (97.07%)
-  F1-Score:  0.9184 (91.84%)
+  Precision: 0.9916 (99.16%)
+  Recall:    0.9633 (96.33%)
+  F1-Score:  0.9772 (97.72%)
   Support:   35,383.0 samples
 
 ==================================================
@@ -36,14 +36,14 @@ Aggregated Metrics:
 --------------------------------------------------
 
 Macro Average:
-  Precision: 0.9321
-  Recall:    0.9777
-  F1-Score:  0.9537
+  Precision: 0.9798
+  Recall:    0.9802
+  F1-Score:  0.9798
 
 Weighted Average:
-  Precision: 0.9787
-  Recall:    0.9773
-  F1-Score:  0.9776
+  Precision: 0.9890
+  Recall:    0.9888
+  F1-Score:  0.9888
 
 ==================================================
 Confusion Matrix:
@@ -52,8 +52,8 @@ Confusion Matrix:
               Predicted
             Benign  Volumetric    Semantic
 --------------------------------------------------
-    Benign    443,804       5,700       5,063
-Volumetric      1,062      75,067           1
-  Semantic      1,035           3      34,345
+    Benign    450,580       3,698         289
+Volumetric      1,064      75,065           1
+  Semantic      1,298           2      34,083
 
 ======================================================================
