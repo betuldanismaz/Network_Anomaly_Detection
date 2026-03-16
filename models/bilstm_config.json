@@ -14,5 +14,13 @@
     "Volumetric",
     "Semantic"
   ],
-  "created_at": "2026-02-05T22:48:52.153467"
+  "loss": "focal_loss_gamma2.0_ls0.1",
+  "focal_gamma": 2.0,
+  "label_smoothing": 0.1,
+  "class_weights": {
+    "0": 0.4151074375923421,
+    "1": 2.47854915519889,
+    "2": 5.332671611915695
+  },
+  "created_at": "2026-03-17T00:46:44.707249"
 }

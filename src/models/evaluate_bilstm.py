@@ -45,6 +45,29 @@ NUM_CLASSES = 3
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
+def focal_loss_fn(gamma=2.0, label_smoothing=0.1):
+    """
+    Reconstruct the focal loss used during training so Keras can
+    deserialize the saved model via custom_objects.
+    """
+    def loss(y_true, y_pred):
+        num_cls = tf.cast(NUM_CLASSES, tf.float32)
+        eps = tf.cast(label_smoothing, tf.float32)
+        y_true_int = tf.cast(
+            tf.squeeze(y_true, axis=-1) if tf.rank(y_true) > 1 else y_true,
+            tf.int32
+        )
+        y_onehot = tf.one_hot(y_true_int, depth=NUM_CLASSES, dtype=tf.float32)
+        smooth_targets = (1.0 - eps) * y_onehot + eps / num_cls
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
+        p_t = tf.reduce_sum(y_pred * y_onehot, axis=-1, keepdims=True)
+        focal_weight = tf.pow(1.0 - p_t, gamma)
+        ce = -tf.reduce_sum(smooth_targets * tf.math.log(y_pred), axis=-1, keepdims=True)
+        return tf.reduce_mean(focal_weight * ce)
+    loss.__name__ = f'focal_loss_gamma{gamma}_ls{label_smoothing}'
+    return loss
+
+
 def load_test_data() -> Tuple[np.ndarray, np.ndarray]:
     """
     Load preprocessed test data.
@@ -106,8 +129,12 @@ def load_trained_model() -> tf.keras.Model:
         )
     
     print(f"   Loading from: {model_path}")
-    
-    model = tf.keras.models.load_model(model_path)
+
+    # Custom objects needed to deserialize focal loss saved during training
+    custom_objects = {
+        'focal_loss_gamma2.0_ls0.1': focal_loss_fn(gamma=2.0, label_smoothing=0.1)
+    }
+    model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
     
     print(f"   ✅ Model loaded successfully")
     print(f"   ✅ Model type: {model.name}")
