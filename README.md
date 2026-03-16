@@ -62,7 +62,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 | Model             | Overall Acc. | Precision | Recall | F1-Score |
 | :---------------- | :----------: | :-------: | :----: | :------: |
 | **LSTM**          |    98.15%    |  99.23%   | 98.46% |  98.84%  |
-| **BiLSTM**        |    97.73%    |  99.53%   | 97.63% |  98.57%  |
+| **BiLSTM**        |    98.88%    |  99.48%   | 99.12% |  99.30%  |
 | **XGBoost (GPU)** |    97.71%    |  99.79%   | 97.36% |  98.56%  |
 | **Decision Tree** |    97.27%    |  99.69%   | 96.90% |  98.28%  |
 | **Random Forest** |    97.13%    |  99.84%   | 96.58% |  98.19%  |
@@ -71,7 +71,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 
 | Model             | Overall Acc. | Precision | Recall | F1-Score |
 | :---------------- | :----------: | :-------: | :----: | :------: |
-| **BiLSTM**        |    97.73%    |  92.94%   | 98.60% |  95.69%  |
+| **BiLSTM**        |    98.88%    |  95.30%   | 98.60% |  96.92%  |
 | **LSTM**          |    98.15%    |  93.62%   | 97.61% |  95.58%  |
 | **XGBoost (GPU)** |    97.71%    |  89.64%   | 99.58% |  94.35%  |
 | **Random Forest** |    97.13%    |  84.89%   | 99.89% |  91.78%  |
@@ -85,7 +85,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 | **Random Forest** |    97.13%    |  94.53%   | 98.21% |  96.34%  |
 | **LSTM**          |    98.15%    |  94.53%   | 95.33% |  94.93%  |
 | **XGBoost (GPU)** |    97.71%    |  91.44%   | 98.21% |  94.71%  |
-| **BiLSTM**        |    97.73%    |  87.15%   | 97.07% |  91.84%  |
+| **BiLSTM**        |    98.88%    |  99.16%   | 96.33% |  97.72%  |
 
 > Rows are sorted by F1-Score descending. Semantic (~6% of traffic) is the hardest class to classify.
 
