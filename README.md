@@ -50,8 +50,8 @@ This project implements a production-ready **Network Intrusion Detection System 
 | Model             | Accuracy | Macro Precision | Macro Recall | Macro F1 | Macro ROC-AUC |
 | :---------------- | :------: | :-------------: | :----------: | :------: | :-----------: |
 | **XGBoost (GPU)** |  97.71%  |     93.62%      |    98.38%    |  95.87%  |    0.9991     |
-| **Random Forest** |  97.13%  |     93.09%      |    98.23%    |  95.43%  |    0.9983     |
-| **BiLSTM**        |  97.73%  |     93.21%      |    97.77%    |  95.37%  |       —       |
+| **Random Forest** |  97.34%  |     94.43%      |    97.70%    |  95.91%  |    0.9983     |
+| **BiLSTM**        |  98.88%  |     97.98%      |    98.02%    |  97.98%  |       —       |
 | **LSTM**          |  98.15%  |     95.79%      |    97.13%    |  96.45%  |       —       |
 | **Decision Tree** |  97.27%  |     94.26%      |    97.83%    |  95.84%  |       —       |
 
@@ -65,7 +65,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 | **BiLSTM**        |    98.88%    |  99.48%   | 99.12% |  99.30%  |
 | **XGBoost (GPU)** |    97.71%    |  99.79%   | 97.36% |  98.56%  |
 | **Decision Tree** |    97.27%    |  99.69%   | 96.90% |  98.28%  |
-| **Random Forest** |    97.13%    |  99.84%   | 96.58% |  98.19%  |
+| **Random Forest** |    97.34%    |  99.69%   | 96.99% |  98.32%  |
 
 **Class 1 — Volumetric (DDoS / DoS / Botnet)**
 
@@ -74,7 +74,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 | **BiLSTM**        |    98.88%    |  95.30%   | 98.60% |  96.92%  |
 | **LSTM**          |    98.15%    |  93.62%   | 97.61% |  95.58%  |
 | **XGBoost (GPU)** |    97.71%    |  89.64%   | 99.58% |  94.35%  |
-| **Random Forest** |    97.13%    |  84.89%   | 99.89% |  91.78%  |
+| **Random Forest** |    97.34%    |  85.27%   | 99.75% |  91.94%  |
 | **Decision Tree** |    97.27%    |  84.96%   | 99.62% |  91.71%  |
 
 **Class 2 — Semantic (Port Scan / Web Attack / Brute Force)**
@@ -82,7 +82,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 | Model             | Overall Acc. | Precision | Recall | F1-Score |
 | :---------------- | :----------: | :-------: | :----: | :------: |
 | **Decision Tree** |    97.27%    |  98.11%   | 96.95% |  97.53%  |
-| **Random Forest** |    97.13%    |  94.53%   | 98.21% |  96.34%  |
+| **Random Forest** |    97.34%    |  98.32%   | 96.61% |  97.46%  |
 | **LSTM**          |    98.15%    |  94.53%   | 95.33% |  94.93%  |
 | **XGBoost (GPU)** |    97.71%    |  91.44%   | 98.21% |  94.71%  |
 | **BiLSTM**        |    98.88%    |  99.16%   | 96.33% |  97.72%  |
