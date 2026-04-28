@@ -25,6 +25,7 @@ RESET = '\033[0m'
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PYTHON_EXE = sys.executable
 
 
 def print_banner():
@@ -181,7 +182,7 @@ def launch_services():
     # 1. KAFKA CONSUMER
     print(f"{CYAN}🔄 Launching Kafka Consumer...{RESET}")
     consumer_process = launch_in_new_terminal(
-        "python src\\kafka_consumer.py",
+        f'"{PYTHON_EXE}" src\\kafka_consumer.py',
         "NIDS - Kafka Consumer",
         PROJECT_ROOT
     )
@@ -193,7 +194,7 @@ def launch_services():
     # 2. STREAMLIT DASHBOARD
     print(f"{CYAN}📊 Launching Streamlit Dashboard...{RESET}")
     dashboard_process = launch_in_new_terminal(
-        "streamlit run src\\dashboard\\app.py",
+        f'"{PYTHON_EXE}" -m streamlit run src\\dashboard\\app.py',
         "NIDS - Dashboard",
         PROJECT_ROOT
     )
@@ -210,7 +211,7 @@ def launch_services():
     # 3. LIVE BRIDGE (PRODUCER)
     print(f"{CYAN}📡 Launching Live Bridge Producer...{RESET}")
     producer_process = launch_in_new_terminal(
-        "python src\\live_bridge.py",
+        f'"{PYTHON_EXE}" src\\live_bridge.py',
         "NIDS - Producer (Live Bridge)",
         PROJECT_ROOT
     )

@@ -58,9 +58,6 @@ KAFKA_TOPIC = 'network-traffic'
 KAFKA_GROUP_ID = 'nids-consumer-group-v1'
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
 
-# Expected feature count from producer
-EXPECTED_FEATURE_COUNT = 78
-
 # ---------------------------------------------------------------------------
 # GLOBAL MODEL & SCALER
 # ---------------------------------------------------------------------------
@@ -76,9 +73,17 @@ STATS = {
     "total_processed": 0,
     "attacks_detected": 0,
     "clean_traffic": 0,
+    "rejected_messages": 0,
+    "schema_adjustments": 0,
     "errors": 0,
     "start_time": datetime.now()
 }
+
+
+def get_expected_feature_names():
+    if SCALER is not None and hasattr(SCALER, "feature_names_in_"):
+        return list(SCALER.feature_names_in_)
+    return []
 
 
 def initialize_csv_file():
@@ -194,7 +199,11 @@ def load_model_and_scaler(model_filename=None):
             print(f"{GREEN}✅ StandardScaler loaded successfully{RESET}")
         
         CURRENT_MODEL_NAME = model_filename
-        print(f"{CYAN}   Features expected: {EXPECTED_FEATURE_COUNT}{RESET}\n")
+        expected_feature_names = get_expected_feature_names()
+        if expected_feature_names:
+            print(f"{CYAN}   Features expected by scaler: {len(expected_feature_names)}{RESET}\n")
+        else:
+            print(f"{YELLOW}   WARNING: scaler feature names are unavailable; schema checks will be limited{RESET}\n")
         
     except Exception as exc:
         print(f"{RED}❌ CRITICAL ERROR: Failed to load model/scaler!{RESET}")

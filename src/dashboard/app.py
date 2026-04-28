@@ -43,9 +43,15 @@ BILSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "bilstm_best.keras")
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
 SCALER_PATH_FALLBACK = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 ACTIVE_MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "active_model.txt")
+THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
+BUCKET_FREQUENCY = "10s"
 
 CLASS_NAMES = {0: "Benign", 1: "Volumetric", 2: "Semantic"}
 CLASS_COLORS = {"Benign": "#00CC66", "Volumetric": "#FF4B4B", "Semantic": "#FFA500"}
+SIMPLE_LIVE_COLUMNS = [
+    "Timestamp", "Src_IP", "Dst_IP", "Predicted_Label",
+    "Confidence_Score", "Model_Used", "Processing_Time_Ms",
+]
 RISK_LEVELS = {
     1: {"name": "SAFE",     "color": "#00CC66", "emoji": "🟢"},
     2: {"name": "LOW",      "color": "#3498db", "emoji": "🔵"},
@@ -160,21 +166,63 @@ st.markdown("""
 # DATA LOADING
 # ---------------------------------------------------------------------------
 
+def derive_risk_level(predicted_class: int) -> int:
+    if predicted_class == 0:
+        return 1
+    if predicted_class == 1:
+        return 4
+    return 5
+
+
+def load_model_threshold() -> float:
+    try:
+        with open(THRESHOLD_PATH, "r", encoding="utf-8") as f:
+            value = float(f.read().strip())
+        return min(max(value, 0.0), 1.0)
+    except Exception:
+        return 0.5
+
+
 def load_live_traffic() -> pd.DataFrame:
     csv_path = LIVE_CSV_PATH if os.path.exists(LIVE_CSV_PATH) else LIVE_CSV_PATH_OLD
     if not os.path.exists(csv_path):
         return pd.DataFrame()
     try:
         df = pd.read_csv(csv_path, on_bad_lines="skip", encoding="utf-8", engine="python")
+        if "Timestamp" not in df.columns and "timestamp" not in df.columns:
+            df = pd.read_csv(
+                csv_path,
+                names=SIMPLE_LIVE_COLUMNS,
+                header=None,
+                on_bad_lines="skip",
+                encoding="utf-8",
+                engine="python",
+            )
         col_map = {
             "Predicted_Class": "predicted_class", "Class_Name": "class_name",
             "Risk_Level": "risk_level", "Risk_Name": "risk_name",
             "Prob_Benign": "prob_benign", "Prob_Volumetric": "prob_volumetric",
             "Prob_Semantic": "prob_semantic", "Action": "action", "Timestamp": "timestamp",
+            "Predicted_Label": "predicted_class", "Confidence_Score": "confidence_score",
+            "Src_IP": "src_ip", "Dst_IP": "dst_ip", "Model_Used": "model_used",
+            "Processing_Time_Ms": "processing_time_ms",
         }
         df.rename(columns=col_map, inplace=True)
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+            df = df.dropna(subset=["timestamp"])
+        if "predicted_class" in df.columns:
+            df["predicted_class"] = pd.to_numeric(df["predicted_class"], errors="coerce")
+            df = df.dropna(subset=["predicted_class"])
+            df["predicted_class"] = df["predicted_class"].astype(int)
         if "predicted_class" in df.columns and "class_name" not in df.columns:
             df["class_name"] = df["predicted_class"].map(CLASS_NAMES)
+        if "risk_level" not in df.columns and "predicted_class" in df.columns:
+            df["risk_level"] = df["predicted_class"].map(derive_risk_level)
+        if "risk_name" not in df.columns and "risk_level" in df.columns:
+            df["risk_name"] = df["risk_level"].map(lambda level: RISK_LEVELS.get(level, RISK_LEVELS[1])["name"])
+        if "action" in df.columns:
+            df["action"] = df["action"].astype(str).str.upper()
         return df
     except Exception as e:
         st.error(f"CSV load error: {e}")
@@ -217,9 +265,11 @@ def calculate_avg_confidence(df: pd.DataFrame) -> float:
     if df.empty:
         return 0.0
     prob_cols = [c for c in df.columns if "prob" in c.lower()]
-    if not prob_cols:
-        return 0.0
-    return df[prob_cols].apply(pd.to_numeric, errors="coerce").max(axis=1).mean()
+    if prob_cols:
+        return df[prob_cols].apply(pd.to_numeric, errors="coerce").max(axis=1).mean()
+    if "confidence_score" in df.columns:
+        return pd.to_numeric(df["confidence_score"], errors="coerce").mean()
+    return 0.0
 
 # ---------------------------------------------------------------------------
 # RENDER HELPERS
@@ -366,16 +416,171 @@ def render_time_series(df: pd.DataFrame):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_stacked_time_series(df: pd.DataFrame, logs_df: pd.DataFrame):
+    st.markdown("#### Detection Time Series")
+    if df.empty:
+        st.info("Waiting for data...")
+        return
+    if "timestamp" not in df.columns:
+        st.warning("Timestamp column not found.")
+        return
+
+    tmp = df.copy()
+    tmp["timestamp"] = pd.to_datetime(tmp["timestamp"], errors="coerce")
+    tmp = tmp.dropna(subset=["timestamp"])
+    if tmp.empty:
+        st.info("Not enough data for time series.")
+        return
+
+    if "class_name" not in tmp.columns and "predicted_class" in tmp.columns:
+        tmp["class_name"] = tmp["predicted_class"].map(CLASS_NAMES)
+
+    tmp = tmp.set_index("timestamp")
+    series = (
+        tmp.groupby([pd.Grouper(freq=BUCKET_FREQUENCY), "class_name"])
+        .size()
+        .unstack(fill_value=0)
+        .reindex(columns=list(CLASS_COLORS.keys()), fill_value=0)
+        .sort_index()
+    )
+    if series.empty:
+        st.info("Not enough data for time series.")
+        return
+
+    confidence_cols = [c for c in tmp.columns if "prob" in c.lower()]
+    if confidence_cols:
+        confidence = (
+            tmp[confidence_cols]
+            .apply(pd.to_numeric, errors="coerce")
+            .max(axis=1)
+            .resample(BUCKET_FREQUENCY)
+            .mean()
+            .fillna(0.0)
+            * 100
+        )
+    elif "confidence_score" in tmp.columns:
+        confidence = (
+            pd.to_numeric(tmp["confidence_score"], errors="coerce")
+            .resample(BUCKET_FREQUENCY)
+            .mean()
+            .fillna(0.0)
+            * 100
+        )
+    else:
+        confidence = pd.Series(0.0, index=series.index)
+
+    fig = go.Figure()
+    for class_name, color in CLASS_COLORS.items():
+        fig.add_trace(go.Scatter(
+            x=series.index,
+            y=series[class_name],
+            mode="lines",
+            name=class_name,
+            stackgroup="traffic",
+            line=dict(color=color, width=1.4),
+            hovertemplate=f"{class_name}: %{{y}}<br>%{{x|%H:%M:%S}}<extra></extra>",
+        ))
+
+    fig.add_trace(go.Scatter(
+        x=confidence.index,
+        y=confidence.values,
+        mode="lines",
+        name="Avg Confidence",
+        yaxis="y2",
+        line=dict(color="#58A6FF", width=2),
+        hovertemplate="Avg confidence: %{y:.1f}%<br>%{x|%H:%M:%S}<extra></extra>",
+    ))
+
+    threshold_value = load_model_threshold() * 100
+    fig.add_trace(go.Scatter(
+        x=[series.index.min(), series.index.max()],
+        y=[threshold_value, threshold_value],
+        mode="lines",
+        name=f"Threshold ({threshold_value:.1f}%)",
+        yaxis="y2",
+        line=dict(color="#FFD166", width=2, dash="dash"),
+        hovertemplate="Threshold: %{y:.1f}%<extra></extra>",
+    ))
+
+    blocked_events = pd.DataFrame()
+    if not logs_df.empty and "timestamp" in logs_df.columns and "action" in logs_df.columns:
+        blocked_events = logs_df.copy()
+        blocked_events["timestamp"] = pd.to_datetime(blocked_events["timestamp"], errors="coerce")
+        blocked_events = blocked_events[
+            blocked_events["action"].astype(str).str.upper().eq("BLOCKED")
+        ].dropna(subset=["timestamp"])
+    elif "action" in tmp.columns:
+        blocked_events = tmp.reset_index()
+        blocked_events = blocked_events[
+            blocked_events["action"].astype(str).str.upper().eq("BLOCKED")
+        ][["timestamp"]]
+
+    if not blocked_events.empty:
+        blocked_counts = (
+            blocked_events.set_index("timestamp")
+            .resample(BUCKET_FREQUENCY)
+            .size()
+            .rename("blocked_count")
+        )
+        blocked_counts = blocked_counts[blocked_counts > 0]
+        if not blocked_counts.empty:
+            total_flows = series.sum(axis=1).reindex(blocked_counts.index, fill_value=0)
+            marker_y = total_flows + blocked_counts.clip(lower=1)
+            marker_text = [f"Block x{int(count)}" for count in blocked_counts]
+            if len(blocked_counts) > 8:
+                marker_text = None
+            fig.add_trace(go.Scatter(
+                x=blocked_counts.index,
+                y=marker_y,
+                mode="markers+text" if marker_text else "markers",
+                name="Blocked",
+                text=marker_text,
+                textposition="top center",
+                marker=dict(
+                    color="#FF7B72",
+                    size=12,
+                    symbol="diamond",
+                    line=dict(color="#0d1117", width=1.5),
+                ),
+                customdata=blocked_counts.astype(int),
+                hovertemplate="Blocked events: %{customdata}<br>%{x|%H:%M:%S}<extra></extra>",
+            ))
+
+    fig.update_layout(
+        height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.05)",
+        font_color="#c9d1d9",
+        hovermode="x unified",
+        legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
+        margin=dict(l=20, r=20, t=40, b=10),
+        xaxis=dict(title=None, gridcolor="rgba(255,255,255,0.08)"),
+        yaxis=dict(title="Flows / 10s", rangemode="tozero", gridcolor="rgba(255,255,255,0.08)"),
+        yaxis2=dict(
+            title="Confidence (%)",
+            overlaying="y",
+            side="right",
+            range=[0, 100],
+            showgrid=False,
+        ),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption("10-second buckets with stacked class volume, live confidence threshold, and block markers.")
+
+
 def render_confidence_histogram(df: pd.DataFrame):
     st.markdown("#### 📊 Confidence Score Distribution")
     if df.empty:
         st.info("Waiting for data…")
         return
     prob_cols = [c for c in df.columns if "prob" in c.lower()]
-    if not prob_cols:
+    if prob_cols:
+        max_probs = df[prob_cols].apply(pd.to_numeric, errors="coerce").max(axis=1).dropna()
+    elif "confidence_score" in df.columns:
+        max_probs = pd.to_numeric(df["confidence_score"], errors="coerce").dropna()
+    else:
         st.warning("Probability columns not found.")
         return
-    max_probs = df[prob_cols].apply(pd.to_numeric, errors="coerce").max(axis=1).dropna()
     if len(max_probs) < 5:
         st.info("Not enough data.")
         return
@@ -561,7 +766,7 @@ with tab_monitor:
     with col_conf:
         render_confidence_histogram(live_df)
     with col_time:
-        render_time_series(live_df)
+        render_stacked_time_series(live_df, logs_df)
 
     st.markdown("---")
     render_recent_detections(live_df)
