@@ -11,3 +11,4 @@ plotly
 python-dotenv
 cicflowmeter
 confluent-kafka
+streamlit-autorefresh

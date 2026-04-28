@@ -5,7 +5,7 @@ import os
 
 # Yollar
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "rf_model_v1.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "..", "binarymodels", "rf_model_v1.pkl")
 SCALER_PATH = os.path.join(BASE_DIR, "..", "models", "scaler.pkl")
 
 # 1. Modeli ve Scaler'ı Yükle

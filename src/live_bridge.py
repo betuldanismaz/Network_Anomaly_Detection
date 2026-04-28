@@ -27,7 +27,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(CURRENT_DIR, "..", "models", "rf_model_v1.pkl")
+MODEL_PATH = os.path.join(CURRENT_DIR, "..", "binarymodels", "rf_model_v1.pkl")
 SCALER_PATH = os.path.join(CURRENT_DIR, "..", "models", "scaler.pkl")
 sys.path.append(os.path.join(CURRENT_DIR, "utils"))
 

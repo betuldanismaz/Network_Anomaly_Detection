@@ -19,7 +19,7 @@ from confluent_kafka import Consumer, KafkaError
 # ---------------------------------------------------------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_model_v1.pkl")  # Default, will be overridden
+MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "rf_3class_model.pkl")  # Default, will be overridden
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 SCALER_LSTM_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")  # For LSTM models
 CSV_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
@@ -66,7 +66,7 @@ EXPECTED_FEATURE_COUNT = 78
 # ---------------------------------------------------------------------------
 MODEL = None
 SCALER = None
-CURRENT_MODEL_NAME = "rf_model_v1.pkl"  # Track currently loaded model
+CURRENT_MODEL_NAME = "rf_3class_model.pkl"  # Track currently loaded model
 CURRENT_MODEL_TYPE = "sklearn"  # 'sklearn' or 'keras'
 LAST_CONFIG_CHECK = 0  # Timestamp of last config file check
 CONFIG_CHECK_INTERVAL = 5  # Check config file every 5 seconds
@@ -112,9 +112,9 @@ def load_model_and_scaler(model_filename=None):
                 with open(ACTIVE_MODEL_CONFIG, 'r') as f:
                     model_filename = f.read().strip()
             except Exception:
-                model_filename = "rf_model_v1.pkl"  # Fallback default
+                model_filename = "rf_3class_model.pkl"  # Fallback default
         else:
-            model_filename = "rf_model_v1.pkl"  # Default
+            model_filename = "rf_3class_model.pkl"  # Default
             # Create default config file
             os.makedirs(os.path.dirname(ACTIVE_MODEL_CONFIG), exist_ok=True)
             try:
@@ -133,17 +133,21 @@ def load_model_and_scaler(model_filename=None):
     
     # Check if model file exists
     if not os.path.exists(model_path):
-        print(f"{RED}❌ CRITICAL ERROR: Model file not found!{RESET}")
-        print(f"   Expected path: {model_path}")
-        print(f"   Available models in models/ directory:")
-        try:
-            model_files = [f for f in os.listdir(os.path.join(PROJECT_ROOT, "models")) 
-                          if f.endswith(('.pkl', '.keras', '.h5'))]
-            for mf in model_files:
-                print(f"      - {mf}")
-        except Exception:
-            pass
-        sys.exit(1)
+        alt_model_path = os.path.join(PROJECT_ROOT, "binary_models", model_filename)
+        if os.path.exists(alt_model_path):
+            model_path = alt_model_path
+        else:
+            print(f"{RED}❌ CRITICAL ERROR: Model file not found!{RESET}")
+            print(f"   Expected path: {model_path} or {alt_model_path}")
+            print(f"   Available models in models/ directory:")
+            try:
+                model_files = [f for f in os.listdir(os.path.join(PROJECT_ROOT, "models")) 
+                              if f.endswith(('.pkl', '.keras', '.h5'))]
+                for mf in model_files:
+                    print(f"      - {mf}")
+            except Exception:
+                pass
+            sys.exit(1)
     
     # Determine model type based on file extension
     is_keras_model = model_filename.endswith(('.keras', '.h5'))
