@@ -260,14 +260,14 @@ timeout /t 60 python src/live_bridge.py
 **Expected Console Output:**
 
 ```
-🛡️  AI NETWORK IPS - OPTIMIZED MODEL
+  AI NETWORK IPS - OPTIMIZED MODEL
 ======================================================================
 ✅ Model loaded: models/rf_model_optimized.pkl
 ✅ Scaler loaded: models/scaler.pkl
 ✅ Threshold: 0.35 (loaded from threshold.txt)
 ✅ CSV writer initialized: data/live_captured_traffic.csv
 
-🛡️  SİSTEM BAŞLATILDI | Arayüz: Wi-Fi
+  SİSTEM BAŞLATILDI | Arayüz: Wi-Fi
 
 📡 Ağ Dinleniyor: Wi-Fi
 ⏹️  Durdurmak için CTRL+C yapın...
@@ -518,8 +518,8 @@ Before production deployment:
 - [ ] Documentation updated
 - [ ] `.env` file configured
 
-**Sign-off Date:** ******\_\_\_\_******  
-**Tested By:** ******\_\_\_\_******  
+**Sign-off Date:** **\*\***\_\_\_\_**\*\***  
+**Tested By:** **\*\***\_\_\_\_**\*\***  
 **Status:** ☐ PASS ☐ FAIL (explain below)
 
 ---

@@ -15,7 +15,7 @@ from utils.db_manager import fetch_logs
 from utils.firewall_manager import unblock_ip
 
 st.set_page_config(page_title="Network IPS Dashboard", layout="wide")
-st.title("🛡️ AI Network IPS Dashboard")
+st.title(" AI Network IPS Dashboard")
 
 
 def load_logs() -> pd.DataFrame:

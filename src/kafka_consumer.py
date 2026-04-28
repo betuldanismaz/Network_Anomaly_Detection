@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+import shutil
 import joblib
 import pandas as pd
 import numpy as np
@@ -55,8 +56,18 @@ BOLD = '\033[1m'
 # ---------------------------------------------------------------------------
 KAFKA_BOOTSTRAP_SERVERS = '127.0.0.1:9092'
 KAFKA_TOPIC = 'network-traffic'
-KAFKA_GROUP_ID = 'nids-consumer-group-v1'
+KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "nids-consumer-group-v2")
+KAFKA_AUTO_OFFSET_RESET = os.getenv("KAFKA_AUTO_OFFSET_RESET", "latest")
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
+CSV_HEADER_COLUMNS = [
+    "Timestamp",
+    "Src_IP",
+    "Dst_IP",
+    "Predicted_Label",
+    "Confidence_Score",
+    "Model_Used",
+    "Processing_Time_Ms",
+]
 
 # ---------------------------------------------------------------------------
 # GLOBAL MODEL & SCALER
@@ -89,17 +100,28 @@ def get_expected_feature_names():
 def initialize_csv_file():
     """Initialize CSV output file with headers if it doesn't exist."""
     os.makedirs(os.path.dirname(CSV_OUTPUT_PATH), exist_ok=True)
-    
-    if not os.path.exists(CSV_OUTPUT_PATH):
-        # Create header row: Timestamp, Src_IP, Dst_IP, Predicted_Label, Confidence_Score, Model_Used
-        header_df = pd.DataFrame(columns=[
-            "Timestamp", "Src_IP", "Dst_IP", "Predicted_Label", 
-            "Confidence_Score", "Model_Used", "Processing_Time_Ms"
-        ])
-        header_df.to_csv(CSV_OUTPUT_PATH, index=False)
-        print(f"{GREEN}✅ CSV output file initialized: {CSV_OUTPUT_PATH}{RESET}")
-    else:
-        print(f"{CYAN}ℹ️  Using existing CSV: {CSV_OUTPUT_PATH}{RESET}")
+
+    if os.path.exists(CSV_OUTPUT_PATH):
+        try:
+            existing_header = list(pd.read_csv(CSV_OUTPUT_PATH, nrows=0).columns)
+        except Exception as exc:
+            existing_header = None
+            print(f"{YELLOW}⚠️  Existing CSV could not be parsed: {exc}{RESET}")
+
+        if existing_header == CSV_HEADER_COLUMNS:
+            print(f"{CYAN}ℹ️  Using existing CSV: {CSV_OUTPUT_PATH}{RESET}")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = CSV_OUTPUT_PATH.replace(".csv", f".invalid_{timestamp}.csv")
+        shutil.move(CSV_OUTPUT_PATH, backup_path)
+        print(f"{YELLOW}⚠️  Existing CSV schema mismatch; moved to: {backup_path}{RESET}")
+        if existing_header is not None:
+            print(f"{YELLOW}   Found columns: {existing_header}{RESET}")
+
+    header_df = pd.DataFrame(columns=CSV_HEADER_COLUMNS)
+    header_df.to_csv(CSV_OUTPUT_PATH, index=False)
+    print(f"{GREEN}✅ CSV output file initialized: {CSV_OUTPUT_PATH}{RESET}")
 
 
 def load_model_and_scaler(model_filename=None):
@@ -222,7 +244,7 @@ def create_consumer():
     conf = {
         'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
         'group.id': KAFKA_GROUP_ID,
-        'auto.offset.reset': 'latest',  # Start from latest messages
+        'auto.offset.reset': KAFKA_AUTO_OFFSET_RESET,
         'enable.auto.commit': True,
         'auto.commit.interval.ms': 5000,
         'session.timeout.ms': 30000,
@@ -236,6 +258,7 @@ def create_consumer():
         print(f"{CYAN}   Bootstrap servers: {KAFKA_BOOTSTRAP_SERVERS}{RESET}")
         print(f"{CYAN}   Topic: {KAFKA_TOPIC}{RESET}")
         print(f"{CYAN}   Group ID: {KAFKA_GROUP_ID}{RESET}\n")
+        print(f"{CYAN}   Auto offset reset: {KAFKA_AUTO_OFFSET_RESET}{RESET}\n")
         return consumer
     except Exception as exc:
         print(f"{RED}❌ CRITICAL ERROR: Failed to create Kafka consumer!{RESET}")
@@ -598,7 +621,7 @@ def check_and_reload_model():
 def main():
     """Main consumer loop."""
     print(f"\n{BOLD}{CYAN}╔{'═'*58}╗{RESET}")
-    print(f"{BOLD}{CYAN}║{' '*10}🛡️  KAFKA CONSUMER - NETWORK IPS{' '*15}║{RESET}")
+    print(f"{BOLD}{CYAN}║{' '*10}  KAFKA CONSUMER - NETWORK IPS{' '*15}║{RESET}")
     print(f"{BOLD}{CYAN}╚{'═'*58}╝{RESET}\n")
     
     # Initialize components

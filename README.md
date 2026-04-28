@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ Network Intrusion Detection System
+# Network Intrusion Detection System
 
 **A Multi-Model Machine Learning System for Real-Time Network Threat Detection**
 

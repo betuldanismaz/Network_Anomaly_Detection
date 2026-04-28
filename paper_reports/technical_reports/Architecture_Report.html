@@ -1,475 +1,569 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI-Powered Network IPS/IDS Sistemi - İlerleme Raporu</title>
     <style>
-        /* ========== GLOBAL STYLES ========== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+      /* ========== GLOBAL STYLES ========== */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          "Roboto",
+          "Segoe UI",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        line-height: 1.6;
+        color: #2c3e50;
+        background-color: #ffffff;
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      /* ========== TYPOGRAPHY ========== */
+      h1 {
+        font-size: 2.5rem;
+        color: #1a2332;
+        border-bottom: 4px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+      }
+
+      h2 {
+        font-size: 1.8rem;
+        color: #2c3e50;
+        border-bottom: 2px solid #95a5a6;
+        padding-bottom: 0.4rem;
+        margin-top: 2.5rem;
+        margin-bottom: 1.2rem;
+        font-weight: 600;
+      }
+
+      h3 {
+        font-size: 1.4rem;
+        color: #34495e;
+        margin-top: 1.8rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+      }
+
+      h4 {
+        font-size: 1.1rem;
+        color: #546e7a;
+        margin-top: 1rem;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+      }
+
+      p {
+        margin-bottom: 1rem;
+        text-align: justify;
+      }
+
+      strong {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+
+      em {
+        font-style: italic;
+        color: #546e7a;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid #bdc3c7;
+        margin: 2rem 0;
+      }
+
+      /* ========== METADATA SECTION ========== */
+      .metadata {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+      }
+
+      .metadata p {
+        margin-bottom: 0.5rem;
+        text-align: left;
+      }
+
+      /* ========== BLOCKQUOTE ========== */
+      blockquote {
+        background-color: #ecf0f1;
+        border-left: 5px solid #3498db;
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        font-style: italic;
+        color: #34495e;
+      }
+
+      /* ========== LISTS ========== */
+      ul,
+      ol {
+        margin-left: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      li {
+        margin-bottom: 0.5rem;
+      }
+
+      /* ========== TABLES ========== */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        background-color: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        page-break-inside: avoid;
+      }
+
+      thead {
+        background-color: #34495e;
+        color: white;
+      }
+
+      th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        border: 1px solid #2c3e50;
+      }
+
+      td {
+        padding: 0.8rem 1rem;
+        border: 1px solid #bdc3c7;
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: #f8f9fa;
+      }
+
+      tbody tr:hover {
+        background-color: #e9ecef;
+      }
+
+      /* ========== CODE BLOCKS ========== */
+      code {
+        background-color: #f4f4f4;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-family: "Courier New", Consolas, Monaco, monospace;
+        font-size: 0.9em;
+        color: #c7254e;
+      }
+
+      pre {
+        background-color: #2c3e50;
+        color: #ecf0f1;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 1rem 0;
+        font-family: "Courier New", Consolas, Monaco, monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        page-break-inside: avoid;
+      }
+
+      pre code {
+        background: none;
+        color: #ecf0f1;
+        padding: 0;
+      }
+
+      /* ========== ASCII DIAGRAM ========== */
+      .diagram {
+        background-color: #f8f9fa;
+        border: 2px solid #dee2e6;
+        padding: 1.5rem;
+        border-radius: 6px;
+        font-family: "Courier New", Consolas, Monaco, monospace;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        overflow-x: auto;
+        white-space: pre;
+        page-break-inside: avoid;
+      }
+
+      /* ========== BADGES/LABELS ========== */
+      .badge {
+        display: inline-block;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 0.5rem;
+      }
+
+      .badge-success {
+        background-color: #27ae60;
+        color: white;
+      }
+
+      .badge-info {
+        background-color: #3498db;
+        color: white;
+      }
+
+      .badge-warning {
+        background-color: #f39c12;
+        color: white;
+      }
+
+      /* ========== SECTIONS ========== */
+      section {
+        margin-bottom: 3rem;
+        page-break-inside: avoid;
+      }
+
+      /* ========== PRINT STYLES ========== */
+      @media print {
+        @page {
+          margin: 2cm;
+          size: A4;
         }
 
         body {
-            font-family: 'Inter', 'Roboto', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.6;
-            color: #2c3e50;
-            background-color: #ffffff;
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
+          padding: 0;
+          background: white;
+          color: black;
+          font-size: 11pt;
         }
 
-        /* ========== TYPOGRAPHY ========== */
         h1 {
-            font-size: 2.5rem;
-            color: #1a2332;
-            border-bottom: 4px solid #3498db;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1.5rem;
-            font-weight: 700;
+          font-size: 20pt;
+          page-break-after: avoid;
         }
 
         h2 {
-            font-size: 1.8rem;
-            color: #2c3e50;
-            border-bottom: 2px solid #95a5a6;
-            padding-bottom: 0.4rem;
-            margin-top: 2.5rem;
-            margin-bottom: 1.2rem;
-            font-weight: 600;
+          font-size: 16pt;
+          page-break-after: avoid;
+          margin-top: 1.5rem;
         }
 
         h3 {
-            font-size: 1.4rem;
-            color: #34495e;
-            margin-top: 1.8rem;
-            margin-bottom: 1rem;
-            font-weight: 600;
+          font-size: 13pt;
+          page-break-after: avoid;
         }
 
-        h4 {
-            font-size: 1.1rem;
-            color: #546e7a;
-            margin-top: 1rem;
-            margin-bottom: 0.8rem;
-            font-weight: 600;
-        }
-
-        p {
-            margin-bottom: 1rem;
-            text-align: justify;
-        }
-
-        strong {
-            color: #2c3e50;
-            font-weight: 600;
-        }
-
-        em {
-            font-style: italic;
-            color: #546e7a;
-        }
-
-        hr {
-            border: none;
-            border-top: 1px solid #bdc3c7;
-            margin: 2rem 0;
-        }
-
-        /* ========== METADATA SECTION ========== */
-        .metadata {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-        }
-
-        .metadata p {
-            margin-bottom: 0.5rem;
-            text-align: left;
-        }
-
-        /* ========== BLOCKQUOTE ========== */
+        table,
+        pre,
+        .diagram,
         blockquote {
-            background-color: #ecf0f1;
-            border-left: 5px solid #3498db;
-            padding: 1rem 1.5rem;
-            margin: 1.5rem 0;
-            font-style: italic;
-            color: #34495e;
+          page-break-inside: avoid;
         }
 
-        /* ========== LISTS ========== */
-        ul, ol {
-            margin-left: 2rem;
-            margin-bottom: 1rem;
+        /* Ensure backgrounds print */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
         }
 
-        li {
-            margin-bottom: 0.5rem;
-        }
-
-        /* ========== TABLES ========== */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1.5rem 0;
-            background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            page-break-inside: avoid;
-        }
-
-        thead {
-            background-color: #34495e;
-            color: white;
-        }
-
-        th {
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            border: 1px solid #2c3e50;
-        }
-
-        td {
-            padding: 0.8rem 1rem;
-            border: 1px solid #bdc3c7;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        tbody tr:hover {
-            background-color: #e9ecef;
-        }
-
-        /* ========== CODE BLOCKS ========== */
-        code {
-            background-color: #f4f4f4;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            font-family: 'Courier New', Consolas, Monaco, monospace;
-            font-size: 0.9em;
-            color: #c7254e;
+        .metadata {
+          background: linear-gradient(
+            135deg,
+            #667eea 0%,
+            #764ba2 100%
+          ) !important;
+          -webkit-print-color-adjust: exact;
         }
 
         pre {
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-            margin: 1rem 0;
-            font-family: 'Courier New', Consolas, Monaco, monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            page-break-inside: avoid;
+          background-color: #2c3e50 !important;
+          -webkit-print-color-adjust: exact;
         }
 
-        pre code {
-            background: none;
-            color: #ecf0f1;
-            padding: 0;
+        thead {
+          background-color: #34495e !important;
+          -webkit-print-color-adjust: exact;
         }
 
-        /* ========== ASCII DIAGRAM ========== */
-        .diagram {
-            background-color: #f8f9fa;
-            border: 2px solid #dee2e6;
-            padding: 1.5rem;
-            border-radius: 6px;
-            font-family: 'Courier New', Consolas, Monaco, monospace;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            overflow-x: auto;
-            white-space: pre;
-            page-break-inside: avoid;
+        tbody tr:nth-child(even) {
+          background-color: #f8f9fa !important;
+          -webkit-print-color-adjust: exact;
         }
 
-        /* ========== BADGES/LABELS ========== */
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-right: 0.5rem;
-        }
-
-        .badge-success {
-            background-color: #27ae60;
-            color: white;
-        }
-
-        .badge-info {
-            background-color: #3498db;
-            color: white;
-        }
-
-        .badge-warning {
-            background-color: #f39c12;
-            color: white;
-        }
-
-        /* ========== SECTIONS ========== */
+        /* Page breaks */
         section {
-            margin-bottom: 3rem;
-            page-break-inside: avoid;
+          page-break-inside: avoid;
         }
 
-        /* ========== PRINT STYLES ========== */
-        @media print {
-            @page {
-                margin: 2cm;
-                size: A4;
-            }
-
-            body {
-                padding: 0;
-                background: white;
-                color: black;
-                font-size: 11pt;
-            }
-
-            h1 {
-                font-size: 20pt;
-                page-break-after: avoid;
-            }
-
-            h2 {
-                font-size: 16pt;
-                page-break-after: avoid;
-                margin-top: 1.5rem;
-            }
-
-            h3 {
-                font-size: 13pt;
-                page-break-after: avoid;
-            }
-
-            table, pre, .diagram, blockquote {
-                page-break-inside: avoid;
-            }
-
-            /* Ensure backgrounds print */
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-            }
-
-            .metadata {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            pre {
-                background-color: #2c3e50 !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            thead {
-                background-color: #34495e !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            tbody tr:nth-child(even) {
-                background-color: #f8f9fa !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            /* Page breaks */
-            section {
-                page-break-inside: avoid;
-            }
-
-            h2 {
-                page-break-before: always;
-            }
-
-            h2:first-of-type {
-                page-break-before: avoid;
-            }
+        h2 {
+          page-break-before: always;
         }
+
+        h2:first-of-type {
+          page-break-before: avoid;
+        }
+      }
     </style>
-</head>
-<body>
-    <h1>🛡️ AI-Powered Network IPS/IDS Sistemi - İlerleme Raporu</h1>
+  </head>
+  <body>
+    <h1>AI-Powered Network IPS/IDS Sistemi - İlerleme Raporu</h1>
 
     <div class="metadata">
-        <p><strong>Proje:</strong> Yapay Zeka Destekli Ağ Saldırı Tespit ve Önleme Sistemi</p>
-        <p><strong>Tarih:</strong> 19 Şubat 2026</p>
-        <p><strong>Durum:</strong> ✅ Core Infrastructure & MLOps Pipeline Tamamlandı</p>
-        <p><strong>Geliştirme Branch:</strong> <code>emre-dev</code></p>
-        <p><strong>Repository:</strong> <a href="https://github.com/betuldanismaz/Network_Anomaly_Detection" style="color: #fff; text-decoration: underline;">Network_Anomaly_Detection</a></p>
+      <p>
+        <strong>Proje:</strong> Yapay Zeka Destekli Ağ Saldırı Tespit ve Önleme
+        Sistemi
+      </p>
+      <p><strong>Tarih:</strong> 19 Şubat 2026</p>
+      <p>
+        <strong>Durum:</strong> ✅ Core Infrastructure & MLOps Pipeline
+        Tamamlandı
+      </p>
+      <p><strong>Geliştirme Branch:</strong> <code>emre-dev</code></p>
+      <p>
+        <strong>Repository:</strong>
+        <a
+          href="https://github.com/betuldanismaz/Network_Anomaly_Detection"
+          style="color: #fff; text-decoration: underline"
+          >Network_Anomaly_Detection</a
+        >
+      </p>
     </div>
 
-    <hr>
+    <hr />
 
     <section>
-        <h2>📊 1. Proje Özeti ve Mevcut Durum</h2>
-        
-        <h3>Executive Summary</h3>
-        <p>Proje kapsamında <strong>end-to-end real-time MLOps pipeline'ı başarıyla tamamlanmıştır</strong>. Sistem, canlı ağ trafiğini yakalayarak, makine öğrenmesi modelleri ile analiz edebilmekte ve saldırı tespit edildiğinde otomatik aksiyon (alert, logging, IP blocking) alabilmektedir.</p>
+      <h2>📊 1. Proje Özeti ve Mevcut Durum</h2>
 
-        <h4>Operasyonel Bileşenler:</h4>
-        <ul>
-            <li>✅ <strong>Live Packet Capture:</strong> Scapy tabanlı ağ dinleme (Wi-Fi/Ethernet)</li>
-            <li>✅ <strong>Feature Extraction:</strong> CICFlowMeter ile 78 özellik çıkarımı (fallback mekanizması ile)</li>
-            <li>✅ <strong>Message Queue:</strong> Kafka Producer → Consumer asenkron iletişim</li>
-            <li>✅ <strong>AI Inference Engine:</strong> 4 farklı model (Random Forest, Decision Tree, XGBoost, BiLSTM) desteği</li>
-            <li>✅ <strong>Dynamic Model Switching:</strong> Dashboard üzerinden runtime'da model değişimi</li>
-            <li>✅ <strong>Real-Time Dashboard:</strong> Streamlit tabanlı monitoring ve kontrol paneli</li>
-            <li>✅ <strong>Database Logging:</strong> SQLite ile saldırı kayıtları ve istatistikler</li>
-        </ul>
+      <h3>Executive Summary</h3>
+      <p>
+        Proje kapsamında
+        <strong
+          >end-to-end real-time MLOps pipeline'ı başarıyla
+          tamamlanmıştır</strong
+        >. Sistem, canlı ağ trafiğini yakalayarak, makine öğrenmesi modelleri
+        ile analiz edebilmekte ve saldırı tespit edildiğinde otomatik aksiyon
+        (alert, logging, IP blocking) alabilmektedir.
+      </p>
 
-        <blockquote>
-            <strong>Teknik Milestone:</strong> Sistem, dummy veya gerçek trafik üzerinde <strong>end-to-end çalışma</strong> durumundadır. Live bridge → Kafka → Consumer → Dashboard akışı kesintisiz işlemektedir.
-        </blockquote>
+      <h4>Operasyonel Bileşenler:</h4>
+      <ul>
+        <li>
+          ✅ <strong>Live Packet Capture:</strong> Scapy tabanlı ağ dinleme
+          (Wi-Fi/Ethernet)
+        </li>
+        <li>
+          ✅ <strong>Feature Extraction:</strong> CICFlowMeter ile 78 özellik
+          çıkarımı (fallback mekanizması ile)
+        </li>
+        <li>
+          ✅ <strong>Message Queue:</strong> Kafka Producer → Consumer asenkron
+          iletişim
+        </li>
+        <li>
+          ✅ <strong>AI Inference Engine:</strong> 4 farklı model (Random
+          Forest, Decision Tree, XGBoost, BiLSTM) desteği
+        </li>
+        <li>
+          ✅ <strong>Dynamic Model Switching:</strong> Dashboard üzerinden
+          runtime'da model değişimi
+        </li>
+        <li>
+          ✅ <strong>Real-Time Dashboard:</strong> Streamlit tabanlı monitoring
+          ve kontrol paneli
+        </li>
+        <li>
+          ✅ <strong>Database Logging:</strong> SQLite ile saldırı kayıtları ve
+          istatistikler
+        </li>
+      </ul>
+
+      <blockquote>
+        <strong>Teknik Milestone:</strong> Sistem, dummy veya gerçek trafik
+        üzerinde <strong>end-to-end çalışma</strong> durumundadır. Live bridge →
+        Kafka → Consumer → Dashboard akışı kesintisiz işlemektedir.
+      </blockquote>
     </section>
 
     <section>
-        <h2>🏗️ 2. Sistem Mimarisi ve Altyapı</h2>
+      <h2>🏗️ 2. Sistem Mimarisi ve Altyapı</h2>
 
-        <h3>2.1 Genel Mimari</h3>
-        <div class="diagram">┌─────────────────┐      ┌──────────────┐      ┌─────────────────┐
-│  Live Traffic   │──────▶│    Kafka     │──────▶│  AI Consumer    │
-│  (Scapy Sniff) │      │  (Topic:     │      │  (Prediction)   │
-│                 │      │  network-    │      │                 │
-│  Feature        │      │  traffic)    │      │  Model Switch   │
-│  Extraction     │      │              │      │  Logic          │
-└─────────────────┘      └──────────────┘      └─────────────────┘
-         │                                              │
-         │                                              ▼
-         │                                      ┌──────────────┐
-         │                                      │   Database   │
-         │                                      │  (SQLite)    │
-         │                                      └──────────────┘
-         │                                              │
-         └──────────────────────────────────────────────┼───────▶
-                                                        ▼
-                                              ┌─────────────────┐
-                                              │  Dashboard      │
-                                              │  (Streamlit)    │
-                                              │  - Model Picker │
-                                              │  - Monitoring   │
-                                              └─────────────────┘</div>
+      <h3>2.1 Genel Mimari</h3>
+      <div class="diagram">
+        ┌─────────────────┐ ┌──────────────┐ ┌─────────────────┐ │ Live Traffic
+        │──────▶│ Kafka │──────▶│ AI Consumer │ │ (Scapy Sniff) │ │ (Topic: │ │
+        (Prediction) │ │ │ │ network- │ │ │ │ Feature │ │ traffic) │ │ Model
+        Switch │ │ Extraction │ │ │ │ Logic │ └─────────────────┘
+        └──────────────┘ └─────────────────┘ │ │ │ ▼ │ ┌──────────────┐ │ │
+        Database │ │ │ (SQLite) │ │ └──────────────┘ │ │
+        └──────────────────────────────────────────────┼───────▶ ▼
+        ┌─────────────────┐ │ Dashboard │ │ (Streamlit) │ │ - Model Picker │ │ -
+        Monitoring │ └─────────────────┘
+      </div>
 
-        <h3>2.2 Teknoloji Stack</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Katman</th>
-                    <th>Teknoloji</th>
-                    <th>Versiyon/Detay</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Containerization</strong></td>
-                    <td>Docker Compose</td>
-                    <td>Zookeeper + Kafka</td>
-                </tr>
-                <tr>
-                    <td><strong>Message Broker</strong></td>
-                    <td>Apache Kafka</td>
-                    <td>v7.4.0 (confluentinc/cp-kafka)</td>
-                </tr>
-                <tr>
-                    <td><strong>Coordination</strong></td>
-                    <td>Apache Zookeeper</td>
-                    <td>v7.4.0 (confluentinc/cp-zookeeper)</td>
-                </tr>
-                <tr>
-                    <td><strong>ML Framework</strong></td>
-                    <td>Scikit-learn, XGBoost, TensorFlow</td>
-                    <td>BiLSTM, RF, DT, XGB modelleri</td>
-                </tr>
-                <tr>
-                    <td><strong>Packet Capture</strong></td>
-                    <td>Scapy</td>
-                    <td>Real-time sniffing</td>
-                </tr>
-                <tr>
-                    <td><strong>Feature Engineering</strong></td>
-                    <td>CICFlowMeter</td>
-                    <td>78-feature extraction (CLI subprocess)</td>
-                </tr>
-                <tr>
-                    <td><strong>Messaging Library</strong></td>
-                    <td>confluent-kafka-python</td>
-                    <td>Producer/Consumer API</td>
-                </tr>
-                <tr>
-                    <td><strong>Dashboard</strong></td>
-                    <td>Streamlit</td>
-                    <td>Interactive UI</td>
-                </tr>
-                <tr>
-                    <td><strong>Database</strong></td>
-                    <td>SQLite</td>
-                    <td>Attack logs & statistics</td>
-                </tr>
-                <tr>
-                    <td><strong>Version Control</strong></td>
-                    <td>Git + Git LFS</td>
-                    <td>19 model dosyası LFS ile yönetiliyor</td>
-                </tr>
-            </tbody>
-        </table>
+      <h3>2.2 Teknoloji Stack</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Katman</th>
+            <th>Teknoloji</th>
+            <th>Versiyon/Detay</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Containerization</strong></td>
+            <td>Docker Compose</td>
+            <td>Zookeeper + Kafka</td>
+          </tr>
+          <tr>
+            <td><strong>Message Broker</strong></td>
+            <td>Apache Kafka</td>
+            <td>v7.4.0 (confluentinc/cp-kafka)</td>
+          </tr>
+          <tr>
+            <td><strong>Coordination</strong></td>
+            <td>Apache Zookeeper</td>
+            <td>v7.4.0 (confluentinc/cp-zookeeper)</td>
+          </tr>
+          <tr>
+            <td><strong>ML Framework</strong></td>
+            <td>Scikit-learn, XGBoost, TensorFlow</td>
+            <td>BiLSTM, RF, DT, XGB modelleri</td>
+          </tr>
+          <tr>
+            <td><strong>Packet Capture</strong></td>
+            <td>Scapy</td>
+            <td>Real-time sniffing</td>
+          </tr>
+          <tr>
+            <td><strong>Feature Engineering</strong></td>
+            <td>CICFlowMeter</td>
+            <td>78-feature extraction (CLI subprocess)</td>
+          </tr>
+          <tr>
+            <td><strong>Messaging Library</strong></td>
+            <td>confluent-kafka-python</td>
+            <td>Producer/Consumer API</td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard</strong></td>
+            <td>Streamlit</td>
+            <td>Interactive UI</td>
+          </tr>
+          <tr>
+            <td><strong>Database</strong></td>
+            <td>SQLite</td>
+            <td>Attack logs & statistics</td>
+          </tr>
+          <tr>
+            <td><strong>Version Control</strong></td>
+            <td>Git + Git LFS</td>
+            <td>19 model dosyası LFS ile yönetiliyor</td>
+          </tr>
+        </tbody>
+      </table>
 
-        <h3>2.3 Altyapı Kararlılığı ve Optimizasyonlar</h3>
+      <h3>2.3 Altyapı Kararlılığı ve Optimizasyonlar</h3>
 
-        <h4>Kafka Cluster (Zookeeper Mode)</h4>
-        <ul>
-            <li><strong>Pinned Versions:</strong> <code>7.4.0</code> kullanılarak KRaft/Zookeeper uyumsuzluğu çözüldü</li>
-            <li><strong>Dual Listener Configuration:</strong>
-                <ul>
-                    <li><code>PLAINTEXT://127.0.0.1:9092</code> → Host erişimi (IPv4 forced)</li>
-                    <li><code>PLAINTEXT_INTERNAL://kafka:29092</code> → Container-to-container iletişim</li>
-                </ul>
+      <h4>Kafka Cluster (Zookeeper Mode)</h4>
+      <ul>
+        <li>
+          <strong>Pinned Versions:</strong> <code>7.4.0</code> kullanılarak
+          KRaft/Zookeeper uyumsuzluğu çözüldü
+        </li>
+        <li>
+          <strong>Dual Listener Configuration:</strong>
+          <ul>
+            <li>
+              <code>PLAINTEXT://127.0.0.1:9092</code> → Host erişimi (IPv4
+              forced)
             </li>
-            <li><strong>Inter-Broker Communication:</strong> <code>PLAINTEXT_INTERNAL</code> protokolü ile izole edildi</li>
-        </ul>
+            <li>
+              <code>PLAINTEXT_INTERNAL://kafka:29092</code> →
+              Container-to-container iletişim
+            </li>
+          </ul>
+        </li>
+        <li>
+          <strong>Inter-Broker Communication:</strong>
+          <code>PLAINTEXT_INTERNAL</code> protokolü ile izole edildi
+        </li>
+      </ul>
 
-        <h4>Git LFS Entegrasyonu</h4>
-        <ul>
-            <li>Model dosyaları (<code>.pkl</code>, <code>.keras</code>) Git LFS ile yönetiliyor</li>
-            <li><strong>Tracked Files:</strong> 19 adet büyük model dosyası (bilstm_best.keras, xgboost_model.pkl, vb.)</li>
-            <li>Versiyon kontrolü ve ekip paylaşımı optimize edildi</li>
-        </ul>
+      <h4>Git LFS Entegrasyonu</h4>
+      <ul>
+        <li>
+          Model dosyaları (<code>.pkl</code>, <code>.keras</code>) Git LFS ile
+          yönetiliyor
+        </li>
+        <li>
+          <strong>Tracked Files:</strong> 19 adet büyük model dosyası
+          (bilstm_best.keras, xgboost_model.pkl, vb.)
+        </li>
+        <li>Versiyon kontrolü ve ekip paylaşımı optimize edildi</li>
+      </ul>
     </section>
 
     <section>
-        <h2>⚙️ 3. Geliştirilen Kritik Özellikler</h2>
+      <h2>⚙️ 3. Geliştirilen Kritik Özellikler</h2>
 
-        <h3>3.1 Dynamic Model Switching (Çalışma Sırasında Model Değiştirme)</h3>
+      <h3>3.1 Dynamic Model Switching (Çalışma Sırasında Model Değiştirme)</h3>
 
-        <p><strong>Problem:</strong> Geleneksel sistemlerde, farklı bir AI modeli test etmek için servisi durdurup yeniden başlatmak gerekir. Bu, production ortamında kesintiye neden olur.</p>
+      <p>
+        <strong>Problem:</strong> Geleneksel sistemlerde, farklı bir AI modeli
+        test etmek için servisi durdurup yeniden başlatmak gerekir. Bu,
+        production ortamında kesintiye neden olur.
+      </p>
 
-        <p><strong>Çözüm:</strong></p>
-        <ul>
-            <li><strong>Shared Config File:</strong> <code>data/active_model.txt</code> dosyası üzerinden dashboard ve consumer arasında senkronizasyon</li>
-            <li><strong>Dashboard Widget:</strong> Streamlit <code>selectbox</code> ile kullanıcı model seçer</li>
-            <li><strong>Consumer Polling:</strong> Her 5 saniyede bir config dosyası okunur, değişiklik varsa yeni model yüklenir</li>
-            <li><strong>Hot-Swap:</strong> Mevcut bağlantılar korunarak model değişimi yapılır</li>
-        </ul>
+      <p><strong>Çözüm:</strong></p>
+      <ul>
+        <li>
+          <strong>Shared Config File:</strong>
+          <code>data/active_model.txt</code> dosyası üzerinden dashboard ve
+          consumer arasında senkronizasyon
+        </li>
+        <li>
+          <strong>Dashboard Widget:</strong> Streamlit
+          <code>selectbox</code> ile kullanıcı model seçer
+        </li>
+        <li>
+          <strong>Consumer Polling:</strong> Her 5 saniyede bir config dosyası
+          okunur, değişiklik varsa yeni model yüklenir
+        </li>
+        <li>
+          <strong>Hot-Swap:</strong> Mevcut bağlantılar korunarak model değişimi
+          yapılır
+        </li>
+      </ul>
 
-        <p><strong>Desteklenen Modeller:</strong></p>
-        <ol>
-            <li><strong>Random Forest</strong> (<code>rf_model_v1.pkl</code>) - Scikit-learn</li>
-            <li><strong>Decision Tree</strong> (<code>dt_model.pkl</code>) - Scikit-learn</li>
-            <li><strong>XGBoost</strong> (<code>xgboost_model.pkl</code>) - XGBoost</li>
-            <li><strong>BiLSTM</strong> (<code>bilstm_model.keras</code>) - TensorFlow/Keras</li>
-        </ol>
+      <p><strong>Desteklenen Modeller:</strong></p>
+      <ol>
+        <li>
+          <strong>Random Forest</strong> (<code>rf_model_v1.pkl</code>) -
+          Scikit-learn
+        </li>
+        <li>
+          <strong>Decision Tree</strong> (<code>dt_model.pkl</code>) -
+          Scikit-learn
+        </li>
+        <li>
+          <strong>XGBoost</strong> (<code>xgboost_model.pkl</code>) - XGBoost
+        </li>
+        <li>
+          <strong>BiLSTM</strong> (<code>bilstm_model.keras</code>) -
+          TensorFlow/Keras
+        </li>
+      </ol>
 
-        <p><strong>Teknik Uygulama:</strong></p>
-        <pre><code># Dashboard (src/dashboard/app.py)
+      <p><strong>Teknik Uygulama:</strong></p>
+      <pre><code># Dashboard (src/dashboard/app.py)
 selected_model = st.sidebar.selectbox("Model Seçin", ["Random Forest", "XGBoost", ...])
 with open("data/active_model.txt", "w") as f:
     f.write(MODEL_MAPPING[selected_model])
@@ -481,13 +575,21 @@ def check_and_reload_model():
     if requested_model != CURRENT_MODEL_NAME:
         load_model_and_scaler(requested_model)  # Hot reload</code></pre>
 
-        <h3>3.2 Model Type Adaptive Processing</h3>
+      <h3>3.2 Model Type Adaptive Processing</h3>
 
-        <p><strong>Problem:</strong> Scikit-learn modelleri <strong>2D input</strong> <code>(samples, features)</code> beklerken, LSTM/BiLSTM modelleri <strong>3D input</strong> <code>(samples, timesteps, features)</code> gerektirir.</p>
+      <p>
+        <strong>Problem:</strong> Scikit-learn modelleri
+        <strong>2D input</strong> <code>(samples, features)</code> beklerken,
+        LSTM/BiLSTM modelleri <strong>3D input</strong>
+        <code>(samples, timesteps, features)</code> gerektirir.
+      </p>
 
-        <p><strong>Çözüm:</strong> Consumer, model tipini otomatik algılayıp input şekillendirmesini yapar:</p>
+      <p>
+        <strong>Çözüm:</strong> Consumer, model tipini otomatik algılayıp input
+        şekillendirmesini yapar:
+      </p>
 
-        <pre><code>if CURRENT_MODEL_TYPE == "keras":
+      <pre><code>if CURRENT_MODEL_TYPE == "keras":
     # LSTM: Reshape (1, 78) → (1, 1, 78)
     features_3d = features_scaled.reshape((1, 1, 78))
     prediction_proba = MODEL.predict(features_3d, verbose=0)
@@ -495,108 +597,147 @@ else:
     # Scikit-learn: (1, 78) olarak kalır
     prediction = MODEL.predict(features_scaled_df)[0]</code></pre>
 
-        <h3>3.3 Real-Time Traffic Processing</h3>
-        <ul>
-            <li><strong>Packet Capture:</strong> <code>sniff(iface="Wi-Fi", timeout=4)</code> ile 4 saniyelik batch'ler</li>
-            <li><strong>PCAP Generation:</strong> Scapy ile temporary <code>temp_live.pcap</code> oluşturma</li>
-            <li><strong>Feature Extraction:</strong> CICFlowMeter CLI ile CSV çıktısı</li>
-            <li><strong>Kafka Publish:</strong> Her flow için JSON mesaj gönderimi</li>
-            <li><strong>Consumer Inference:</strong> Kafka'dan mesaj okunup model ile tahmin</li>
-        </ul>
+      <h3>3.3 Real-Time Traffic Processing</h3>
+      <ul>
+        <li>
+          <strong>Packet Capture:</strong>
+          <code>sniff(iface="Wi-Fi", timeout=4)</code> ile 4 saniyelik batch'ler
+        </li>
+        <li>
+          <strong>PCAP Generation:</strong> Scapy ile temporary
+          <code>temp_live.pcap</code> oluşturma
+        </li>
+        <li>
+          <strong>Feature Extraction:</strong> CICFlowMeter CLI ile CSV çıktısı
+        </li>
+        <li>
+          <strong>Kafka Publish:</strong> Her flow için JSON mesaj gönderimi
+        </li>
+        <li>
+          <strong>Consumer Inference:</strong> Kafka'dan mesaj okunup model ile
+          tahmin
+        </li>
+      </ul>
 
-        <p><strong>Throughput:</strong> Sistem, saniyede <strong>~20-50 flow</strong> işleyebilmektedir (donanıma bağlı).</p>
+      <p>
+        <strong>Throughput:</strong> Sistem, saniyede
+        <strong>~20-50 flow</strong> işleyebilmektedir (donanıma bağlı).
+      </p>
     </section>
 
     <section>
-        <h2>🔧 4. Çözülen Mühendislik Problemleri (Kritik Başarılar)</h2>
+      <h2>🔧 4. Çözülen Mühendislik Problemleri (Kritik Başarılar)</h2>
 
-        <h3>4.1 Feature Alignment Problem (76 vs 78 Sütun Uyumsuzluğu)</h3>
+      <h3>4.1 Feature Alignment Problem (76 vs 78 Sütun Uyumsuzluğu)</h3>
 
-        <p><strong>Hata:</strong></p>
-        <pre><code>ValueError: The feature names should match those that were passed during fit.
+      <p><strong>Hata:</strong></p>
+      <pre><code>ValueError: The feature names should match those that were passed during fit.
 Expected: ['Flow Duration', 'Total Fwd Packets', ...]  (78 features)
 Got: ['flow_duration', 'tot_fwd_pkts', ...]  (76 features)</code></pre>
 
-        <p><strong>Kök Neden:</strong></p>
-        <ul>
-            <li>Model training sırasında <strong>Title Case</strong> feature isimleri kullanıldı</li>
-            <li>Live bridge dummy/real data <strong>snake_case</strong> feature isimleri üretiyor</li>
-            <li>Bazı özellikler (örn: <code>Fwd Header Length.1</code>) eksik</li>
-        </ul>
+      <p><strong>Kök Neden:</strong></p>
+      <ul>
+        <li>
+          Model training sırasında <strong>Title Case</strong> feature isimleri
+          kullanıldı
+        </li>
+        <li>
+          Live bridge dummy/real data <strong>snake_case</strong> feature
+          isimleri üretiyor
+        </li>
+        <li>Bazı özellikler (örn: <code>Fwd Header Length.1</code>) eksik</li>
+      </ul>
 
-        <p><strong>Çözüm - Dynamic Reindexing:</strong></p>
-        <pre><code># src/kafka_consumer.py - process_message()
+      <p><strong>Çözüm - Dynamic Reindexing:</strong></p>
+      <pre><code># src/kafka_consumer.py - process_message()
 if hasattr(SCALER, 'feature_names_in_'):
     expected_features = SCALER.feature_names_in_  # ['Flow Duration', ...]
     features_df = features_df.reindex(columns=expected_features, fill_value=0.0)</code></pre>
 
-        <p><strong>Etki:</strong></p>
-        <ul>
-            <li>✅ Eksik sütunlar 0.0 ile doldurulur</li>
-            <li>✅ Fazla sütunlar drop edilir</li>
-            <li>✅ Sütun sırası model beklentisiyle eşleşir</li>
-            <li>✅ Sistem hiç crash etmez</li>
-        </ul>
+      <p><strong>Etki:</strong></p>
+      <ul>
+        <li>✅ Eksik sütunlar 0.0 ile doldurulur</li>
+        <li>✅ Fazla sütunlar drop edilir</li>
+        <li>✅ Sütun sırası model beklentisiyle eşleşir</li>
+        <li>✅ Sistem hiç crash etmez</li>
+      </ul>
 
-        <h3>4.2 CICFlowMeter API Hatası (<code>'FlowSession' object has no attribute 'output_mode'</code>)</h3>
+      <h3>
+        4.2 CICFlowMeter API Hatası (<code
+          >'FlowSession' object has no attribute 'output_mode'</code
+        >)
+      </h3>
 
-        <p><strong>Hata:</strong></p>
-        <pre><code>❌ API hatası: 'FlowSession' object has no attribute 'output_mode'</code></pre>
+      <p><strong>Hata:</strong></p>
+      <pre><code>❌ API hatası: 'FlowSession' object has no attribute 'output_mode'</code></pre>
 
-        <p><strong>Kök Neden:</strong> <code>cicflowmeter</code> paketinin yeni versiyonları Python API'yi değiştirmiş, eski API'yi kullanan kod çalışmıyor.</p>
+      <p>
+        <strong>Kök Neden:</strong> <code>cicflowmeter</code> paketinin yeni
+        versiyonları Python API'yi değiştirmiş, eski API'yi kullanan kod
+        çalışmıyor.
+      </p>
 
-        <p><strong>Çözüm - Fallback Cascade:</strong></p>
+      <p><strong>Çözüm - Fallback Cascade:</strong></p>
 
-        <ol>
-            <li><strong>Primary:</strong> CICFlowMeter CLI subprocess çağrısı
-                <pre><code>subprocess.run([sys.executable, "-m", "cicflowmeter", "-f", "temp.pcap", "-c", "output.csv"])</code></pre>
-            </li>
-            <li><strong>Fallback:</strong> Dummy Feature Generator
-                <pre><code>def generate_dummy_features(packet_count=1):
+      <ol>
+        <li>
+          <strong>Primary:</strong> CICFlowMeter CLI subprocess çağrısı
+          <pre><code>subprocess.run([sys.executable, "-m", "cicflowmeter", "-f", "temp.pcap", "-c", "output.csv"])</code></pre>
+        </li>
+        <li>
+          <strong>Fallback:</strong> Dummy Feature Generator
+          <pre><code>def generate_dummy_features(packet_count=1):
     # 78 özellik, tümü 0.0 ile doldurulur
     dummy_data = {feature: [0.0] * packet_count for feature in GOLD_STANDARD_FEATURES}
     return pd.DataFrame(dummy_data)</code></pre>
-            </li>
-        </ol>
+        </li>
+      </ol>
 
-        <p><strong>Avantajlar:</strong></p>
-        <ul>
-            <li>✅ Kırık API'ye dependency yok</li>
-            <li>✅ CLI başarısız olsa bile pipeline çalışmaya devam eder</li>
-            <li>✅ Dummy data ile test yapılabilir (gerçek trafik olmadan)</li>
-            <li>✅ Kafka → Consumer → Dashboard akışı her durumda aktif</li>
-        </ul>
+      <p><strong>Avantajlar:</strong></p>
+      <ul>
+        <li>✅ Kırık API'ye dependency yok</li>
+        <li>✅ CLI başarısız olsa bile pipeline çalışmaya devam eder</li>
+        <li>✅ Dummy data ile test yapılabilir (gerçek trafik olmadan)</li>
+        <li>✅ Kafka → Consumer → Dashboard akışı her durumda aktif</li>
+      </ul>
 
-        <h3>4.3 Windows IPv6 Localhost Çözümleme Hatası</h3>
+      <h3>4.3 Windows IPv6 Localhost Çözümleme Hatası</h3>
 
-        <p><strong>Hata:</strong></p>
-        <pre><code>Connect to ipv6#[::1]:9092 failed: Connection refused</code></pre>
+      <p><strong>Hata:</strong></p>
+      <pre><code>Connect to ipv6#[::1]:9092 failed: Connection refused</code></pre>
 
-        <p><strong>Kök Neden:</strong> Windows'ta <code>localhost</code> bazen IPv6 <code>[::1]</code>'e çözümleniyor, ancak Kafka sadece IPv4'te dinliyor.</p>
+      <p>
+        <strong>Kök Neden:</strong> Windows'ta <code>localhost</code> bazen IPv6
+        <code>[::1]</code>'e çözümleniyor, ancak Kafka sadece IPv4'te dinliyor.
+      </p>
 
-        <p><strong>Çözüm:</strong></p>
-        <pre><code># src/live_bridge.py & src/kafka_consumer.py
+      <p><strong>Çözüm:</strong></p>
+      <pre><code># src/live_bridge.py & src/kafka_consumer.py
 - 'bootstrap.servers': 'localhost:9092'
 + 'bootstrap.servers': '127.0.0.1:9092'  # IPv4 forced</code></pre>
 
-        <p><strong>docker-compose.yml:</strong></p>
-        <pre><code>KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092,...</code></pre>
+      <p><strong>docker-compose.yml:</strong></p>
+      <pre><code>KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092,...</code></pre>
 
-        <p><strong>Etki:</strong></p>
-        <ul>
-            <li>✅ Windows IPv6 bug bypass edildi</li>
-            <li>✅ %100 güvenilir bağlantı</li>
-        </ul>
+      <p><strong>Etki:</strong></p>
+      <ul>
+        <li>✅ Windows IPv6 bug bypass edildi</li>
+        <li>✅ %100 güvenilir bağlantı</li>
+      </ul>
 
-        <h3>4.4 Kafka KRaft vs Zookeeper Uyumsuzluğu</h3>
+      <h3>4.4 Kafka KRaft vs Zookeeper Uyumsuzluğu</h3>
 
-        <p><strong>Hata:</strong></p>
-        <pre><code>environment variable "KAFKA_PROCESS_ROLES" is not set</code></pre>
+      <p><strong>Hata:</strong></p>
+      <pre><code>environment variable "KAFKA_PROCESS_ROLES" is not set</code></pre>
 
-        <p><strong>Kök Neden:</strong> <code>confluentinc/cp-kafka:latest</code> image'ı KRaft mode'a geçiş yapmaya çalışıyor, ancak Zookeeper config verilmiş.</p>
+      <p>
+        <strong>Kök Neden:</strong>
+        <code>confluentinc/cp-kafka:latest</code> image'ı KRaft mode'a geçiş
+        yapmaya çalışıyor, ancak Zookeeper config verilmiş.
+      </p>
 
-        <p><strong>Çözüm:</strong></p>
-        <pre><code># docker-compose.yml
+      <p><strong>Çözüm:</strong></p>
+      <pre><code># docker-compose.yml
 - image: confluentinc/cp-kafka:latest
 + image: confluentinc/cp-kafka:7.4.0  # Stable Zookeeper support
 
@@ -604,169 +745,215 @@ environment:
   KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
   KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL  # Kritik!</code></pre>
 
-        <p><strong>Version Pinning Faydaları:</strong></p>
-        <ul>
-            <li>✅ Production-ready stability</li>
-            <li>✅ Zookeeper mode guaranteed</li>
-            <li>✅ Reproducible environment</li>
-        </ul>
+      <p><strong>Version Pinning Faydaları:</strong></p>
+      <ul>
+        <li>✅ Production-ready stability</li>
+        <li>✅ Zookeeper mode guaranteed</li>
+        <li>✅ Reproducible environment</li>
+      </ul>
 
-        <h3>4.5 JSON Serialization Bug (NumPy/Pandas Types)</h3>
+      <h3>4.5 JSON Serialization Bug (NumPy/Pandas Types)</h3>
 
-        <p><strong>Hata:</strong></p>
-        <pre><code>TypeError: Object of type float32 is not JSON serializable</code></pre>
+      <p><strong>Hata:</strong></p>
+      <pre><code>TypeError: Object of type float32 is not JSON serializable</code></pre>
 
-        <p><strong>Kök Neden:</strong> Pandas DataFrame'lerden gelen <code>numpy.float64</code> tipleri <code>json.dumps()</code> tarafından serialize edilemiyor.</p>
+      <p>
+        <strong>Kök Neden:</strong> Pandas DataFrame'lerden gelen
+        <code>numpy.float64</code> tipleri <code>json.dumps()</code> tarafından
+        serialize edilemiyor.
+      </p>
 
-        <p><strong>Çözüm:</strong></p>
-        <pre><code># src/live_bridge.py
+      <p><strong>Çözüm:</strong></p>
+      <pre><code># src/live_bridge.py
 - message_json = json.dumps(kafka_message)
 + message_json = json.dumps(kafka_message, default=str)  # Fallback to str()</code></pre>
 
-        <p><strong>Etki:</strong></p>
-        <ul>
-            <li>✅ Tüm NumPy/Pandas tipler otomatik string'e dönüştürülür</li>
-            <li>✅ Kafka mesajları başarıyla serialize edilir</li>
-        </ul>
+      <p><strong>Etki:</strong></p>
+      <ul>
+        <li>✅ Tüm NumPy/Pandas tipler otomatik string'e dönüştürülür</li>
+        <li>✅ Kafka mesajları başarıyla serialize edilir</li>
+      </ul>
     </section>
 
     <section>
-        <h2>🎯 5. Sıradaki Adımlar (Next Phase)</h2>
+      <h2>🎯 5. Sıradaki Adımlar (Next Phase)</h2>
 
-        <h3>5.1 Hyperparameter Tuning (Optuna)</h3>
+      <h3>5.1 Hyperparameter Tuning (Optuna)</h3>
 
-        <p><strong>Amaç:</strong> Random Forest ve XGBoost modellerinin hiperparametre optimizasyonu ile accuracy artırımı.</p>
+      <p>
+        <strong>Amaç:</strong> Random Forest ve XGBoost modellerinin
+        hiperparametre optimizasyonu ile accuracy artırımı.
+      </p>
 
-        <p><strong>Yöntem:</strong></p>
-        <ul>
-            <li>Optuna framework ile Bayesian Optimization</li>
-            <li>Cross-validation ile overfitting önleme</li>
-            <li>En iyi parametreler ile model retraining</li>
-        </ul>
+      <p><strong>Yöntem:</strong></p>
+      <ul>
+        <li>Optuna framework ile Bayesian Optimization</li>
+        <li>Cross-validation ile overfitting önleme</li>
+        <li>En iyi parametreler ile model retraining</li>
+      </ul>
 
-        <p><strong>Hedef Metrikler:</strong></p>
-        <ul>
-            <li>Precision &gt; %98</li>
-            <li>Recall &gt; %97</li>
-            <li>F1-Score &gt; %97.5</li>
-        </ul>
+      <p><strong>Hedef Metrikler:</strong></p>
+      <ul>
+        <li>Precision &gt; %98</li>
+        <li>Recall &gt; %97</li>
+        <li>F1-Score &gt; %97.5</li>
+      </ul>
 
-        <h3>5.2 Real-Time Attack Simulation</h3>
+      <h3>5.2 Real-Time Attack Simulation</h3>
 
-        <p><strong>Senaryo 1: Port Scan (Nmap)</strong></p>
-        <pre><code>nmap -sS -p- 192.168.1.100  # SYN scan</code></pre>
-        <p><strong>Beklenen:</strong> System saldırıyı tespit edip <code>BLOCKED</code> olarak loglamalı.</p>
+      <p><strong>Senaryo 1: Port Scan (Nmap)</strong></p>
+      <pre><code>nmap -sS -p- 192.168.1.100  # SYN scan</code></pre>
+      <p>
+        <strong>Beklenen:</strong> System saldırıyı tespit edip
+        <code>BLOCKED</code> olarak loglamalı.
+      </p>
 
-        <p><strong>Senaryo 2: DoS Attack (hping3)</strong></p>
-        <pre><code>hping3 -S --flood -p 80 192.168.1.100</code></pre>
-        <p><strong>Beklenen:</strong> Yüksek paket oranı anomali olarak işaretlenmeli.</p>
+      <p><strong>Senaryo 2: DoS Attack (hping3)</strong></p>
+      <pre><code>hping3 -S --flood -p 80 192.168.1.100</code></pre>
+      <p>
+        <strong>Beklenen:</strong> Yüksek paket oranı anomali olarak
+        işaretlenmeli.
+      </p>
 
-        <p><strong>Senaryo 3: Normal Traffic Baseline</strong></p>
-        <pre><code># Web browsing, SSH, streaming</code></pre>
-        <p><strong>Beklenen:</strong> <code>ALLOWED</code> / <code>NORMAL</code> olarak sınıflandırılmalı.</p>
+      <p><strong>Senaryo 3: Normal Traffic Baseline</strong></p>
+      <pre><code># Web browsing, SSH, streaming</code></pre>
+      <p>
+        <strong>Beklenen:</strong> <code>ALLOWED</code> /
+        <code>NORMAL</code> olarak sınıflandırılmalı.
+      </p>
 
-        <h3>5.3 Latency Benchmarking</h3>
+      <h3>5.3 Latency Benchmarking</h3>
 
-        <p><strong>Ölçülecek Metrikler:</strong></p>
-        <ol>
-            <li><strong>Packet Capture → Kafka Publish Latency:</strong> &lt; 100ms</li>
-            <li><strong>Kafka → Consumer Processing Latency:</strong> &lt; 50ms</li>
-            <li><strong>Model Inference Time:</strong>
-                <ul>
-                    <li>Random Forest: ~5-10ms</li>
-                    <li>XGBoost: ~8-15ms</li>
-                    <li>BiLSTM: ~20-40ms (GPU ile optimize edilebilir)</li>
-                </ul>
-            </li>
-            <li><strong>End-to-End Latency:</strong> &lt; 200ms (hedef)</li>
-        </ol>
+      <p><strong>Ölçülecek Metrikler:</strong></p>
+      <ol>
+        <li>
+          <strong>Packet Capture → Kafka Publish Latency:</strong> &lt; 100ms
+        </li>
+        <li><strong>Kafka → Consumer Processing Latency:</strong> &lt; 50ms</li>
+        <li>
+          <strong>Model Inference Time:</strong>
+          <ul>
+            <li>Random Forest: ~5-10ms</li>
+            <li>XGBoost: ~8-15ms</li>
+            <li>BiLSTM: ~20-40ms (GPU ile optimize edilebilir)</li>
+          </ul>
+        </li>
+        <li><strong>End-to-End Latency:</strong> &lt; 200ms (hedef)</li>
+      </ol>
 
-        <h3>5.4 Production Hardening</h3>
-        <ul>
-            <li>Proper logging (Python <code>logging</code> module)</li>
-            <li>Prometheus/Grafana monitoring entegrasyonu</li>
-            <li>Alert system (Email/Telegram bildirimleri)</li>
-            <li>Firewall auto-blocking (<code>iptables</code> integration)</li>
-            <li>Multi-interface support (Wi-Fi + Ethernet simultaneous)</li>
-        </ul>
+      <h3>5.4 Production Hardening</h3>
+      <ul>
+        <li>Proper logging (Python <code>logging</code> module)</li>
+        <li>Prometheus/Grafana monitoring entegrasyonu</li>
+        <li>Alert system (Email/Telegram bildirimleri)</li>
+        <li>Firewall auto-blocking (<code>iptables</code> integration)</li>
+        <li>Multi-interface support (Wi-Fi + Ethernet simultaneous)</li>
+      </ul>
     </section>
 
     <section>
-        <h2>📈 6. Proje Metrikleri ve Başarılar</h2>
+      <h2>📈 6. Proje Metrikleri ve Başarılar</h2>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Metrik</th>
-                    <th>Değer</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Toplam Kod Satırı</strong></td>
-                    <td>~3,500+ satır</td>
-                </tr>
-                <tr>
-                    <td><strong>Python Modülleri</strong></td>
-                    <td>8 ana modül</td>
-                </tr>
-                <tr>
-                    <td><strong>ML Modelleri</strong></td>
-                    <td>4 farklı algoritma</td>
-                </tr>
-                <tr>
-                    <td><strong>Docker Containers</strong></td>
-                    <td>2 (Kafka + Zookeeper)</td>
-                </tr>
-                <tr>
-                    <td><strong>Git Commits (emre-dev)</strong></td>
-                    <td>15+ commit</td>
-                </tr>
-                <tr>
-                    <td><strong>Çözülen Critical Bug</strong></td>
-                    <td>5 major issue</td>
-                </tr>
-                <tr>
-                    <td><strong>Uptime (Test Phase)</strong></td>
-                    <td>%100 (crash-free)</td>
-                </tr>
-                <tr>
-                    <td><strong>Feature Count</strong></td>
-                    <td>78 özellik</td>
-                </tr>
-            </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Metrik</th>
+            <th>Değer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Toplam Kod Satırı</strong></td>
+            <td>~3,500+ satır</td>
+          </tr>
+          <tr>
+            <td><strong>Python Modülleri</strong></td>
+            <td>8 ana modül</td>
+          </tr>
+          <tr>
+            <td><strong>ML Modelleri</strong></td>
+            <td>4 farklı algoritma</td>
+          </tr>
+          <tr>
+            <td><strong>Docker Containers</strong></td>
+            <td>2 (Kafka + Zookeeper)</td>
+          </tr>
+          <tr>
+            <td><strong>Git Commits (emre-dev)</strong></td>
+            <td>15+ commit</td>
+          </tr>
+          <tr>
+            <td><strong>Çözülen Critical Bug</strong></td>
+            <td>5 major issue</td>
+          </tr>
+          <tr>
+            <td><strong>Uptime (Test Phase)</strong></td>
+            <td>%100 (crash-free)</td>
+          </tr>
+          <tr>
+            <td><strong>Feature Count</strong></td>
+            <td>78 özellik</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section>
-        <h2>🏆 7. Sonuç ve Değerlendirme</h2>
+      <h2>🏆 7. Sonuç ve Değerlendirme</h2>
 
-        <p>Bu projede, <strong>gerçek dünya production ortamlarında karşılaşılan kompleks mühendislik problemlerini</strong> başarıyla çözdük:</p>
+      <p>
+        Bu projede,
+        <strong
+          >gerçek dünya production ortamlarında karşılaşılan kompleks
+          mühendislik problemlerini</strong
+        >
+        başarıyla çözdük:
+      </p>
 
-        <ol>
-            <li>✅ <strong>MLOps Pipeline:</strong> End-to-end automated workflow</li>
-            <li>✅ <strong>Fault Tolerance:</strong> Multiple fallback mechanisms</li>
-            <li>✅ <strong>Scalability:</strong> Kafka-based async architecture</li>
-            <li>✅ <strong>Flexibility:</strong> Dynamic model switching without downtime</li>
-            <li>✅ <strong>Robustness:</strong> Feature alignment, error handling, dummy fallbacks</li>
-        </ol>
+      <ol>
+        <li>
+          ✅ <strong>MLOps Pipeline:</strong> End-to-end automated workflow
+        </li>
+        <li>
+          ✅ <strong>Fault Tolerance:</strong> Multiple fallback mechanisms
+        </li>
+        <li>✅ <strong>Scalability:</strong> Kafka-based async architecture</li>
+        <li>
+          ✅ <strong>Flexibility:</strong> Dynamic model switching without
+          downtime
+        </li>
+        <li>
+          ✅ <strong>Robustness:</strong> Feature alignment, error handling,
+          dummy fallbacks
+        </li>
+      </ol>
 
-        <h3>Akademik Katkı</h3>
-        <p>Bu sistem, <strong>makine öğrenmesi</strong> ve <strong>sistem mühendisliği</strong> disiplinlerinin kesişiminde, teorik bilgiyi pratiğe dönüştürmenin örneğidir. Özellikle:</p>
-        <ul>
-            <li>Real-time big data processing (Kafka)</li>
-            <li>Deep learning deployment (BiLSTM on live traffic)</li>
-            <li>DevOps automation (Docker, Git LFS)</li>
-        </ul>
+      <h3>Akademik Katkı</h3>
+      <p>
+        Bu sistem, <strong>makine öğrenmesi</strong> ve
+        <strong>sistem mühendisliği</strong> disiplinlerinin kesişiminde, teorik
+        bilgiyi pratiğe dönüştürmenin örneğidir. Özellikle:
+      </p>
+      <ul>
+        <li>Real-time big data processing (Kafka)</li>
+        <li>Deep learning deployment (BiLSTM on live traffic)</li>
+        <li>DevOps automation (Docker, Git LFS)</li>
+      </ul>
 
-        <h3>Sonraki Sunum İçin</h3>
-        <p>Live demo ile saldırı simülasyonu ve model switching gösterisi yapılacak.</p>
+      <h3>Sonraki Sunum İçin</h3>
+      <p>
+        Live demo ile saldırı simülasyonu ve model switching gösterisi
+        yapılacak.
+      </p>
 
-        <hr>
+      <hr />
 
-        <p><strong>Hazırlayan:</strong> Emre (emre-dev branch)<br>
-        <strong>Danışman/Ekip:</strong> betuldanismaz (main branch maintainer)<br>
-        <strong>Son Güncelleme:</strong> 19 Şubat 2026</p>
+      <p>
+        <strong>Hazırlayan:</strong> Emre (emre-dev branch)<br />
+        <strong>Danışman/Ekip:</strong> betuldanismaz (main branch
+        maintainer)<br />
+        <strong>Son Güncelleme:</strong> 19 Şubat 2026
+      </p>
     </section>
-</body>
+  </body>
 </html>

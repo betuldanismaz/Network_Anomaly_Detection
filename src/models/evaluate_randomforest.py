@@ -86,7 +86,7 @@ def print_header():
 {CYAN}{'═'*90}
 ╔════════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                        ║
-║     🛡️  NETWORK INTRUSION DETECTION — 3-CLASS RF PERFORMANCE ANALYTICS 🛡️             ║
+║       NETWORK INTRUSION DETECTION — 3-CLASS RF PERFORMANCE ANALYTICS              ║
 ║                                                                                        ║
 ║             Classes: Benign (0) | Volumetric (1) | Semantic (2)                        ║
 ║                                                                                        ║

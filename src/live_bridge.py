@@ -12,6 +12,7 @@ import json
 import io
 import contextlib
 import gc
+import warnings
 from datetime import datetime
 from scapy.all import sniff, wrpcap, conf
 
@@ -21,6 +22,11 @@ import pandas as pd
 from scapy.all import sniff, wrpcap, rdpcap
 from dotenv import load_dotenv
 from confluent_kafka import Producer
+
+try:
+    from scapy.arch.windows import get_windows_if_list
+except Exception:
+    get_windows_if_list = None
 
 # Load environment variables
 load_dotenv()
@@ -46,7 +52,42 @@ except ImportError:
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
 # Scapy interface name must match show_interfaces() output exactly.
-INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
+def resolve_capture_interface(interface_value: str) -> str:
+    """Resolve Windows adapter names/descriptions to the Scapy capture name."""
+    raw_value = (interface_value or "").strip()
+    if not raw_value:
+        return "Wi-Fi"
+
+    if os.name != "nt" or get_windows_if_list is None:
+        return raw_value
+
+    target = raw_value.casefold()
+    for iface in get_windows_if_list():
+        name = str(iface.get("name") or "").strip()
+        description = str(iface.get("description") or "").strip()
+        guid = str(iface.get("guid") or "").strip()
+        device_name = f"\\Device\\NPF_{guid.strip('{}')}" if guid else ""
+
+        candidates = {
+            name.casefold(),
+            description.casefold(),
+            guid.casefold(),
+            guid.strip("{}").casefold(),
+            device_name.casefold(),
+        }
+        if target in candidates:
+            if raw_value != name:
+                print(
+                    f"ℹ️ NETWORK_INTERFACE resolved: '{raw_value}' -> '{name}' "
+                    f"({description or device_name})"
+                )
+            return name
+
+    print(f"⚠️ NETWORK_INTERFACE '{raw_value}' did not match a known Scapy interface; using as-is.")
+    return raw_value
+
+
+INTERFACE = resolve_capture_interface(os.getenv("NETWORK_INTERFACE", "Wi-Fi"))
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
@@ -102,6 +143,21 @@ PRODUCER_STATS = {
     "skipped_windows": 0,
     "flows_sent": 0,
 }
+
+#for only 20 features add this function written by betul to convert 20 features to 78 features with 0 filling for missing columns
+def load_model_feature_columns():
+    """Load the exact feature order expected by the deployed scaler/model."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            scaler = joblib.load(SCALER_PATH)
+        feature_names = list(getattr(scaler, "feature_names_in_", []))
+        return feature_names
+    except Exception:
+        return []
+
+
+MODEL_FEATURE_COLUMNS = load_model_feature_columns()
 
 # Training data schema (78 features) - must match exactly with model training columns
 TRAINING_FEATURE_COLUMNS = [
@@ -491,7 +547,7 @@ COLUMN_RENAME_MAP = {
     "idle_min": "Idle Min",
 }
 
-def feature_extraction_and_predict():
+def feature_extraction_and_predict_dummy_fallback():
     """
     Extract features from PCAP and send to Kafka.
     Uses cicflowmeter CLI with fallback to dummy features if extraction fails.
@@ -640,7 +696,7 @@ def print_producer_stats():
     )
 
 
-def feature_extraction_and_predict():
+def feature_extraction_and_predict_legacy_76():
     """
     Extract features from PCAP and send only real flows to Kafka.
     Returns a status dict so the caller can decide whether to keep buffering.
@@ -726,7 +782,7 @@ def feature_extraction_and_predict():
                 "dst_ip": features.iloc[idx].get("dst_ip", "0.0.0.0") if "dst_ip" in features.columns else "0.0.0.0",
                 "features": feature_dict,
                 "feature_count": len(feature_dict),
-                "producer_id": "live_bridge_v1",
+                "producer_id": "live_bridge_v1_76f",
             }
             message_json = json.dumps(kafka_message, default=str)
             KAFKA_PRODUCER.produce(
@@ -741,6 +797,96 @@ def feature_extraction_and_predict():
         PRODUCER_STATS["extract_successes"] += 1
         PRODUCER_STATS["flows_sent"] += len(model_features)
         return {"success": True, "flows_sent": len(model_features), "reason": None}
+
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"⚠️ Kafka send error: {exc}")
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "flows_sent": 0, "reason": f"kafka send error: {exc}"}
+
+
+def feature_extraction_and_predict(): 
+    """
+    Extract features from PCAP and send only real flows to Kafka.
+    This override publishes the training-schema feature names expected by the scaler/model.
+    """
+    print("   ↳ Analiz ediliyor...", end="\r")
+    PRODUCER_STATS["extract_attempts"] += 1
+
+    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
+    if not cli_ok:
+        PRODUCER_STATS["extract_failures"] += 1
+        error_preview = cli_err[:180] if cli_err else "unknown error"
+        print(f"   ⚠️ Feature extraction failed: {error_preview}")
+        return {
+            "success": False,
+            "flows_sent": 0,
+            "reason": cli_err or "feature extraction failed",
+        }
+
+    if not os.path.exists(TEMP_CSV):
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction produced no CSV output")
+        return {"success": False, "flows_sent": 0, "reason": "csv missing"}
+
+    try:
+        df = pd.read_csv(TEMP_CSV)
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"   ⚠️ CSV read error: {exc}")
+        return {"success": False, "flows_sent": 0, "reason": f"csv read error: {exc}"}
+
+    if df.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction returned an empty CSV")
+        return {"success": False, "flows_sent": 0, "reason": "csv empty"}
+
+    print(f"   ✅ Parsed {len(df)} flow(s) from CSV", end="\r")
+    df.columns = df.columns.str.strip()
+    src_ips = extract_source_ips(df)
+
+    dst_ips = None
+    for candidate in ("Dst IP", "Destination IP", "dst_ip"):
+        if candidate in df.columns:
+            dst_ips = df[candidate]
+            break
+
+    features = prepare_feature_frame(df)
+    features.replace([float("inf"), float("-inf")], 0, inplace=True)
+    features.fillna(0, inplace=True)
+    outgoing_feature_columns = MODEL_FEATURE_COLUMNS or EXPECTED_FEATURES
+    features = features.reindex(columns=outgoing_feature_columns, fill_value=0.0)
+
+    if features.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ No model-ready features were produced from the extracted flows")
+        return {"success": False, "flows_sent": 0, "reason": "no model features"}
+
+    try:
+        for idx in range(len(features)):
+            feature_dict = features.iloc[idx].to_dict()
+            kafka_message = {
+                "timestamp": datetime.now().isoformat(),
+                "src_ip": src_ips.iloc[idx] if (src_ips is not None and idx < len(src_ips)) else "0.0.0.0",
+                "dst_ip": dst_ips.iloc[idx] if (dst_ips is not None and idx < len(dst_ips)) else "0.0.0.0",
+                "features": feature_dict,
+                "feature_count": len(feature_dict),
+                "producer_id": "live_bridge_v1_20f",
+            }
+            message_json = json.dumps(kafka_message, default=str)
+            KAFKA_PRODUCER.produce(
+                KAFKA_TOPIC,
+                value=message_json.encode("utf-8"),
+                callback=delivery_report,
+            )
+
+        KAFKA_PRODUCER.flush(timeout=10)
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"✅ [{timestamp}] {len(features)} flow(s) sent to Kafka (Topic: {KAFKA_TOPIC})           ")
+        PRODUCER_STATS["extract_successes"] += 1
+        PRODUCER_STATS["flows_sent"] += len(features)
+        return {"success": True, "flows_sent": len(features), "reason": None}
 
     except Exception as exc:
         PRODUCER_STATS["extract_failures"] += 1
@@ -864,7 +1010,7 @@ def delivery_report(err, msg):
     # Başarılı gönderimler için sessiz mod (spam önleme)
 
 
-print("🛡️  AI NETWORK IPS - KAFKA PRODUCER MODE")
+print("  AI NETWORK IPS - KAFKA PRODUCER MODE")
 print("=" * 60)
 
 try:

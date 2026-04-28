@@ -8,6 +8,7 @@ Multi-tab Security Operations Center dashboard for BiLSTM-based 3-class NIDS.
 import os
 import sys
 import time
+import ipaddress
 from datetime import datetime
 
 import pandas as pd
@@ -15,6 +16,23 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    import folium
+    from folium.plugins import MarkerCluster
+except ImportError:
+    folium = None
+    MarkerCluster = None
+
+try:
+    from streamlit_folium import st_folium
+except ImportError:
+    st_folium = None
 
 # ---------------------------------------------------------------------------
 # PATH SETUP
@@ -52,6 +70,13 @@ SIMPLE_LIVE_COLUMNS = [
     "Timestamp", "Src_IP", "Dst_IP", "Predicted_Label",
     "Confidence_Score", "Model_Used", "Processing_Time_Ms",
 ]
+PROTOCOL_LABELS = {
+    1: "ICMP",
+    6: "TCP",
+    17: "UDP",
+    47: "GRE",
+    50: "ESP",
+}
 RISK_LEVELS = {
     1: {"name": "SAFE",     "color": "#00CC66", "emoji": "🟢"},
     2: {"name": "LOW",      "color": "#3498db", "emoji": "🔵"},
@@ -70,8 +95,8 @@ MODEL_MAPPING = {
 # PAGE CONFIG
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="🛡️ SOC Network IPS",
-    page_icon="🛡️",
+    page_title=" SOC Network IPS",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -270,6 +295,66 @@ def calculate_avg_confidence(df: pd.DataFrame) -> float:
     if "confidence_score" in df.columns:
         return pd.to_numeric(df["confidence_score"], errors="coerce").mean()
     return 0.0
+
+
+def find_first_present_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    for candidate in candidates:
+        if candidate in df.columns:
+            return candidate
+    return None
+
+
+def format_protocol_label(value) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.notna(numeric):
+        numeric = int(numeric)
+        return PROTOCOL_LABELS.get(numeric, f"Proto {numeric}")
+
+    text = str(value).strip().upper()
+    if not text or text == "NAN":
+        return "Unknown"
+    return text
+
+
+def is_private_ip(ip_value: str) -> bool:
+    try:
+        return ipaddress.ip_address(str(ip_value)).is_private
+    except ValueError:
+        return False
+
+
+@st.cache_data(ttl=60 * 60 * 24, show_spinner=False)
+def lookup_geo_ip(ip_value: str) -> dict:
+    if is_private_ip(ip_value):
+        return {"status": "private", "ip": ip_value}
+    if requests is None:
+        return {"status": "error", "ip": ip_value, "reason": "requests dependency is unavailable"}
+
+    try:
+        response = requests.get(f"https://ipwho.is/{ip_value}", timeout=5)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception as exc:
+        return {"status": "error", "ip": ip_value, "reason": str(exc)}
+
+    if not payload.get("success", False):
+        return {
+            "status": "error",
+            "ip": ip_value,
+            "reason": payload.get("message", "Geo-IP lookup failed"),
+        }
+
+    return {
+        "status": "ok",
+        "ip": ip_value,
+        "latitude": payload.get("latitude"),
+        "longitude": payload.get("longitude"),
+        "city": payload.get("city"),
+        "country": payload.get("country"),
+        "region": payload.get("region"),
+        "continent": payload.get("continent"),
+        "isp": payload.get("connection", {}).get("isp"),
+    }
 
 # ---------------------------------------------------------------------------
 # RENDER HELPERS
@@ -597,6 +682,97 @@ def render_confidence_histogram(df: pd.DataFrame):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_protocol_port_heatmap(df: pd.DataFrame):
+    st.markdown("#### Protocol / Port Heatmap")
+    if df.empty:
+        st.info("Waiting for data...")
+        return
+
+    protocol_col = find_first_present_column(df, ["protocol", "Protocol"])
+    dst_port_col = find_first_present_column(df, ["dst_port", "Dst Port", "Destination Port", "Dest Port"])
+    src_port_col = find_first_present_column(df, ["src_port", "Src Port", "Source Port"])
+    port_col = dst_port_col or src_port_col
+
+    working = df.copy()
+    if protocol_col is not None:
+        working["protocol_label"] = working[protocol_col].apply(format_protocol_label)
+    else:
+        working["protocol_label"] = "Unknown"
+
+    has_port_data = port_col is not None
+    if has_port_data:
+        ports = pd.to_numeric(working[port_col], errors="coerce")
+        valid_ports = ports.where(ports.between(0, 65535))
+        top_ports = valid_ports.dropna().astype(int).value_counts().head(12).index.tolist()
+        if top_ports:
+            working["port_label"] = valid_ports.apply(
+                lambda value: str(int(value)) if pd.notna(value) and int(value) in top_ports else "Other"
+            )
+        else:
+            working["port_label"] = "N/A"
+            has_port_data = False
+    else:
+        working["port_label"] = "N/A"
+
+    heatmap_df = (
+        working.groupby(["protocol_label", "port_label"])
+        .size()
+        .reset_index(name="flow_count")
+    )
+    if heatmap_df.empty:
+        st.info("Not enough data for heatmap.")
+        return
+
+    protocol_order = (
+        heatmap_df.groupby("protocol_label")["flow_count"]
+        .sum()
+        .sort_values(ascending=False)
+        .index
+        .tolist()
+    )
+    if has_port_data:
+        port_order = [str(port) for port in top_ports]
+        if "Other" in heatmap_df["port_label"].values:
+            port_order.append("Other")
+    else:
+        port_order = ["N/A"]
+
+    pivot = (
+        heatmap_df.pivot(index="protocol_label", columns="port_label", values="flow_count")
+        .reindex(index=protocol_order, columns=port_order, fill_value=0)
+        .fillna(0)
+    )
+
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot.values,
+        x=pivot.columns.tolist(),
+        y=pivot.index.tolist(),
+        colorscale=[
+            [0.0, "#0b1220"],
+            [0.2, "#123b5a"],
+            [0.45, "#1f8a70"],
+            [0.7, "#f4b942"],
+            [1.0, "#ff5d5d"],
+        ],
+        colorbar=dict(title="Flows"),
+        hovertemplate="Protocol: %{y}<br>Port: %{x}<br>Flows: %{z}<extra></extra>",
+    ))
+    fig.update_layout(
+        height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.05)",
+        font_color="#c9d1d9",
+        margin=dict(l=20, r=20, t=20, b=10),
+        xaxis=dict(title="Port", side="bottom"),
+        yaxis=dict(title="Protocol"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    if has_port_data:
+        st.caption("Density scale shows flow concentration by protocol and port. Missing or low-frequency ports are grouped into `Other`.")
+    else:
+        st.caption("Port metadata is not available in the current live feed, so the heatmap falls back to protocol density with an `N/A` port bucket.")
+
+
 def render_recent_detections(df: pd.DataFrame):
     st.markdown("#### 📋 Recent Detections (last 20)")
     if df.empty:
@@ -618,7 +794,152 @@ def render_recent_detections(df: pd.DataFrame):
 # ---------------------------------------------------------------------------
 # SIDEBAR — global controls (persistent across all tabs)
 # ---------------------------------------------------------------------------
-st.sidebar.markdown('<p class="soc-header">🛡️ SOC Control Panel</p>', unsafe_allow_html=True)
+def render_live_attack_feed(logs_df: pd.DataFrame):
+    st.markdown("#### Live Attack Feed")
+    if logs_df.empty:
+        st.markdown(
+            """
+            <div style="background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.16); border-radius: 12px; padding: 18px;">
+                <div style="font-size: 0.95rem; font-weight: 600; color: #c9d1d9; margin-bottom: 6px;">No recent alerts</div>
+                <div style="font-size: 0.85rem; color: #8b949e;">The alert feed will populate automatically as attack decisions are written to the database.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    recent_alerts = logs_df.copy()
+    if "timestamp" in recent_alerts.columns:
+        recent_alerts["timestamp"] = pd.to_datetime(recent_alerts["timestamp"], errors="coerce")
+        recent_alerts = recent_alerts.sort_values("timestamp", ascending=False)
+    recent_alerts = recent_alerts.head(10)
+
+    action_styles = {
+        "BLOCKED": {"bg": "rgba(255,75,75,0.18)", "fg": "#ff7b72", "border": "rgba(255,75,75,0.35)"},
+        "ALLOWED": {"bg": "rgba(255,209,102,0.18)", "fg": "#ffd166", "border": "rgba(255,209,102,0.35)"},
+        "NORMAL": {"bg": "rgba(0,204,102,0.18)", "fg": "#00cc66", "border": "rgba(0,204,102,0.35)"},
+    }
+
+    for _, row in recent_alerts.iterrows():
+        action = str(row.get("action", "UNKNOWN")).upper()
+        style = action_styles.get(
+            action,
+            {"bg": "rgba(88,166,255,0.18)", "fg": "#58a6ff", "border": "rgba(88,166,255,0.35)"},
+        )
+        timestamp = row.get("timestamp")
+        timestamp_label = timestamp.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(timestamp) else "Unknown time"
+        src_ip = row.get("src_ip", "Unknown IP")
+        details = str(row.get("details", "No details provided.")).strip() or "No details provided."
+
+        st.markdown(
+            f"""
+            <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <div style="font-size: 0.96rem; font-weight: 700; color: #c9d1d9;">{src_ip}</div>
+                        <div style="font-size: 0.78rem; color: #8b949e;">{timestamp_label}</div>
+                    </div>
+                    <span style="background: {style['bg']}; color: {style['fg']}; border: 1px solid {style['border']}; border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;">{action}</span>
+                </div>
+                <div style="font-size: 0.85rem; line-height: 1.55; color: #c9d1d9;">{details}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_threat_map(logs_df: pd.DataFrame):
+    st.markdown("#### Threat Map")
+    if logs_df.empty:
+        st.info("No incident records available for Geo-IP mapping.")
+        return
+    if folium is None or st_folium is None:
+        st.warning("Threat Map dependencies are missing. Install `folium` and `streamlit-folium` to enable the Geo-IP map.")
+        return
+
+    alert_ips = logs_df.copy()
+    if "src_ip" not in alert_ips.columns:
+        st.warning("Source IP data is not available in the alert log.")
+        return
+
+    if "timestamp" in alert_ips.columns:
+        alert_ips["timestamp"] = pd.to_datetime(alert_ips["timestamp"], errors="coerce")
+        alert_ips = alert_ips.sort_values("timestamp", ascending=False)
+
+    alert_ips["src_ip"] = alert_ips["src_ip"].astype(str).str.strip()
+    alert_ips = alert_ips[alert_ips["src_ip"].ne("")]
+    unique_ips = alert_ips.drop_duplicates(subset=["src_ip"], keep="first").head(40)
+
+    private_alerts = unique_ips[unique_ips["src_ip"].apply(is_private_ip)].copy()
+    public_alerts = unique_ips[~unique_ips["src_ip"].apply(is_private_ip)].copy()
+
+    geocoded_rows = []
+    lookup_errors = []
+    for _, row in public_alerts.iterrows():
+        geo = lookup_geo_ip(row["src_ip"])
+        if geo.get("status") == "ok" and geo.get("latitude") is not None and geo.get("longitude") is not None:
+            geocoded_rows.append({**row.to_dict(), **geo})
+        elif geo.get("status") != "private":
+            lookup_errors.append({"src_ip": row["src_ip"], "reason": geo.get("reason", "Unknown error")})
+
+    geo_df = pd.DataFrame(geocoded_rows)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Mapped Public IPs", f"{len(geo_df):,}")
+    c2.metric("Private IP Alerts", f"{len(private_alerts):,}")
+    c3.metric("Lookup Failures", f"{len(lookup_errors):,}")
+
+    if not geo_df.empty:
+        map_center = [geo_df["latitude"].mean(), geo_df["longitude"].mean()]
+        threat_map = folium.Map(
+            location=map_center,
+            zoom_start=2,
+            tiles="CartoDB dark_matter",
+            control_scale=True,
+        )
+        marker_layer = MarkerCluster(name="Threat Sources").add_to(threat_map) if MarkerCluster else threat_map
+
+        for _, row in geo_df.iterrows():
+            timestamp = row.get("timestamp")
+            last_seen = timestamp.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(timestamp) else "Unknown"
+            popup_html = f"""
+                <div style="min-width: 220px;">
+                    <div style="font-weight: 700; margin-bottom: 6px;">{row['src_ip']}</div>
+                    <div><strong>Location:</strong> {row.get('city') or 'Unknown city'}, {row.get('country') or 'Unknown country'}</div>
+                    <div><strong>Region:</strong> {row.get('region') or row.get('continent') or 'Unknown'}</div>
+                    <div><strong>ISP:</strong> {row.get('isp') or 'Unknown'}</div>
+                    <div><strong>Action:</strong> {row.get('action', 'Unknown')}</div>
+                    <div><strong>Last Seen:</strong> {last_seen}</div>
+                </div>
+            """
+            folium.CircleMarker(
+                location=[row["latitude"], row["longitude"]],
+                radius=7,
+                color="#ff7b72" if str(row.get("action", "")).upper() == "BLOCKED" else "#ffd166",
+                fill=True,
+                fill_opacity=0.85,
+                weight=2,
+                popup=folium.Popup(popup_html, max_width=320),
+                tooltip=row["src_ip"],
+            ).add_to(marker_layer)
+
+        st_folium(threat_map, use_container_width=True, height=460, returned_objects=[])
+    else:
+        st.info("No public IPs could be mapped yet. Private IPs are listed separately below.")
+
+    if not private_alerts.empty:
+        st.markdown("##### Private IP Alerts")
+        private_display = private_alerts.reindex(columns=["src_ip", "action", "timestamp", "details"]).copy()
+        private_display.columns = ["IP", "Action", "Last Seen", "Details"]
+        st.dataframe(private_display, use_container_width=True, hide_index=True)
+
+    if lookup_errors:
+        unresolved = pd.DataFrame(lookup_errors)
+        with st.expander("Geo-IP Lookup Issues"):
+            st.dataframe(unresolved, use_container_width=True, hide_index=True)
+
+
+st.sidebar.markdown('<p class="soc-header">SOC Control Panel</p>', unsafe_allow_html=True)
 
 # 1. Status LEDs
 status = get_system_status()
@@ -733,7 +1054,7 @@ st.sidebar.caption(f"🔁 Refresh #{count}")
 # ---------------------------------------------------------------------------
 # PAGE HEADER
 # ---------------------------------------------------------------------------
-st.markdown('<p class="soc-header">🛡️ AI Network IPS — Security Operations Center</p>', unsafe_allow_html=True)
+st.markdown('<p class="soc-header"> AI Network IPS — Security Operations Center</p>', unsafe_allow_html=True)
 st.markdown('<p class="soc-sub">3-Class BiLSTM NIDS &nbsp;|&nbsp; Benign · Volumetric · Semantic &nbsp;|&nbsp; Real-time Detection</p>', unsafe_allow_html=True)
 st.markdown("---")
 
@@ -769,6 +1090,12 @@ with tab_monitor:
         render_stacked_time_series(live_df, logs_df)
 
     st.markdown("---")
+    render_protocol_port_heatmap(live_df)
+
+    st.markdown("---")
+    render_live_attack_feed(logs_df)
+
+    st.markdown("---")
     render_recent_detections(live_df)
 
 # ── Tab 2: Threat Map ──────────────────────────────────────────────────────
@@ -779,6 +1106,8 @@ with tab_map:
     col1.metric("Active Threat Sources", "—")
     col2.metric("Top Attack Country", "—")
     col3.metric("Blocked IPs (24h)", "—")
+    st.markdown("---")
+    render_threat_map(logs_df)
 
 # ── Tab 3: Incident Logs ──────────────────────────────────────────────────
 with tab_logs:

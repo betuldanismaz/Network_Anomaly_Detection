@@ -8,6 +8,9 @@ matplotlib
 seaborn
 joblib
 plotly
+requests
+folium
+streamlit-folium
 python-dotenv
 cicflowmeter
 confluent-kafka
