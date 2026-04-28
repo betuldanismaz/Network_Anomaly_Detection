@@ -397,6 +397,148 @@ def process_message(message_value):
         return False
 
 
+def process_message(message_value):
+    """
+    Process a single Kafka message: parse, validate, predict, log.
+
+    Args:
+        message_value: Raw message bytes from Kafka
+
+    Returns:
+        bool: True if processing successful, False otherwise
+    """
+    start_time = time.time()
+
+    try:
+        message_data = json.loads(message_value.decode("utf-8"))
+
+        timestamp = message_data.get("timestamp", datetime.now().isoformat())
+        src_ip = message_data.get("src_ip", "Unknown")
+        dst_ip = message_data.get("dst_ip", "Unknown")
+        features_dict = message_data.get("features", {})
+        producer_id = message_data.get("producer_id", "unknown")
+
+        if not isinstance(features_dict, dict) or not features_dict:
+            print(f"{YELLOW}⚠️  Rejected message from {producer_id}: empty or invalid feature payload{RESET}")
+            STATS["rejected_messages"] += 1
+            return False
+
+        expected_features = get_expected_feature_names()
+        incoming_feature_names = list(features_dict.keys())
+        features_df = pd.DataFrame([features_dict])
+
+        if expected_features:
+            missing_features = [col for col in expected_features if col not in features_dict]
+            extra_features = [col for col in incoming_feature_names if col not in expected_features]
+            shared_features = len(expected_features) - len(missing_features)
+
+            if shared_features == 0:
+                print(
+                    f"{YELLOW}⚠️  Rejected message from {producer_id}: no overlap with scaler schema "
+                    f"(incoming={len(incoming_feature_names)}, expected={len(expected_features)}){RESET}"
+                )
+                STATS["rejected_messages"] += 1
+                return False
+
+            if missing_features or extra_features:
+                STATS["schema_adjustments"] += 1
+                print(
+                    f"{CYAN}ℹ️  Schema adjusted from {producer_id}: "
+                    f"incoming={len(incoming_feature_names)} expected={len(expected_features)} "
+                    f"missing={len(missing_features)} extra={len(extra_features)}{RESET}"
+                )
+
+            features_df = features_df.reindex(columns=expected_features, fill_value=0.0)
+
+        try:
+            features_scaled = SCALER.transform(features_df)
+            features_scaled_df = pd.DataFrame(
+                features_scaled,
+                columns=features_df.columns,
+                index=features_df.index,
+            )
+        except Exception as exc:
+            print(f"{RED}⚠️  Scaling error: {exc}{RESET}")
+            features_df = features_df.fillna(0)
+            features_scaled = SCALER.transform(features_df)
+            features_scaled_df = pd.DataFrame(
+                features_scaled,
+                columns=features_df.columns,
+            )
+
+        if CURRENT_MODEL_TYPE == "keras":
+            features_for_prediction = features_scaled.reshape(
+                (features_scaled.shape[0], 1, features_scaled.shape[1])
+            )
+            prediction_proba = MODEL.predict(features_for_prediction, verbose=0)[0]
+
+            if len(prediction_proba) == 1:
+                confidence_score = float(prediction_proba[0])
+                prediction = 1 if confidence_score > 0.5 else 0
+            else:
+                prediction = int(np.argmax(prediction_proba))
+                confidence_score = float(prediction_proba[prediction])
+        else:
+            prediction = MODEL.predict(features_scaled_df)[0]
+            try:
+                probabilities = MODEL.predict_proba(features_scaled_df)[0]
+                confidence_score = float(probabilities[1])
+            except AttributeError:
+                confidence_score = float(prediction)
+
+        is_attack = prediction == 1
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        log_entry = {
+            "Timestamp": timestamp,
+            "Src_IP": src_ip,
+            "Dst_IP": dst_ip,
+            "Predicted_Label": int(prediction),
+            "Confidence_Score": round(confidence_score, 4),
+            "Model_Used": CURRENT_MODEL_NAME.replace(".pkl", "").replace(".keras", ""),
+            "Processing_Time_Ms": round(processing_time_ms, 2),
+        }
+
+        pd.DataFrame([log_entry]).to_csv(CSV_OUTPUT_PATH, mode="a", header=False, index=False)
+
+        if DB_AVAILABLE:
+            if is_attack:
+                if src_ip not in WHITELIST_IPS and src_ip != "Unknown":
+                    log_attack(src_ip, "BLOCKED", f"Attack detected (confidence: {confidence_score:.2%})")
+                else:
+                    log_attack(src_ip, "ALLOWED", f"Attack detected but whitelisted (confidence: {confidence_score:.2%})")
+
+        STATS["total_processed"] += 1
+        if is_attack:
+            STATS["attacks_detected"] += 1
+        else:
+            STATS["clean_traffic"] += 1
+
+        current_time = datetime.now().strftime("%H:%M:%S")
+        if is_attack:
+            print(f"{RED}{BOLD}🚨 [{current_time}] ALERT: ATTACK DETECTED!{RESET}")
+            print(f"{RED}   Source IP: {src_ip} → Destination: {dst_ip}{RESET}")
+            print(f"{RED}   Confidence: {confidence_score:.2%} | Processing: {processing_time_ms:.2f}ms{RESET}")
+            if src_ip in WHITELIST_IPS:
+                print(f"{YELLOW}   ⚠️  IP is whitelisted - not blocking{RESET}")
+        else:
+            print(f"{GREEN}✅ [{current_time}] Clean Traffic{RESET}", end="")
+            print(f"{GREEN} | {src_ip} → {dst_ip} | Confidence: {confidence_score:.2%} | {processing_time_ms:.2f}ms{RESET}")
+
+        return True
+
+    except json.JSONDecodeError as exc:
+        print(f"{RED}⚠️  JSON parsing error: {exc}{RESET}")
+        STATS["errors"] += 1
+        return False
+    except Exception as exc:
+        print(f"{RED}⚠️  Processing error: {exc}{RESET}")
+        import traceback
+        traceback.print_exc()
+        STATS["errors"] += 1
+        return False
+
+
 def print_statistics():
     """Print consumer statistics."""
     runtime = datetime.now() - STATS["start_time"]
@@ -409,6 +551,8 @@ def print_statistics():
     print(f"   Total Processed: {STATS['total_processed']}")
     print(f"   {RED}Attacks Detected: {STATS['attacks_detected']}{RESET}")
     print(f"   {GREEN}Clean Traffic: {STATS['clean_traffic']}{RESET}")
+    print(f"   {YELLOW}Rejected Messages: {STATS['rejected_messages']}{RESET}")
+    print(f"   {CYAN}Schema Adjustments: {STATS['schema_adjustments']}{RESET}")
     print(f"   {YELLOW}Errors: {STATS['errors']}{RESET}")
     if runtime_seconds > 0:
         print(f"   Throughput: {STATS['total_processed']/runtime_seconds:.2f} messages/sec")

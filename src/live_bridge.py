@@ -1130,6 +1130,7 @@ def main_loop():
 
     packet_buffer = []
     buffered_windows = 0
+    last_stats_window = 0
 
     while True:
         try:
@@ -1173,8 +1174,13 @@ def main_loop():
             else:
                 print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
 
-            if PRODUCER_STATS["capture_windows"] > 0 and PRODUCER_STATS["capture_windows"] % 10 == 0:
+            if (
+                PRODUCER_STATS["capture_windows"] > 0
+                and PRODUCER_STATS["capture_windows"] % 10 == 0
+                and PRODUCER_STATS["capture_windows"] != last_stats_window
+            ):
                 print_producer_stats()
+                last_stats_window = PRODUCER_STATS["capture_windows"]
 
         except KeyboardInterrupt:
             print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
