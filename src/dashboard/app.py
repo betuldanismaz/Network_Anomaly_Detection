@@ -70,8 +70,16 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Auto-refresh (non-blocking)
-count = st_autorefresh(interval=15_000, limit=None, key="soc_autorefresh")
+# Auto-refresh logic driven by session state
+if "live_mode" not in st.session_state:
+    st.session_state.live_mode = True
+if "refresh_interval" not in st.session_state:
+    st.session_state.refresh_interval = 15
+
+if st.session_state.live_mode:
+    count = st_autorefresh(interval=st.session_state.refresh_interval * 1000, limit=None, key="soc_autorefresh")
+else:
+    count = 0
 
 # ---------------------------------------------------------------------------
 # DARK-MODE CSS
@@ -82,12 +90,32 @@ st.markdown("""
 
   html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-  .stApp { background-color: #0d1117; color: #c9d1d9; }
+  [data-testid="stAppViewContainer"] { background: #0a0e17; color: #c9d1d9; }
+  [data-testid="stSidebar"] { background: #0d1220; border-right: 1px solid #1e2d45; }
 
-  /* Sidebar */
-  section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
-    border-right: 1px solid #30363d;
+  /* Metric cards */
+  div[data-testid="metric-container"], .kpi-card { 
+    background: rgba(255,255,255,0.04); 
+    border: 1px solid rgba(255,255,255,0.08); 
+    border-radius: 12px; 
+    backdrop-filter: blur(12px); 
+    padding: 20px; 
+    transition: transform .2s, box-shadow .2s; 
+  }
+  div[data-testid="metric-container"]:hover, .kpi-card:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 32px rgba(0,200,255,0.1); 
+  }
+
+  /* Critical Alerts */
+  @keyframes criticalPulse { 
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,75,75,0.4);} 
+    50% { box-shadow: 0 0 0 12px rgba(255,75,75,0);} 
+  }
+  .alert-critical { 
+    animation: criticalPulse 1.5s infinite; 
+    border: 1px solid #ff4b4b !important; 
+    border-radius: 12px;
   }
 
   /* Tab bar */
@@ -107,16 +135,6 @@ st.markdown("""
     color: #58a6ff !important;
     border-bottom: 2px solid #58a6ff !important;
   }
-
-  /* Metric cards */
-  div[data-testid="metric-container"] {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 12px 16px;
-    transition: transform 0.15s ease;
-  }
-  div[data-testid="metric-container"]:hover { transform: translateY(-2px); }
 
   /* Plotly charts */
   .js-plotly-plot { border-radius: 10px; }
@@ -263,6 +281,11 @@ def render_risk_gauge(df: pd.DataFrame):
         lc = df[pred].iloc[-1] if pred in df.columns else 0
         current_risk = 1 if lc == 0 else (4 if lc == 1 else 5)
     info = RISK_LEVELS.get(current_risk, RISK_LEVELS[1])
+    
+    div_class = "alert-critical" if current_risk == 5 else ""
+    if div_class:
+        st.markdown(f'<div class="{div_class}">', unsafe_allow_html=True)
+
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=current_risk,
@@ -271,7 +294,7 @@ def render_risk_gauge(df: pd.DataFrame):
         gauge={
             "axis": {"range": [1, 5], "tickcolor": "#8b949e"},
             "bar":  {"color": info["color"]},
-            "bgcolor": "#161b22",
+            "bgcolor": "rgba(255,255,255,0.05)",
             "steps": [
                 {"range": [1, 2], "color": "#0f3d22"},
                 {"range": [2, 3], "color": "#0d2b4a"},
@@ -282,8 +305,11 @@ def render_risk_gauge(df: pd.DataFrame):
         }
     ))
     fig.update_layout(height=240, margin=dict(l=20, r=20, t=50, b=10),
-                      paper_bgcolor="#0d1117", font_color="#c9d1d9")
+                      paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9")
     st.plotly_chart(fig, use_container_width=True)
+    
+    if div_class:
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_class_distribution(df: pd.DataFrame):
@@ -305,7 +331,7 @@ def render_class_distribution(df: pd.DataFrame):
     total = counts["Count"].sum()
     fig.add_annotation(text=f"<b>{total:,}</b><br>Total", x=0.5, y=0.5,
                        font_size=14, showarrow=False, font_color="#c9d1d9")
-    fig.update_layout(height=320, paper_bgcolor="#0d1117", font_color="#c9d1d9",
+    fig.update_layout(height=320, paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
                       legend=dict(orientation="h", y=-0.15, x=0.5, xanchor="center"))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -334,9 +360,9 @@ def render_time_series(df: pd.DataFrame):
                   y=series.columns.tolist(),
                   color_discrete_map=CLASS_COLORS,
                   title="Detections per Minute")
-    fig.update_layout(height=280, paper_bgcolor="#0d1117", font_color="#c9d1d9",
+    fig.update_layout(height=280, paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
                       legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
-                      plot_bgcolor="#161b22")
+                      plot_bgcolor="rgba(255,255,255,0.05)")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -361,8 +387,8 @@ def render_confidence_histogram(df: pd.DataFrame):
     fig.add_vline(x=mean_c, line_dash="dash", line_color="#ff7b72",
                   annotation_text=f"Mean: {mean_c:.1f}%", annotation_font_color="#ff7b72")
     fig.update_layout(showlegend=False, height=280,
-                      paper_bgcolor="#0d1117", font_color="#c9d1d9",
-                      plot_bgcolor="#161b22")
+                      paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
+                      plot_bgcolor="rgba(255,255,255,0.05)")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -388,16 +414,72 @@ def render_recent_detections(df: pd.DataFrame):
 # SIDEBAR — global controls (persistent across all tabs)
 # ---------------------------------------------------------------------------
 st.sidebar.markdown('<p class="soc-header">🛡️ SOC Control Panel</p>', unsafe_allow_html=True)
+
+# 1. Status LEDs
+status = get_system_status()
+led_data = "🟢" if status["data_flowing"] else ("🟡" if status["csv_exists"] else "🔴")
+led_tf = "🟢" if status["tensorflow"] else "🔴"
+st.sidebar.markdown(f"**Data Flow:** {led_data} &nbsp;|&nbsp; **Engine:** {led_tf}")
 st.sidebar.markdown("---")
 
-# Auto-refresh toggle & interval
-st.sidebar.subheader("🔄 Auto-Refresh")
-auto_refresh_enabled = st.sidebar.checkbox("Enable Auto-Refresh", value=True, key="auto_refresh_toggle")
-refresh_interval_sec  = st.sidebar.slider("Interval (seconds)", 5, 60, 15, key="refresh_interval")
+# Pre-load data for global filtering & banner
+df_live_full = load_live_traffic()
+df_logs_full = load_logs()
 
+# 2. Threat Level Banner (Last 60s)
+threat_info = RISK_LEVELS[1]
+if not df_live_full.empty:
+    ts_col = "timestamp" if "timestamp" in df_live_full.columns else "Timestamp"
+    if ts_col in df_live_full.columns:
+        df_live_full[ts_col] = pd.to_datetime(df_live_full[ts_col], errors="coerce")
+        max_ts = df_live_full[ts_col].max()
+        if not pd.isna(max_ts):
+            last_60s = df_live_full[df_live_full[ts_col] >= (max_ts - pd.Timedelta(seconds=60))]
+            if not last_60s.empty:
+                risk_col = "risk_level" if "risk_level" in last_60s.columns else "Risk_Level"
+                if risk_col in last_60s.columns:
+                    max_r = int(last_60s[risk_col].max())
+                else:
+                    pred = "predicted_class" if "predicted_class" in last_60s.columns else "Predicted_Class"
+                    max_c = int(last_60s[pred].max()) if pred in last_60s.columns else 0
+                    max_r = 1 if max_c == 0 else (4 if max_c == 1 else 5)
+                threat_info = RISK_LEVELS.get(max_r, RISK_LEVELS[1])
+
+st.sidebar.markdown(f"""
+<div style="background: {threat_info['color']}15; border: 1px solid {threat_info['color']}50; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+    <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 5px;">THREAT LEVEL (LAST 60S)</div>
+    <div style="font-size: 1.4rem; font-weight: bold; color: {threat_info['color']};">{threat_info['emoji']} {threat_info['name']}</div>
+</div>
+""", unsafe_allow_html=True)
+
+# 3. Time Window
+time_window = st.sidebar.selectbox("📅 Time Window", ["Last 5 min", "Last 1 hour", "Last 24h", "All Time"])
 st.sidebar.markdown("---")
 
-# Model selector
+# 4. Live Mode
+st.sidebar.subheader("🔄 Live Refresh")
+live_mode = st.sidebar.toggle("⚡ Live Mode", key="live_mode")
+refresh_interval = st.sidebar.slider("Interval (seconds)", 5, 60, key="refresh_interval", disabled=not live_mode)
+st.sidebar.markdown("---")
+
+# Filter dataframes for the tabs
+def filter_dataframe(df: pd.DataFrame, window: str) -> pd.DataFrame:
+    if df.empty or window == "All Time": return df
+    c = "timestamp" if "timestamp" in df.columns else "Timestamp"
+    if c not in df.columns: return df
+    df[c] = pd.to_datetime(df[c], errors="coerce")
+    m_ts = df[c].max()
+    if pd.isna(m_ts): return df
+    if window == "Last 5 min": cutoff = m_ts - pd.Timedelta(minutes=5)
+    elif window == "Last 1 hour": cutoff = m_ts - pd.Timedelta(hours=1)
+    elif window == "Last 24h": cutoff = m_ts - pd.Timedelta(hours=24)
+    else: return df
+    return df[df[c] >= cutoff].copy()
+
+live_df = filter_dataframe(df_live_full, time_window)
+logs_df = filter_dataframe(df_logs_full, time_window)
+
+# 5. Model Status Badge
 st.sidebar.subheader("🧠 Active AI Model")
 os.makedirs(os.path.dirname(ACTIVE_MODEL_PATH), exist_ok=True)
 try:
@@ -412,31 +494,24 @@ try:
 except Exception:
     current_model = "BiLSTM"
 
-selected_model = st.sidebar.selectbox(
-    "Select Model", list(MODEL_MAPPING.keys()),
-    index=list(MODEL_MAPPING.keys()).index(current_model),
-    key="model_selector",
-)
+selected_model = st.sidebar.selectbox("Select Model", list(MODEL_MAPPING.keys()), index=list(MODEL_MAPPING.keys()).index(current_model), key="model_selector", label_visibility="collapsed")
 if selected_model != current_model:
     try:
         with open(ACTIVE_MODEL_PATH, "w") as f:
             f.write(MODEL_MAPPING[selected_model])
-        st.sidebar.success(f"✅ Switched to: {selected_model}")
-        st.sidebar.info("⏳ Consumer will reload the model shortly…")
     except Exception as e:
-        st.sidebar.error(f"❌ Write error: {e}")
-st.sidebar.caption(f"📊 Active: **{selected_model}** | Accuracy: 99.15% | Classes: 3")
+        pass
+
+st.sidebar.markdown(f"""
+<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-top: -10px;">
+    <span style="font-weight: 600; font-size: 0.9rem;">{selected_model}</span>
+    <span style="color: #00CC66; font-size: 0.8rem;">● Active</span>
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 
-# Risk legend
-st.sidebar.subheader("🎯 Risk Levels")
-for lvl, info in RISK_LEVELS.items():
-    st.sidebar.markdown(f"{info['emoji']} **Level {lvl}**: {info['name']}")
-
-st.sidebar.markdown("---")
-
-# IP unblock
+# 6. IP Unblock
 st.sidebar.subheader("🔓 IP Unblock")
 ip_input = st.sidebar.text_input("IP Address", key="ip_unblock_input")
 if st.sidebar.button("Unblock IP", key="unblock_btn"):
@@ -470,9 +545,6 @@ tab_monitor, tab_map, tab_logs, tab_xai, tab_admin = st.tabs([
 
 # ── Tab 1: Live Monitor ────────────────────────────────────────────────────
 with tab_monitor:
-    live_df = load_live_traffic()
-    status  = get_system_status()
-
     render_system_status(status)
     st.markdown("---")
     render_metrics(live_df)
@@ -506,7 +578,6 @@ with tab_map:
 # ── Tab 3: Incident Logs ──────────────────────────────────────────────────
 with tab_logs:
     st.markdown("#### 📋 Incident Logs")
-    logs_df = load_logs()
     if logs_df.empty:
         st.info("No incident records found in the database.")
     else:

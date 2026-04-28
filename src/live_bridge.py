@@ -729,8 +729,15 @@ def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
     Run cicflowmeter CLI via subprocess and return (success, error_message).
     Avoids using the Python API to prevent version compatibility issues.
     """
-    # Try method 1: python -m cicflowmeter (more reliable on Windows)
-    cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
+    # Find cicflowmeter executable relative to python executable
+    executable_dir = os.path.dirname(sys.executable)
+    cic_exe = os.path.join(executable_dir, "cicflowmeter.exe") if os.name == 'nt' else os.path.join(executable_dir, "cicflowmeter")
+    
+    if os.path.exists(cic_exe):
+        cmd = [cic_exe, "-f", pcap_file, "-c", csv_file]
+    else:
+        # Fallback to python -m
+        cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
     
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
