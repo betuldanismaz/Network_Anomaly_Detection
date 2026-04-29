@@ -11,6 +11,8 @@ plotly
 requests
 folium
 streamlit-folium
+streamlit-aggrid
+reportlab
 python-dotenv
 cicflowmeter
 confluent-kafka

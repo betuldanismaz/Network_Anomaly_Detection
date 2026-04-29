@@ -1,1 +1,1 @@
-rf_model_v1.pkl
+rf_3class_model.pkl

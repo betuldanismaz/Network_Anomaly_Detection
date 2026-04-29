@@ -2,13 +2,14 @@
 """
 Network IPS Dashboard - SOC Edition
 =====================================
-Multi-tab Security Operations Center dashboard for BiLSTM-based 3-class NIDS.
+Multi-tab Security Operations Center dashboard for LSTM/BiLSTM-based 3-class NIDS.
 """
 
 import os
 import sys
 import time
 import ipaddress
+from io import BytesIO
 from datetime import datetime
 
 import pandas as pd
@@ -34,6 +35,29 @@ try:
 except ImportError:
     st_folium = None
 
+try:
+    from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+except ImportError:
+    AgGrid = None
+    GridOptionsBuilder = None
+    GridUpdateMode = None
+    DataReturnMode = None
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+except ImportError:
+    colors = None
+    A4 = None
+    getSampleStyleSheet = None
+    SimpleDocTemplate = None
+    Paragraph = None
+    Spacer = None
+    Table = None
+    TableStyle = None
+
 # ---------------------------------------------------------------------------
 # PATH SETUP
 # ---------------------------------------------------------------------------
@@ -45,10 +69,14 @@ if PARENT_DIR not in sys.path:
 
 try:
     from utils.db_manager import fetch_logs
-    from utils.firewall_manager import unblock_ip
+    from utils.firewall_manager import block_ip, list_blocked_ips, unblock_ip
 except ImportError:
     def fetch_logs():
         return pd.DataFrame()
+    def block_ip(ip):
+        return False
+    def list_blocked_ips():
+        return []
     def unblock_ip(ip):
         return False
 
@@ -58,6 +86,7 @@ except ImportError:
 LIVE_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic_bilstm.csv")
 LIVE_CSV_PATH_OLD = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
 BILSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "bilstm_best.keras")
+LSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "lstm_best.keras")
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
 SCALER_PATH_FALLBACK = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 ACTIVE_MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "active_model.txt")
@@ -85,9 +114,10 @@ RISK_LEVELS = {
     5: {"name": "CRITICAL", "color": "#FF4B4B", "emoji": "🔴"},
 }
 MODEL_MAPPING = {
-    "Random Forest": "rf_model_v1.pkl",
+    "Random Forest": "rf_3class_model.pkl",
     "Decision Tree": "dt_model.pkl",
     "XGBoost":       "xgboost_model.pkl",
+    "LSTM":          "lstm_model.keras",
     "BiLSTM":        "bilstm_model.keras",
 }
 
@@ -275,11 +305,11 @@ def get_system_status() -> dict:
                 csv_rows = sum(1 for _ in f) - 1
         except Exception:
             pass
-    model_exists = os.path.exists(BILSTM_MODEL_PATH)
+    sequence_model_exists = os.path.exists(BILSTM_MODEL_PATH) or os.path.exists(LSTM_MODEL_PATH)
     scaler_exists = os.path.exists(SCALER_PATH) or os.path.exists(SCALER_PATH_FALLBACK)
     return {
-        "bilstm_model": model_exists, "scaler": scaler_exists,
-        "tensorflow": model_exists, "scapy": data_flowing,
+        "sequence_model": sequence_model_exists, "scaler": scaler_exists,
+        "tensorflow": sequence_model_exists, "scapy": data_flowing,
         "scapy_status": "Capturing" if data_flowing else ("Waiting" if csv_exists else "Inactive"),
         "live_bridge_status": "active" if data_flowing else ("waiting" if csv_exists and csv_age < 120 else "stopped"),
         "csv_age": csv_age, "csv_exists": csv_exists, "csv_rows": csv_rows, "data_flowing": data_flowing,
@@ -367,7 +397,7 @@ def render_system_status(status: dict):
         cls = "badge-ok" if ok else ("badge-warn" if warn else "badge-err")
         icon = "✅" if ok else ("⏳" if warn else "❌")
         col.markdown(f'<span class="{cls}">{icon} {label}</span>', unsafe_allow_html=True)
-    badge(c1, "BiLSTM",     status["bilstm_model"])
+    badge(c1, "LSTM/BiLSTM", status["sequence_model"])
     badge(c2, "Scaler",     status["scaler"])
     badge(c3, "TensorFlow", status["tensorflow"])
     badge(c4, "Scapy",      status["scapy"], warn=status["csv_exists"] and not status["scapy"])
@@ -441,7 +471,7 @@ def render_risk_gauge(df: pd.DataFrame):
     ))
     fig.update_layout(height=240, margin=dict(l=20, r=20, t=50, b=10),
                       paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     
     if div_class:
         st.markdown('</div>', unsafe_allow_html=True)
@@ -468,6 +498,141 @@ def render_class_distribution(df: pd.DataFrame):
                        font_size=14, showarrow=False, font_color="#c9d1d9")
     fig.update_layout(height=320, paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
                       legend=dict(orientation="h", y=-0.15, x=0.5, xanchor="center"))
+    st.plotly_chart(fig, width="stretch")
+
+
+def render_attack_distribution(df: pd.DataFrame):
+    st.markdown("#### Attack Distribution")
+    if df.empty:
+        st.info("Waiting for data...")
+        return
+
+    working = df.copy()
+    if "class_name" not in working.columns and "predicted_class" in working.columns:
+        working["class_name"] = working["predicted_class"].map(CLASS_NAMES)
+    if "risk_name" not in working.columns and "risk_level" in working.columns:
+        working["risk_name"] = working["risk_level"].map(lambda level: RISK_LEVELS.get(level, RISK_LEVELS[1])["name"])
+
+    if "class_name" not in working.columns:
+        st.warning("Class column not found.")
+        return
+
+    attack_df = working[working["class_name"].isin(["Volumetric", "Semantic"])].copy()
+    if attack_df.empty:
+        st.info("No attack detections available for sunburst distribution yet.")
+        return
+
+    if "risk_name" not in attack_df.columns:
+        attack_df["risk_name"] = attack_df["class_name"].map({
+            "Volumetric": "HIGH",
+            "Semantic": "CRITICAL",
+        })
+
+    distribution = (
+        attack_df.groupby(["class_name", "risk_name"])
+        .size()
+        .reset_index(name="count")
+    )
+    distribution["root"] = "Attacks"
+
+    fig = px.sunburst(
+        distribution,
+        path=["root", "class_name", "risk_name"],
+        values="count",
+        color="class_name",
+        color_discrete_map=CLASS_COLORS,
+    )
+    fig.update_traces(
+        branchvalues="total",
+        insidetextorientation="radial",
+        hovertemplate="<b>%{label}</b><br>Flows: %{value}<br>Share: %{percentParent:.1%}<extra></extra>",
+    )
+    fig.update_layout(
+        height=340,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.05)",
+        font_color="#c9d1d9",
+        margin=dict(l=20, r=20, t=20, b=10),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_severity_timeline(live_df: pd.DataFrame, logs_df: pd.DataFrame):
+    st.markdown("#### Severity Timeline")
+
+    timeline_df = pd.DataFrame()
+    if not live_df.empty and "timestamp" in live_df.columns:
+        timeline_df = live_df.copy()
+        timeline_df["timestamp"] = pd.to_datetime(timeline_df["timestamp"], errors="coerce")
+        if "risk_name" not in timeline_df.columns and "risk_level" in timeline_df.columns:
+            timeline_df["risk_name"] = timeline_df["risk_level"].map(
+                lambda level: RISK_LEVELS.get(level, RISK_LEVELS[1])["name"]
+            )
+    elif not logs_df.empty and "timestamp" in logs_df.columns:
+        timeline_df = logs_df.copy()
+        timeline_df["timestamp"] = pd.to_datetime(timeline_df["timestamp"], errors="coerce")
+        if "risk_name" not in timeline_df.columns and "action" in timeline_df.columns:
+            timeline_df["risk_name"] = timeline_df["action"].astype(str).str.upper().map({
+                "BLOCKED": "CRITICAL",
+                "ALLOWED": "HIGH",
+            }).fillna("LOW")
+
+    if timeline_df.empty or "timestamp" not in timeline_df.columns or "risk_name" not in timeline_df.columns:
+        st.info("No severity events available for the timeline yet.")
+        return
+
+    timeline_df = timeline_df.dropna(subset=["timestamp", "risk_name"]).copy()
+    if timeline_df.empty:
+        st.info("No severity events available for the timeline yet.")
+        return
+
+    severity_order = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    severity_colors = {
+        "LOW": RISK_LEVELS[2]["color"],
+        "MEDIUM": RISK_LEVELS[3]["color"],
+        "HIGH": RISK_LEVELS[4]["color"],
+        "CRITICAL": RISK_LEVELS[5]["color"],
+    }
+
+    timeline_df = timeline_df[timeline_df["risk_name"].isin(severity_order)]
+    if timeline_df.empty:
+        st.info("No severity events available for the timeline yet.")
+        return
+
+    timeline_series = (
+        timeline_df.groupby([pd.Grouper(key="timestamp", freq="1min"), "risk_name"])
+        .size()
+        .unstack(fill_value=0)
+        .reindex(columns=severity_order, fill_value=0)
+        .sort_index()
+    )
+    if timeline_series.empty:
+        st.info("No severity events available for the timeline yet.")
+        return
+
+    fig = go.Figure()
+    for severity in severity_order:
+        fig.add_trace(go.Scatter(
+            x=timeline_series.index,
+            y=timeline_series[severity],
+            mode="lines+markers",
+            name=severity,
+            line=dict(color=severity_colors[severity], width=2.2),
+            marker=dict(size=6),
+            hovertemplate=f"{severity}: %{{y}}<br>%{{x|%Y-%m-%d %H:%M}}<extra></extra>",
+        ))
+
+    fig.update_layout(
+        height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.05)",
+        font_color="#c9d1d9",
+        margin=dict(l=20, r=20, t=20, b=10),
+        legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+        xaxis=dict(title=None, gridcolor="rgba(255,255,255,0.08)"),
+        yaxis=dict(title="Events / min", rangemode="tozero", gridcolor="rgba(255,255,255,0.08)"),
+        hovermode="x unified",
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -498,7 +663,7 @@ def render_time_series(df: pd.DataFrame):
     fig.update_layout(height=280, paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
                       legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
                       plot_bgcolor="rgba(255,255,255,0.05)")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_stacked_time_series(df: pd.DataFrame, logs_df: pd.DataFrame):
@@ -649,7 +814,7 @@ def render_stacked_time_series(df: pd.DataFrame, logs_df: pd.DataFrame):
             showgrid=False,
         ),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption("10-second buckets with stacked class volume, live confidence threshold, and block markers.")
 
 
@@ -679,7 +844,7 @@ def render_confidence_histogram(df: pd.DataFrame):
     fig.update_layout(showlegend=False, height=280,
                       paper_bgcolor="rgba(0,0,0,0)", font_color="#c9d1d9",
                       plot_bgcolor="rgba(255,255,255,0.05)")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_protocol_port_heatmap(df: pd.DataFrame):
@@ -766,7 +931,7 @@ def render_protocol_port_heatmap(df: pd.DataFrame):
         xaxis=dict(title="Port", side="bottom"),
         yaxis=dict(title="Protocol"),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     if has_port_data:
         st.caption("Density scale shows flow concentration by protocol and port. Missing or low-frequency ports are grouped into `Other`.")
     else:
@@ -789,7 +954,7 @@ def render_recent_detections(df: pd.DataFrame):
     if not display_cols:
         display_cols = df.columns[:6].tolist()
     recent = df[display_cols].tail(20).iloc[::-1].rename(columns=col_map)
-    st.dataframe(recent, use_container_width=True, hide_index=True)
+    st.dataframe(recent, width="stretch", hide_index=True)
 
 # ---------------------------------------------------------------------------
 # SIDEBAR — global controls (persistent across all tabs)
@@ -846,6 +1011,252 @@ def render_live_attack_feed(logs_df: pd.DataFrame):
             """,
             unsafe_allow_html=True,
         )
+
+
+def render_logs_grid(logs_df: pd.DataFrame):
+    if AgGrid is None or GridOptionsBuilder is None:
+        st.warning("AgGrid dependency is missing. Install `streamlit-aggrid` to enable advanced filtering and pagination.")
+        st.dataframe(logs_df, width="stretch", hide_index=True)
+        return {"selected_rows": [], "filtered_df": logs_df.copy()}
+
+    grid_df = logs_df.copy()
+    if "timestamp" in grid_df.columns:
+        grid_df["timestamp"] = pd.to_datetime(grid_df["timestamp"], errors="coerce")
+        grid_df["timestamp"] = grid_df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    gb = GridOptionsBuilder.from_dataframe(grid_df)
+    gb.configure_default_column(
+        filter=True,
+        sortable=True,
+        resizable=True,
+        floatingFilter=True,
+        min_column_width=120,
+    )
+    gb.configure_selection(
+        selection_mode="multiple",
+        use_checkbox=True,
+        groupSelectsChildren=False,
+        groupSelectsFiltered=True,
+    )
+    gb.configure_pagination(
+        enabled=True,
+        paginationAutoPageSize=False,
+        paginationPageSize=10,
+    )
+    if "details" in grid_df.columns:
+        gb.configure_column("details", wrapText=True, autoHeight=True, flex=2, minWidth=260)
+    if "src_ip" in grid_df.columns:
+        gb.configure_column("src_ip", header_name="Source IP", minWidth=150)
+    if "timestamp" in grid_df.columns:
+        gb.configure_column("timestamp", header_name="Timestamp", sort="desc")
+    if "action" in grid_df.columns:
+        gb.configure_column("action", header_name="Action", minWidth=120)
+
+    grid_options = gb.build()
+    grid_response = AgGrid(
+        grid_df,
+        gridOptions=grid_options,
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.FILTERING_CHANGED,
+        fit_columns_on_grid_load=False,
+        allow_unsafe_jscode=False,
+        enable_enterprise_modules=False,
+        theme="balham-dark",
+        height=420,
+        width="100%",
+        reload_data=False,
+    )
+    selected_rows = grid_response.get("selected_rows", [])
+    filtered_rows = grid_response.get("data", grid_df.to_dict("records"))
+    filtered_df = pd.DataFrame(filtered_rows)
+    st.caption(f"Selected rows: {len(selected_rows)}")
+    return {"selected_rows": selected_rows, "filtered_df": filtered_df}
+
+
+def get_selected_log_ips(selected_rows) -> list[str]:
+    if not selected_rows:
+        return []
+
+    selected_df = pd.DataFrame(selected_rows)
+    if selected_df.empty or "src_ip" not in selected_df.columns:
+        return []
+
+    ips = (
+        selected_df["src_ip"]
+        .astype(str)
+        .str.strip()
+        .replace("", pd.NA)
+        .dropna()
+        .drop_duplicates()
+        .tolist()
+    )
+    return ips
+
+
+def build_logs_csv_bytes(logs_df: pd.DataFrame) -> bytes:
+    export_df = logs_df.copy()
+    return export_df.to_csv(index=False).encode("utf-8")
+
+
+def build_logs_pdf_bytes(logs_df: pd.DataFrame, total_records: int, blocked_count: int, allowed_count: int, last_event: str) -> bytes | None:
+    if SimpleDocTemplate is None:
+        return None
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=28, rightMargin=28, topMargin=28, bottomMargin=28)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("AI Network IPS Incident Report", styles["Title"]),
+        Spacer(1, 12),
+        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["BodyText"]),
+        Spacer(1, 12),
+    ]
+
+    summary_data = [
+        ["Metric", "Value"],
+        ["Total Records", f"{total_records:,}"],
+        ["Blocked", f"{blocked_count:,}"],
+        ["Allowed", f"{allowed_count:,}"],
+        ["Last Event", last_event],
+    ]
+    summary_table = Table(summary_data, colWidths=[150, 300])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2a44")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#8b949e")),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f4f6fa")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.extend([Paragraph("Summary", styles["Heading2"]), Spacer(1, 8), summary_table, Spacer(1, 16)])
+
+    log_columns = [col for col in ["timestamp", "src_ip", "action", "details"] if col in logs_df.columns]
+    export_df = logs_df.copy()
+    if "timestamp" in export_df.columns:
+        export_df["timestamp"] = pd.to_datetime(export_df["timestamp"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
+    export_df = export_df.fillna("")
+
+    table_rows = [["Timestamp", "Source IP", "Action", "Details"]]
+    for _, row in export_df.head(50).iterrows():
+        table_rows.append([
+            str(row.get("timestamp", "")),
+            str(row.get("src_ip", "")),
+            str(row.get("action", "")),
+            str(row.get("details", ""))[:140],
+        ])
+
+    log_table = Table(table_rows, colWidths=[110, 95, 70, 245], repeatRows=1)
+    log_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#22304d")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#9aa4b2")),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("LEADING", (0, 1), (-1, -1), 10),
+        ("PADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.extend([Paragraph("Incident Logs", styles["Heading2"]), Spacer(1, 8), log_table])
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def render_batch_log_actions(selected_rows):
+    selected_ips = get_selected_log_ips(selected_rows)
+    has_selection = len(selected_ips) > 0
+
+    st.markdown("##### Batch Actions")
+    st.caption(f"Selected IPs: {len(selected_ips)}")
+
+    if has_selection:
+        preview = ", ".join(selected_ips[:5])
+        if len(selected_ips) > 5:
+            preview += ", ..."
+        st.caption(f"Targets: {preview}")
+    else:
+        st.caption("Select one or more log rows to enable batch actions.")
+
+    confirm_key = "confirm_batch_log_action"
+    confirm = st.checkbox(
+        "I confirm the selected IPs should be updated in the firewall.",
+        key=confirm_key,
+        disabled=not has_selection,
+    )
+
+    col_block, col_unblock = st.columns(2)
+    with col_block:
+        block_clicked = st.button(
+            "Block Selected",
+            key="batch_block_selected",
+            disabled=not has_selection or not confirm,
+            use_container_width=True,
+        )
+    with col_unblock:
+        unblock_clicked = st.button(
+            "Unblock Selected",
+            key="batch_unblock_selected",
+            disabled=not has_selection or not confirm,
+            use_container_width=True,
+        )
+
+    if block_clicked:
+        success_count = sum(1 for ip in selected_ips if block_ip(ip))
+        failure_count = len(selected_ips) - success_count
+        st.session_state[confirm_key] = False
+        if success_count:
+            st.toast(f"Blocked {success_count} IP(s).")
+        if failure_count:
+            st.toast(f"{failure_count} IP(s) could not be blocked.", icon="⚠️")
+
+    if unblock_clicked:
+        success_count = sum(1 for ip in selected_ips if unblock_ip(ip))
+        failure_count = len(selected_ips) - success_count
+        st.session_state[confirm_key] = False
+        if success_count:
+            st.toast(f"Unblocked {success_count} IP(s).")
+        if failure_count:
+            st.toast(f"{failure_count} IP(s) could not be unblocked.", icon="⚠️")
+
+
+def render_firewall_viewer():
+    st.markdown("##### Firewall Viewer")
+
+    pending_toast = st.session_state.pop("firewall_viewer_toast", None)
+    if pending_toast:
+        st.toast(pending_toast["message"], icon=pending_toast.get("icon"))
+
+    blocked_rules = list_blocked_ips()
+    if not blocked_rules:
+        st.info("No blocked IPs currently managed by the firewall helper.")
+        return
+
+    st.caption(f"Blocked IPs: {len(blocked_rules)}")
+    for rule in blocked_rules:
+        ip_address = rule.get("ip", "Unknown")
+        direction = rule.get("direction", "In")
+        cols = st.columns([3, 2, 1])
+        with cols[0]:
+            st.markdown(f"**{ip_address}**")
+            st.caption(rule.get("rule_name", "Firewall rule"))
+        with cols[1]:
+            st.caption(f"Direction: {direction}")
+        with cols[2]:
+            if st.button("Unblock", key=f"firewall_unblock_{ip_address}", use_container_width=True):
+                ok = unblock_ip(ip_address)
+                if ok:
+                    st.session_state["firewall_viewer_toast"] = {
+                        "message": f"Unblocked {ip_address}.",
+                        "icon": "✅",
+                    }
+                else:
+                    st.session_state["firewall_viewer_toast"] = {
+                        "message": f"Failed to unblock {ip_address}.",
+                        "icon": "⚠️",
+                    }
+                st.rerun()
 
 
 def render_threat_map(logs_df: pd.DataFrame):
@@ -931,12 +1342,12 @@ def render_threat_map(logs_df: pd.DataFrame):
         st.markdown("##### Private IP Alerts")
         private_display = private_alerts.reindex(columns=["src_ip", "action", "timestamp", "details"]).copy()
         private_display.columns = ["IP", "Action", "Last Seen", "Details"]
-        st.dataframe(private_display, use_container_width=True, hide_index=True)
+        st.dataframe(private_display, width="stretch", hide_index=True)
 
     if lookup_errors:
         unresolved = pd.DataFrame(lookup_errors)
         with st.expander("Geo-IP Lookup Issues"):
-            st.dataframe(unresolved, use_container_width=True, hide_index=True)
+            st.dataframe(unresolved, width="stretch", hide_index=True)
 
 
 st.sidebar.markdown('<p class="soc-header">SOC Control Panel</p>', unsafe_allow_html=True)
@@ -1055,7 +1466,7 @@ st.sidebar.caption(f"🔁 Refresh #{count}")
 # PAGE HEADER
 # ---------------------------------------------------------------------------
 st.markdown('<p class="soc-header"> AI Network IPS — Security Operations Center</p>', unsafe_allow_html=True)
-st.markdown('<p class="soc-sub">3-Class BiLSTM NIDS &nbsp;|&nbsp; Benign · Volumetric · Semantic &nbsp;|&nbsp; Real-time Detection</p>', unsafe_allow_html=True)
+st.markdown('<p class="soc-sub">3-Class LSTM/BiLSTM NIDS &nbsp;|&nbsp; Benign · Volumetric · Semantic &nbsp;|&nbsp; Real-time Detection</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # ---------------------------------------------------------------------------
@@ -1108,6 +1519,10 @@ with tab_map:
     col3.metric("Blocked IPs (24h)", "—")
     st.markdown("---")
     render_threat_map(logs_df)
+    st.markdown("---")
+    render_attack_distribution(live_df)
+    st.markdown("---")
+    render_severity_timeline(live_df, logs_df)
 
 # ── Tab 3: Incident Logs ──────────────────────────────────────────────────
 with tab_logs:
@@ -1126,7 +1541,49 @@ with tab_logs:
         c3.metric("Allowed", f"{allowed_l:,}")
         c4.metric("Last Event", last_evt)
         st.markdown("---")
-        st.dataframe(logs_df, use_container_width=True, hide_index=True)
+        grid_state = render_logs_grid(logs_df)
+        selected_rows = grid_state["selected_rows"]
+        export_df = grid_state["filtered_df"]
+        export_total = len(export_df)
+        export_blocked = int((export_df.get("action", pd.Series(dtype=str)) == "BLOCKED").sum()) if not export_df.empty else 0
+        export_allowed = int((export_df.get("action", pd.Series(dtype=str)) == "ALLOWED").sum()) if not export_df.empty else 0
+        export_last = "—"
+        if not export_df.empty and "timestamp" in export_df.columns:
+            export_ts = pd.to_datetime(export_df["timestamp"], errors="coerce")
+            if not export_ts.dropna().empty:
+                export_last = export_ts.max().strftime("%Y-%m-%d %H:%M:%S")
+
+        st.markdown("---")
+        st.markdown("##### Export Reports")
+        csv_bytes = build_logs_csv_bytes(export_df)
+        pdf_bytes = build_logs_pdf_bytes(export_df, export_total, export_blocked, export_allowed, export_last)
+        export_col_csv, export_col_pdf = st.columns(2)
+        with export_col_csv:
+            st.download_button(
+                "Export CSV",
+                data=csv_bytes,
+                file_name=f"incident_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        with export_col_pdf:
+            if pdf_bytes is None:
+                st.button(
+                    "Export PDF",
+                    disabled=True,
+                    help="Install `reportlab` to enable PDF export.",
+                    use_container_width=True,
+                )
+            else:
+                st.download_button(
+                    "Export PDF",
+                    data=pdf_bytes,
+                    file_name=f"incident_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+        st.markdown("---")
+        render_batch_log_actions(selected_rows)
 
 # ── Tab 4: XAI Explainer ──────────────────────────────────────────────────
 with tab_xai:
@@ -1161,3 +1618,6 @@ with tab_admin:
         st.markdown("**Response Actions**")
         st.caption("IP blocking managed via firewall_manager")
         st.caption("Use sidebar → IP Unblock for immediate relief")
+
+    st.markdown("---")
+    render_firewall_viewer()

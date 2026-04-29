@@ -12,6 +12,86 @@ WHITELIST = os.getenv("WHITELIST_IPS", "127.0.0.1,localhost,192.168.1.1,0.0.0.0"
 def get_os():
     return platform.system()
 
+
+def list_blocked_ips():
+    """Return firewall-managed blocked IP rules created by this app."""
+    os_name = get_os()
+
+    try:
+        if os_name == "Windows":
+            command = [
+                "netsh", "advfirewall", "firewall", "show", "rule", "name=all",
+            ]
+            result = subprocess.run(command, capture_output=True, text=True, check=False)
+            if result.returncode != 0:
+                return []
+
+            blocked_rules = []
+            current_rule = {}
+            for raw_line in result.stdout.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+
+                if line.startswith("Rule Name:"):
+                    if current_rule.get("name", "").startswith("Block_AI_"):
+                        remote_ip = current_rule.get("remote_ip")
+                        if remote_ip and remote_ip not in ("Any", "LocalSubnet"):
+                            blocked_rules.append({
+                                "rule_name": current_rule["name"],
+                                "ip": remote_ip,
+                                "direction": current_rule.get("direction", "In"),
+                            })
+                    current_rule = {"name": line.split(":", 1)[1].strip()}
+                elif ":" in line:
+                    key, value = line.split(":", 1)
+                    key = key.strip().lower()
+                    value = value.strip()
+                    if key == "remoteip":
+                        current_rule["remote_ip"] = value
+                    elif key == "direction":
+                        current_rule["direction"] = value
+                    elif key == "action":
+                        current_rule["action"] = value
+
+            if current_rule.get("name", "").startswith("Block_AI_"):
+                remote_ip = current_rule.get("remote_ip")
+                if remote_ip and remote_ip not in ("Any", "LocalSubnet"):
+                    blocked_rules.append({
+                        "rule_name": current_rule["name"],
+                        "ip": remote_ip,
+                        "direction": current_rule.get("direction", "In"),
+                    })
+
+            deduped = {}
+            for rule in blocked_rules:
+                deduped[rule["ip"]] = rule
+            return sorted(deduped.values(), key=lambda item: item["ip"])
+
+        if os_name == "Linux":
+            result = subprocess.run(["iptables", "-S", "INPUT"], capture_output=True, text=True, check=False)
+            if result.returncode != 0:
+                return []
+
+            blocked_rules = []
+            for line in result.stdout.splitlines():
+                parts = line.strip().split()
+                if "-s" in parts and "-j" in parts:
+                    source_ip = parts[parts.index("-s") + 1]
+                    target = parts[parts.index("-j") + 1]
+                    if target == "DROP":
+                        blocked_rules.append({
+                            "rule_name": f"iptables_DROP_{source_ip}",
+                            "ip": source_ip,
+                            "direction": "In",
+                        })
+            return blocked_rules
+
+    except Exception as exc:
+        print(f"❌ Firewall list error: {exc}")
+
+    return []
+
 def block_ip(ip_address):
     """
     Verilen IP adresini işletim sistemi seviyesinde engeller.

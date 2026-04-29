@@ -68,6 +68,9 @@ CSV_HEADER_COLUMNS = [
     "Model_Used",
     "Processing_Time_Ms",
 ]
+MODEL_ALIASES = {
+    "rf_model_v1.pkl": "rf_3class_model.pkl",
+}
 
 # ---------------------------------------------------------------------------
 # GLOBAL MODEL & SCALER
@@ -95,6 +98,14 @@ def get_expected_feature_names():
     if SCALER is not None and hasattr(SCALER, "feature_names_in_"):
         return list(SCALER.feature_names_in_)
     return []
+
+
+def normalize_model_filename(model_filename):
+    """Map legacy model names onto the canonical model files we want to use."""
+    normalized = MODEL_ALIASES.get(model_filename, model_filename)
+    if normalized != model_filename:
+        print(f"{YELLOW}⚠️  Redirecting model '{model_filename}' -> '{normalized}'{RESET}")
+    return normalized
 
 
 def initialize_csv_file():
@@ -149,6 +160,8 @@ def load_model_and_scaler(model_filename=None):
                     f.write(model_filename)
             except Exception:
                 pass
+
+    model_filename = normalize_model_filename(model_filename)
     
     print(f"\n{CYAN}{'='*60}{RESET}")
     print(f"{BOLD}🔧 Loading ML Model & Scaler...{RESET}")

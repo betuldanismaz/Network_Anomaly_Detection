@@ -85,9 +85,10 @@ st.sidebar.header("Kontroller")
 st.sidebar.subheader("🧠 Aktif Yapay Zeka Modeli")
 
 MODEL_MAPPING = {
-    "Random Forest": "rf_model_v1.pkl",
+    "Random Forest": "rf_3class_model.pkl",
     "Decision Tree": "dt_model.pkl",
     "XGBoost": "xgboost_model.pkl",
+    "LSTM": "lstm_model.keras",
     "BiLSTM": "bilstm_model.keras"
 }
 
