@@ -9,6 +9,10 @@ import threading
 import queue
 import atexit
 import json
+import io
+import contextlib
+import gc
+import warnings
 from datetime import datetime
 from scapy.all import sniff, wrpcap, conf
 
@@ -18,6 +22,11 @@ import pandas as pd
 from scapy.all import sniff, wrpcap, rdpcap
 from dotenv import load_dotenv
 from confluent_kafka import Producer
+
+try:
+    from scapy.arch.windows import get_windows_if_list
+except Exception:
+    get_windows_if_list = None
 
 # Load environment variables
 load_dotenv()
@@ -43,10 +52,59 @@ except ImportError:
 # RUNTIME CONFIG
 # ---------------------------------------------------------------------------
 # Scapy interface name must match show_interfaces() output exactly.
-INTERFACE = os.getenv("NETWORK_INTERFACE", "Wi-Fi")
+def resolve_capture_interface(interface_value: str) -> str:
+    """Resolve Windows adapter names/descriptions to the Scapy capture name."""
+    raw_value = (interface_value or "").strip()
+    if not raw_value:
+        return "Wi-Fi"
+
+    if os.name != "nt" or get_windows_if_list is None:
+        return raw_value
+
+    target = raw_value.casefold()
+    for iface in get_windows_if_list():
+        name = str(iface.get("name") or "").strip()
+        description = str(iface.get("description") or "").strip()
+        guid = str(iface.get("guid") or "").strip()
+        device_name = f"\\Device\\NPF_{guid.strip('{}')}" if guid else ""
+
+        candidates = {
+            name.casefold(),
+            description.casefold(),
+            guid.casefold(),
+            guid.strip("{}").casefold(),
+            device_name.casefold(),
+        }
+        if target in candidates:
+            if raw_value != name:
+                print(
+                    f"ℹ️ NETWORK_INTERFACE resolved: '{raw_value}' -> '{name}' "
+                    f"({description or device_name})"
+                )
+            return name
+
+    print(f"⚠️ NETWORK_INTERFACE '{raw_value}' did not match a known Scapy interface; using as-is.")
+    return raw_value
+
+
+INTERFACE = resolve_capture_interface(os.getenv("NETWORK_INTERFACE", "Wi-Fi"))
 TEMP_PCAP = "temp_live.pcap"
 TEMP_CSV = "temp_live.csv"
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
+
+
+def _get_env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+CAPTURE_TIMEOUT_SECONDS = _get_env_int("LIVE_CAPTURE_TIMEOUT_SECONDS", 4)
+MIN_BUFFER_PACKETS = _get_env_int("LIVE_MIN_BUFFER_PACKETS", 30)
+MIN_BUFFER_FLOW_PACKETS = _get_env_int("LIVE_MIN_BUFFER_FLOW_PACKETS", 20)
+MAX_BUFFER_PACKETS = _get_env_int("LIVE_MAX_BUFFER_PACKETS", 600)
+MAX_BUFFER_WINDOWS = _get_env_int("LIVE_MAX_BUFFER_WINDOWS", 4)
 DROP_COLS = [
     "Flow ID",
     "Source IP",
@@ -76,6 +134,30 @@ DROP_COLS = [
 HARVEST_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
 HARVEST_BUFFER_SIZE = 25  # Number of rows to buffer before writing to disk
 HARVEST_FLUSH_INTERVAL = 30.0  # Force flush every N seconds even if buffer not full
+
+PRODUCER_STATS = {
+    "capture_windows": 0,
+    "extract_attempts": 0,
+    "extract_successes": 0,
+    "extract_failures": 0,
+    "skipped_windows": 0,
+    "flows_sent": 0,
+}
+
+#for only 20 features add this function written by betul to convert 20 features to 78 features with 0 filling for missing columns
+def load_model_feature_columns():
+    """Load the exact feature order expected by the deployed scaler/model."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            scaler = joblib.load(SCALER_PATH)
+        feature_names = list(getattr(scaler, "feature_names_in_", []))
+        return feature_names
+    except Exception:
+        return []
+
+
+MODEL_FEATURE_COLUMNS = load_model_feature_columns()
 
 # Training data schema (78 features) - must match exactly with model training columns
 TRAINING_FEATURE_COLUMNS = [
@@ -465,7 +547,7 @@ COLUMN_RENAME_MAP = {
     "idle_min": "Idle Min",
 }
 
-def feature_extraction_and_predict():
+def feature_extraction_and_predict_dummy_fallback():
     """
     Extract features from PCAP and send to Kafka.
     Uses cicflowmeter CLI with fallback to dummy features if extraction fails.
@@ -578,8 +660,240 @@ def feature_extraction_and_predict():
         import traceback
         traceback.print_exc()
         return
+def count_extractable_packets(packets) -> int:
+    """Count packets that can participate in flow extraction."""
+    count = 0
+    for pkt in packets:
+        if (("IP" in pkt) or ("IPv6" in pkt)) and (("TCP" in pkt) or ("UDP" in pkt)):
+            count += 1
+    return count
 
 
+def trim_packet_buffer(packet_buffer):
+    """Keep the packet buffer bounded while preserving the most recent traffic."""
+    if len(packet_buffer) <= MAX_BUFFER_PACKETS:
+        return list(packet_buffer)
+
+    return list(packet_buffer[-MAX_BUFFER_PACKETS:])
+
+
+def print_producer_stats():
+    attempts = PRODUCER_STATS["extract_attempts"]
+    success_rate = (
+        (PRODUCER_STATS["extract_successes"] / attempts) * 100.0
+        if attempts
+        else 0.0
+    )
+    print(
+        "📊 [Producer Stats] "
+        f"windows={PRODUCER_STATS['capture_windows']} "
+        f"attempts={attempts} "
+        f"success={PRODUCER_STATS['extract_successes']} "
+        f"skipped={PRODUCER_STATS['skipped_windows']} "
+        f"failed={PRODUCER_STATS['extract_failures']} "
+        f"flows={PRODUCER_STATS['flows_sent']} "
+        f"success_rate={success_rate:.1f}%"
+    )
+
+
+def feature_extraction_and_predict_legacy_76():
+    """
+    Extract features from PCAP and send only real flows to Kafka.
+    Returns a status dict so the caller can decide whether to keep buffering.
+    """
+    gold_standard_features = [
+        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
+        "flow_duration", "flow_byts_s", "flow_pkts_s", "fwd_pkts_s", "bwd_pkts_s",
+        "tot_fwd_pkts", "tot_bwd_pkts", "totlen_fwd_pkts", "totlen_bwd_pkts",
+        "fwd_pkt_len_max", "fwd_pkt_len_min", "fwd_pkt_len_mean", "fwd_pkt_len_std",
+        "bwd_pkt_len_max", "bwd_pkt_len_min", "bwd_pkt_len_mean", "bwd_pkt_len_std",
+        "pkt_len_max", "pkt_len_min", "pkt_len_mean", "pkt_len_std", "pkt_len_var",
+        "fwd_header_len", "bwd_header_len", "fwd_seg_size_min", "fwd_act_data_pkts",
+        "flow_iat_mean", "flow_iat_max", "flow_iat_min", "flow_iat_std",
+        "fwd_iat_tot", "fwd_iat_max", "fwd_iat_min", "fwd_iat_mean", "fwd_iat_std",
+        "bwd_iat_tot", "bwd_iat_max", "bwd_iat_min", "bwd_iat_mean", "bwd_iat_std",
+        "fwd_psh_flags", "bwd_psh_flags", "fwd_urg_flags", "bwd_urg_flags",
+        "fin_flag_cnt", "syn_flag_cnt", "rst_flag_cnt", "psh_flag_cnt",
+        "ack_flag_cnt", "urg_flag_cnt", "ece_flag_cnt", "down_up_ratio",
+        "pkt_size_avg", "init_fwd_win_byts", "init_bwd_win_byts",
+        "active_max", "active_min", "active_mean", "active_std",
+        "idle_max", "idle_min", "idle_mean", "idle_std",
+        "fwd_byts_b_avg", "fwd_pkts_b_avg", "bwd_byts_b_avg", "bwd_pkts_b_avg",
+        "fwd_blk_rate_avg", "bwd_blk_rate_avg", "fwd_seg_size_avg", "bwd_seg_size_avg",
+        "cwr_flag_count", "subflow_fwd_pkts", "subflow_bwd_pkts",
+        "subflow_fwd_byts", "subflow_bwd_byts",
+    ]
+    log_only_columns = [
+        "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "timestamp",
+    ]
+
+    print("   ↳ Analiz ediliyor...", end="\r")
+    PRODUCER_STATS["extract_attempts"] += 1
+
+    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
+    if not cli_ok:
+        PRODUCER_STATS["extract_failures"] += 1
+        error_preview = cli_err[:180] if cli_err else "unknown error"
+        print(f"   ⚠️ Feature extraction failed: {error_preview}")
+        return {
+            "success": False,
+            "flows_sent": 0,
+            "reason": cli_err or "feature extraction failed",
+        }
+
+    if not os.path.exists(TEMP_CSV):
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction produced no CSV output")
+        return {"success": False, "flows_sent": 0, "reason": "csv missing"}
+
+    try:
+        df = pd.read_csv(TEMP_CSV)
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"   ⚠️ CSV read error: {exc}")
+        return {"success": False, "flows_sent": 0, "reason": f"csv read error: {exc}"}
+
+    if df.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction returned an empty CSV")
+        return {"success": False, "flows_sent": 0, "reason": "csv empty"}
+
+    print(f"   ✅ Parsed {len(df)} flow(s) from CSV", end="\r")
+    df.columns = df.columns.str.strip()
+    src_ips = extract_source_ips(df)
+
+    features = prepare_feature_frame(df)
+    features.replace([float("inf"), float("-inf")], 0, inplace=True)
+    features.fillna(0, inplace=True)
+    features = features.reindex(columns=gold_standard_features, fill_value=0)
+
+    model_features = features.drop(columns=log_only_columns, errors="ignore")
+    if model_features.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ No model-ready features were produced from the extracted flows")
+        return {"success": False, "flows_sent": 0, "reason": "no model features"}
+
+    try:
+        for idx in range(len(model_features)):
+            feature_dict = model_features.iloc[idx].to_dict()
+            kafka_message = {
+                "timestamp": datetime.now().isoformat(),
+                "src_ip": src_ips.iloc[idx] if (src_ips is not None and idx < len(src_ips)) else "0.0.0.0",
+                "dst_ip": features.iloc[idx].get("dst_ip", "0.0.0.0") if "dst_ip" in features.columns else "0.0.0.0",
+                "features": feature_dict,
+                "feature_count": len(feature_dict),
+                "producer_id": "live_bridge_v1_76f",
+            }
+            message_json = json.dumps(kafka_message, default=str)
+            KAFKA_PRODUCER.produce(
+                KAFKA_TOPIC,
+                value=message_json.encode("utf-8"),
+                callback=delivery_report,
+            )
+
+        KAFKA_PRODUCER.flush(timeout=10)
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"✅ [{timestamp}] {len(model_features)} flow(s) sent to Kafka (Topic: {KAFKA_TOPIC})           ")
+        PRODUCER_STATS["extract_successes"] += 1
+        PRODUCER_STATS["flows_sent"] += len(model_features)
+        return {"success": True, "flows_sent": len(model_features), "reason": None}
+
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"⚠️ Kafka send error: {exc}")
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "flows_sent": 0, "reason": f"kafka send error: {exc}"}
+
+
+def feature_extraction_and_predict(): 
+    """
+    Extract features from PCAP and send only real flows to Kafka.
+    This override publishes the training-schema feature names expected by the scaler/model.
+    """
+    print("   ↳ Analiz ediliyor...", end="\r")
+    PRODUCER_STATS["extract_attempts"] += 1
+
+    cli_ok, cli_err = run_cicflowmeter_cli(TEMP_PCAP, TEMP_CSV)
+    if not cli_ok:
+        PRODUCER_STATS["extract_failures"] += 1
+        error_preview = cli_err[:180] if cli_err else "unknown error"
+        print(f"   ⚠️ Feature extraction failed: {error_preview}")
+        return {
+            "success": False,
+            "flows_sent": 0,
+            "reason": cli_err or "feature extraction failed",
+        }
+
+    if not os.path.exists(TEMP_CSV):
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction produced no CSV output")
+        return {"success": False, "flows_sent": 0, "reason": "csv missing"}
+
+    try:
+        df = pd.read_csv(TEMP_CSV)
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"   ⚠️ CSV read error: {exc}")
+        return {"success": False, "flows_sent": 0, "reason": f"csv read error: {exc}"}
+
+    if df.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ Feature extraction returned an empty CSV")
+        return {"success": False, "flows_sent": 0, "reason": "csv empty"}
+
+    print(f"   ✅ Parsed {len(df)} flow(s) from CSV", end="\r")
+    df.columns = df.columns.str.strip()
+    src_ips = extract_source_ips(df)
+
+    dst_ips = None
+    for candidate in ("Dst IP", "Destination IP", "dst_ip"):
+        if candidate in df.columns:
+            dst_ips = df[candidate]
+            break
+
+    features = prepare_feature_frame(df)
+    features.replace([float("inf"), float("-inf")], 0, inplace=True)
+    features.fillna(0, inplace=True)
+    outgoing_feature_columns = MODEL_FEATURE_COLUMNS or EXPECTED_FEATURES
+    features = features.reindex(columns=outgoing_feature_columns, fill_value=0.0)
+
+    if features.empty:
+        PRODUCER_STATS["extract_failures"] += 1
+        print("   ⚠️ No model-ready features were produced from the extracted flows")
+        return {"success": False, "flows_sent": 0, "reason": "no model features"}
+
+    try:
+        for idx in range(len(features)):
+            feature_dict = features.iloc[idx].to_dict()
+            kafka_message = {
+                "timestamp": datetime.now().isoformat(),
+                "src_ip": src_ips.iloc[idx] if (src_ips is not None and idx < len(src_ips)) else "0.0.0.0",
+                "dst_ip": dst_ips.iloc[idx] if (dst_ips is not None and idx < len(dst_ips)) else "0.0.0.0",
+                "features": feature_dict,
+                "feature_count": len(feature_dict),
+                "producer_id": "live_bridge_v1_20f",
+            }
+            message_json = json.dumps(kafka_message, default=str)
+            KAFKA_PRODUCER.produce(
+                KAFKA_TOPIC,
+                value=message_json.encode("utf-8"),
+                callback=delivery_report,
+            )
+
+        KAFKA_PRODUCER.flush(timeout=10)
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"✅ [{timestamp}] {len(features)} flow(s) sent to Kafka (Topic: {KAFKA_TOPIC})           ")
+        PRODUCER_STATS["extract_successes"] += 1
+        PRODUCER_STATS["flows_sent"] += len(features)
+        return {"success": True, "flows_sent": len(features), "reason": None}
+
+    except Exception as exc:
+        PRODUCER_STATS["extract_failures"] += 1
+        print(f"⚠️ Kafka send error: {exc}")
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "flows_sent": 0, "reason": f"kafka send error: {exc}"}
 
 
 EXPECTED_FEATURES = [
@@ -696,7 +1010,7 @@ def delivery_report(err, msg):
     # Başarılı gönderimler için sessiz mod (spam önleme)
 
 
-print("🛡️  AI NETWORK IPS - KAFKA PRODUCER MODE")
+print("  AI NETWORK IPS - KAFKA PRODUCER MODE")
 print("=" * 60)
 
 try:
@@ -726,52 +1040,147 @@ if shutil.which("cicflowmeter") is None:
 
 def run_cicflowmeter_cli(pcap_file: str, csv_file: str):
     """
-    Run cicflowmeter CLI via subprocess and return (success, error_message).
-    Avoids using the Python API to prevent version compatibility issues.
+    Extract flow features from a PCAP into CSV and return (success, error_message).
+    Prefer the in-process Python API when available because the installed
+    cicflowmeter CLI is version-dependent and has proven brittle on Windows.
     """
-    # Try method 1: python -m cicflowmeter (more reliable on Windows)
-    cmd = [sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file]
-    
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
-    except subprocess.TimeoutExpired:
-        return False, "CICFlowMeter CLI timeout (90s exceeded)"
-    except Exception as exc:
-        return False, f"Subprocess error: {exc}"
+    for candidate in (csv_file, f"{os.path.splitext(pcap_file)[0]}_Flow.csv"):
+        try:
+            if os.path.exists(candidate):
+                os.remove(candidate)
+        except OSError:
+            pass
 
-    if result.returncode != 0:
-        # Method 2: Try direct cicflowmeter command (if installed globally)
-        if shutil.which("cicflowmeter"):
-            try:
-                cmd_direct = ["cicflowmeter", "-f", pcap_file, "-c", csv_file]
-                result = subprocess.run(cmd_direct, capture_output=True, text=True, timeout=90)
-            except Exception:
-                pass
-        
+    api_ok, api_err = run_cicflowmeter_api(pcap_file, csv_file)
+    if api_ok:
+        return True, None
+
+    cli_attempts = []
+    executable_dir = os.path.dirname(sys.executable)
+    bundled_cic = os.path.join(
+        executable_dir,
+        "cicflowmeter.exe" if os.name == "nt" else "cicflowmeter",
+    )
+    cli_candidates = []
+
+    if os.path.exists(bundled_cic):
+        cli_candidates.append([bundled_cic, "-f", pcap_file, "-c", csv_file])
+        cli_candidates.append([bundled_cic, "-f", pcap_file, "-c", csv_file, csv_file])
+
+    cli_candidates.append([sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file])
+    cli_candidates.append([sys.executable, "-m", "cicflowmeter", "-f", pcap_file, "-c", csv_file, csv_file])
+
+    direct_cic = shutil.which("cicflowmeter")
+    if direct_cic:
+        cli_candidates.append([direct_cic, "-f", pcap_file, "-c", csv_file])
+        cli_candidates.append([direct_cic, "-f", pcap_file, "-c", csv_file, csv_file])
+
+    for cmd in cli_candidates:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        except subprocess.TimeoutExpired:
+            cli_attempts.append(f"{os.path.basename(cmd[0])}: timeout")
+            continue
+        except Exception as exc:
+            cli_attempts.append(f"{os.path.basename(cmd[0])}: {exc}")
+            continue
+
         if result.returncode != 0:
             err = result.stderr.strip() or result.stdout.strip() or f"CLI exit code {result.returncode}"
-            return False, err
+            cli_attempts.append(f"{os.path.basename(cmd[0])}: {err}")
+            continue
 
-    # CICFlowMeter sometimes changes output filename (e.g., temp_live.pcap_Flow.csv)
-    if not os.path.exists(csv_file):
-        # Common alternative name pattern: {pcap_name}_Flow.csv
-        base_name = os.path.splitext(pcap_file)[0]
-        alt_name = f"{base_name}_Flow.csv"
-        
-        if os.path.exists(alt_name):
-            try:
-                shutil.move(alt_name, csv_file)
-                return True, None
-            except OSError as e:
-                return False, f"File rename failed: {e}"
-        else:
-            # Check for other possible output files in current directory
-            possible_files = [f for f in os.listdir('.') if f.endswith('_Flow.csv') or f.endswith('.csv')]
-            if possible_files:
-                return False, f"CSV not found. Possible files: {possible_files}"
-            return False, "CLI ran but no CSV file was generated"
+        resolved_csv = resolve_cicflowmeter_output(pcap_file, csv_file)
+        if resolved_csv and os.path.getsize(resolved_csv) > 0:
+            return True, None
 
-    return True, None
+        cli_attempts.append(f"{os.path.basename(cmd[0])}: empty CSV output")
+
+    details = [f"API failed: {api_err}"] if api_err else []
+    details.extend(cli_attempts)
+    return False, " | ".join(details) if details else "Feature extraction failed"
+
+
+def run_cicflowmeter_api(pcap_file: str, csv_file: str):
+    """Use cicflowmeter's Python internals directly to avoid CLI issues."""
+    try:
+        from scapy.all import PcapReader
+        from cicflowmeter.flow_session import FlowSession
+    except Exception as exc:
+        return False, f"Python API unavailable: {exc}"
+
+    total_packets = 0
+    accepted_packets = 0
+
+    try:
+        session = None
+        with contextlib.redirect_stdout(io.StringIO()):
+            if hasattr(FlowSession, "on_packet_received"):
+                setattr(FlowSession, "output_mode", "csv")
+                setattr(FlowSession, "output", csv_file)
+                setattr(FlowSession, "fields", None)
+                setattr(FlowSession, "verbose", False)
+                session = FlowSession()
+                packet_handler = session.on_packet_received
+                finalizer = lambda: session.garbage_collect(None)
+            else:
+                session = FlowSession(
+                    output_mode="csv",
+                    output=csv_file,
+                    fields=None,
+                    verbose=False,
+                )
+                if hasattr(session, "process"):
+                    packet_handler = session.process
+                elif hasattr(session, "on_packet_received"):
+                    packet_handler = session.on_packet_received
+                else:
+                    return False, "Python API error: FlowSession has no packet handler"
+
+                def finalizer():
+                    session.flush_flows()
+                    if hasattr(session, "_gc_stop"):
+                        session._gc_stop.set()
+                    if hasattr(session, "_gc_thread"):
+                        session._gc_thread.join(timeout=2.0)
+
+            with PcapReader(pcap_file) as reader:
+                for pkt in reader:
+                    total_packets += 1
+                    if (("IP" in pkt) or ("IPv6" in pkt)) and (("TCP" in pkt) or ("UDP" in pkt)):
+                        packet_handler(pkt)
+                        accepted_packets += 1
+
+            finalizer()
+            del session
+            gc.collect()
+    except Exception as exc:
+        return False, f"Python API error: {exc}"
+
+    resolved_csv = resolve_cicflowmeter_output(pcap_file, csv_file)
+    if resolved_csv and os.path.getsize(resolved_csv) > 0:
+        return True, None
+
+    if accepted_packets == 0:
+        return False, f"No extractable IP/TCP/UDP packets found ({total_packets} packets scanned)"
+
+    return False, f"Processed {accepted_packets} packets but produced an empty CSV"
+
+
+def resolve_cicflowmeter_output(pcap_file: str, csv_file: str):
+    """Normalize cicflowmeter's output naming to the requested CSV path."""
+    if os.path.exists(csv_file):
+        return csv_file
+
+    alt_name = f"{os.path.splitext(pcap_file)[0]}_Flow.csv"
+    if os.path.exists(alt_name):
+        try:
+            shutil.move(alt_name, csv_file)
+            return csv_file
+        except OSError:
+            return alt_name
+
+    return None
 
 
 def generate_dummy_features(packet_count: int = 1) -> pd.DataFrame:
@@ -857,6 +1266,80 @@ def main_loop():
         except Exception as e:
             print(f"⚠️ Ana döngü hatası: {e}")
             time.sleep(1)
+
+def main_loop():
+    global KAFKA_PRODUCER
+
+    print(f"\n📡 Ağ Dinleniyor: {INTERFACE}")
+    print(f"📤 Kafka Topic: {KAFKA_TOPIC}")
+    print("⏹️  Durdurmak için CTRL+C yapın...\n")
+
+    packet_buffer = []
+    buffered_windows = 0
+    last_stats_window = 0
+
+    while True:
+        try:
+            print("⏳ Paket toplanıyor...", end="\r")
+            packets = sniff(iface=INTERFACE, timeout=CAPTURE_TIMEOUT_SECONDS)
+
+            if len(packets) > 0:
+                PRODUCER_STATS["capture_windows"] += 1
+                packet_buffer.extend(list(packets))
+                packet_buffer = trim_packet_buffer(packet_buffer)
+                buffered_windows = min(buffered_windows + 1, MAX_BUFFER_WINDOWS)
+
+                total_packets = len(packet_buffer)
+                extractable_packets = count_extractable_packets(packet_buffer)
+
+                if total_packets < MIN_BUFFER_PACKETS or extractable_packets < MIN_BUFFER_FLOW_PACKETS:
+                    print(
+                        f"   ⏳ Buffering packets: total={total_packets} "
+                        f"extractable={extractable_packets} "
+                        f"windows={buffered_windows}/{MAX_BUFFER_WINDOWS}",
+                        end="\r",
+                    )
+                    continue
+
+                wrpcap(TEMP_PCAP, packet_buffer)
+                result = feature_extraction_and_predict()
+
+                if result["success"]:
+                    packet_buffer = []
+                    buffered_windows = 0
+                else:
+                    PRODUCER_STATS["skipped_windows"] += 1
+                    if buffered_windows >= MAX_BUFFER_WINDOWS:
+                        retained_packets = max(MIN_BUFFER_PACKETS, MAX_BUFFER_PACKETS // 2)
+                        packet_buffer = packet_buffer[-retained_packets:]
+                        buffered_windows = max(1, MAX_BUFFER_WINDOWS // 2)
+                        print(
+                            "   ⚠️ Keeping the most recent buffered traffic after extraction failure "
+                            f"({result['reason']})"
+                        )
+            else:
+                print(f"⚠️ 0 Paket! '{INTERFACE}' ismini kontrol et.        ", end="\r")
+
+            if (
+                PRODUCER_STATS["capture_windows"] > 0
+                and PRODUCER_STATS["capture_windows"] % 10 == 0
+                and PRODUCER_STATS["capture_windows"] != last_stats_window
+            ):
+                print_producer_stats()
+                last_stats_window = PRODUCER_STATS["capture_windows"]
+
+        except KeyboardInterrupt:
+            print("\n🛑 Sistem kullanıcı tarafından durduruldu.")
+            if KAFKA_PRODUCER is not None:
+                print("⏳ Kafka Producer kapatılıyor...")
+                KAFKA_PRODUCER.flush(timeout=5)
+                print("✅ Kafka Producer kapatıldı.")
+            print_producer_stats()
+            break
+        except Exception as e:
+            print(f"⚠️ Ana döngü hatası: {e}")
+            time.sleep(1)
+
 
 if __name__ == "__main__":
     main_loop()

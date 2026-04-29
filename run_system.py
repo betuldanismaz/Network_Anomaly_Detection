@@ -9,6 +9,7 @@ import sys
 import time
 import platform
 import subprocess
+import json
 
 # ---------------------------------------------------------------------------
 # ANSI COLORS
@@ -25,14 +26,45 @@ RESET = '\033[0m'
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PYTHON_EXE = sys.executable
+PROJECT_VENV_PYTHON = os.path.join(PROJECT_ROOT, "venv", "Scripts", "python.exe")
+SERVICE_ENV = {
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1",
+}
+
+
+def resolve_service_python():
+    """Prefer the project virtualenv for all launched services."""
+    if os.path.exists(PROJECT_VENV_PYTHON):
+        return PROJECT_VENV_PYTHON
+
+    print(f"{YELLOW}⚠️  Project venv Python not found, falling back to launcher interpreter{RESET}")
+    print(f"{YELLOW}   Expected: {PROJECT_VENV_PYTHON}{RESET}")
+    return PYTHON_EXE
+
+
+SERVICE_PYTHON_EXE = resolve_service_python()
 
 
 def print_banner():
     """Print startup banner."""
     print(f"\n{BOLD}{CYAN}╔{'═'*68}╗{RESET}")
-    print(f"{BOLD}{CYAN}║{' '*10}🛡️  NETWORK ANOMALY DETECTION SYSTEM LAUNCHER{' '*10}║{RESET}")
+    print(f"{BOLD}{CYAN}║{' '*10}  NETWORK ANOMALY DETECTION SYSTEM LAUNCHER{' '*10}║{RESET}")
     print(f"{BOLD}{CYAN}║{' '*20}Automated Multi-Service Startup{' '*20}║{RESET}")
     print(f"{BOLD}{CYAN}╚{'═'*68}╝{RESET}\n")
+
+
+def print_runtime_context():
+    """Show which interpreter the launcher and child services will use."""
+    print(f"{CYAN}🧭 Launcher Python: {PYTHON_EXE}{RESET}")
+    print(f"{CYAN}🚀 Service Python:  {SERVICE_PYTHON_EXE}{RESET}")
+    conda_env = os.getenv("CONDA_DEFAULT_ENV")
+    if conda_env:
+        print(f"{CYAN}🐍 Conda env:       {conda_env}{RESET}")
+    if SERVICE_PYTHON_EXE != PYTHON_EXE:
+        print(f"{YELLOW}⚠️  Services will be forced onto the project venv to avoid mixed environments{RESET}")
+    print()
 
 
 def check_os():
@@ -139,7 +171,79 @@ def start_docker_infrastructure():
         sys.exit(1)
 
 
-def launch_in_new_terminal(command, title, working_dir=None):
+def find_running_stack_processes():
+    """Return existing Python processes for this stack to avoid duplicate launches."""
+    current_pid = os.getpid()
+    powershell_script = rf"""
+$matches = Get-CimInstance Win32_Process |
+  Where-Object {{
+    $_.Name -match 'python' -and
+    $_.ProcessId -ne {current_pid} -and
+    $_.CommandLine -and (
+      $_.CommandLine -match 'src\\kafka_consumer\.py' -or
+      $_.CommandLine -match 'src\\live_bridge\.py' -or
+      $_.CommandLine -match 'streamlit run src\\dashboard\\app\.py'
+    )
+  }} |
+  Select-Object ProcessId, CommandLine
+
+if ($matches) {{
+  $matches | ConvertTo-Json -Compress
+}}
+"""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", powershell_script],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=PROJECT_ROOT,
+        )
+    except Exception as exc:
+        print(f"{YELLOW}⚠️  Could not inspect existing stack processes: {exc}{RESET}")
+        return []
+
+    payload = result.stdout.strip()
+    if result.returncode != 0 or not payload:
+        return []
+
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+
+    if isinstance(parsed, dict):
+        parsed = [parsed]
+    elif not isinstance(parsed, list):
+        return []
+
+    return [
+        proc for proc in parsed
+        if int(proc.get("ProcessId", -1)) != current_pid
+    ]
+
+
+def ensure_single_stack():
+    """Fail fast if another launcher or service stack is already running."""
+    running = find_running_stack_processes()
+    if not running:
+        return
+
+    print(f"{RED}❌ Existing pipeline processes detected. Refusing to launch a duplicate stack.{RESET}")
+    for proc in running:
+        pid = proc.get("ProcessId")
+        cmd = (proc.get("CommandLine") or "").strip()
+        print(f"{YELLOW}   PID {pid}: {cmd}{RESET}")
+
+    pid_list = ",".join(str(proc.get("ProcessId")) for proc in running if proc.get("ProcessId"))
+    if pid_list:
+        print(f"\n{CYAN}Stop them first with:{RESET}")
+        print(f"{CYAN}   Stop-Process -Id {pid_list}{RESET}")
+    print()
+    sys.exit(1)
+
+
+def launch_in_new_terminal(command, title, working_dir=None, extra_env=None):
     """
     Launch a command in a new Windows terminal window.
     
@@ -153,10 +257,15 @@ def launch_in_new_terminal(command, title, working_dir=None):
     """
     if working_dir is None:
         working_dir = PROJECT_ROOT
-    
+
+    env_vars = dict(SERVICE_ENV)
+    if extra_env:
+        env_vars.update(extra_env)
+    env_prefix = " && ".join([f'set "{key}={value}"' for key, value in env_vars.items()])
+
     # Windows command pattern: start cmd /k "command"
     # /k keeps the window open after command execution
-    full_command = f'start "{title}" cmd /k "cd /d {working_dir} && {command}"'
+    full_command = f'start "{title}" cmd /k "cd /d {working_dir} && {env_prefix} && {command}"'
     
     try:
         process = subprocess.Popen(
@@ -181,7 +290,7 @@ def launch_services():
     # 1. KAFKA CONSUMER
     print(f"{CYAN}🔄 Launching Kafka Consumer...{RESET}")
     consumer_process = launch_in_new_terminal(
-        "python src\\kafka_consumer.py",
+        f'"{SERVICE_PYTHON_EXE}" src\\kafka_consumer.py',
         "NIDS - Kafka Consumer",
         PROJECT_ROOT
     )
@@ -193,7 +302,7 @@ def launch_services():
     # 2. STREAMLIT DASHBOARD
     print(f"{CYAN}📊 Launching Streamlit Dashboard...{RESET}")
     dashboard_process = launch_in_new_terminal(
-        "streamlit run src\\dashboard\\app.py",
+        f'"{SERVICE_PYTHON_EXE}" -m streamlit run src\\dashboard\\app.py',
         "NIDS - Dashboard",
         PROJECT_ROOT
     )
@@ -210,7 +319,7 @@ def launch_services():
     # 3. LIVE BRIDGE (PRODUCER)
     print(f"{CYAN}📡 Launching Live Bridge Producer...{RESET}")
     producer_process = launch_in_new_terminal(
-        "python src\\live_bridge.py",
+        f'"{SERVICE_PYTHON_EXE}" src\\live_bridge.py',
         "NIDS - Producer (Live Bridge)",
         PROJECT_ROOT
     )
@@ -255,6 +364,8 @@ def main():
     try:
         print_banner()
         check_os()
+        print_runtime_context()
+        ensure_single_stack()
         start_docker_infrastructure()
         services = launch_services()
         print_system_status(services)

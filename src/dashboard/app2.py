@@ -15,7 +15,7 @@ from utils.db_manager import fetch_logs
 from utils.firewall_manager import unblock_ip
 
 st.set_page_config(page_title="Network IPS Dashboard", layout="wide")
-st.title("🛡️ AI Network IPS Dashboard")
+st.title(" AI Network IPS Dashboard")
 
 
 def load_logs() -> pd.DataFrame:
@@ -85,9 +85,10 @@ st.sidebar.header("Kontroller")
 st.sidebar.subheader("🧠 Aktif Yapay Zeka Modeli")
 
 MODEL_MAPPING = {
-    "Random Forest": "rf_model_v1.pkl",
+    "Random Forest": "rf_3class_model.pkl",
     "Decision Tree": "dt_model.pkl",
     "XGBoost": "xgboost_model.pkl",
+    "LSTM": "lstm_model.keras",
     "BiLSTM": "bilstm_model.keras"
 }
 

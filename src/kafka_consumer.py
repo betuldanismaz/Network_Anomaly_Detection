@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+import shutil
 import joblib
 import pandas as pd
 import numpy as np
@@ -55,11 +56,21 @@ BOLD = '\033[1m'
 # ---------------------------------------------------------------------------
 KAFKA_BOOTSTRAP_SERVERS = '127.0.0.1:9092'
 KAFKA_TOPIC = 'network-traffic'
-KAFKA_GROUP_ID = 'nids-consumer-group-v1'
+KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "nids-consumer-group-v2")
+KAFKA_AUTO_OFFSET_RESET = os.getenv("KAFKA_AUTO_OFFSET_RESET", "latest")
 WHITELIST_IPS = os.getenv("WHITELIST_IPS", "192.168.1.1,127.0.0.1,0.0.0.0,localhost").split(",")
-
-# Expected feature count from producer
-EXPECTED_FEATURE_COUNT = 78
+CSV_HEADER_COLUMNS = [
+    "Timestamp",
+    "Src_IP",
+    "Dst_IP",
+    "Predicted_Label",
+    "Confidence_Score",
+    "Model_Used",
+    "Processing_Time_Ms",
+]
+MODEL_ALIASES = {
+    "rf_model_v1.pkl": "rf_3class_model.pkl",
+}
 
 # ---------------------------------------------------------------------------
 # GLOBAL MODEL & SCALER
@@ -76,25 +87,52 @@ STATS = {
     "total_processed": 0,
     "attacks_detected": 0,
     "clean_traffic": 0,
+    "rejected_messages": 0,
+    "schema_adjustments": 0,
     "errors": 0,
     "start_time": datetime.now()
 }
 
 
+def get_expected_feature_names():
+    if SCALER is not None and hasattr(SCALER, "feature_names_in_"):
+        return list(SCALER.feature_names_in_)
+    return []
+
+
+def normalize_model_filename(model_filename):
+    """Map legacy model names onto the canonical model files we want to use."""
+    normalized = MODEL_ALIASES.get(model_filename, model_filename)
+    if normalized != model_filename:
+        print(f"{YELLOW}⚠️  Redirecting model '{model_filename}' -> '{normalized}'{RESET}")
+    return normalized
+
+
 def initialize_csv_file():
     """Initialize CSV output file with headers if it doesn't exist."""
     os.makedirs(os.path.dirname(CSV_OUTPUT_PATH), exist_ok=True)
-    
-    if not os.path.exists(CSV_OUTPUT_PATH):
-        # Create header row: Timestamp, Src_IP, Dst_IP, Predicted_Label, Confidence_Score, Model_Used
-        header_df = pd.DataFrame(columns=[
-            "Timestamp", "Src_IP", "Dst_IP", "Predicted_Label", 
-            "Confidence_Score", "Model_Used", "Processing_Time_Ms"
-        ])
-        header_df.to_csv(CSV_OUTPUT_PATH, index=False)
-        print(f"{GREEN}✅ CSV output file initialized: {CSV_OUTPUT_PATH}{RESET}")
-    else:
-        print(f"{CYAN}ℹ️  Using existing CSV: {CSV_OUTPUT_PATH}{RESET}")
+
+    if os.path.exists(CSV_OUTPUT_PATH):
+        try:
+            existing_header = list(pd.read_csv(CSV_OUTPUT_PATH, nrows=0).columns)
+        except Exception as exc:
+            existing_header = None
+            print(f"{YELLOW}⚠️  Existing CSV could not be parsed: {exc}{RESET}")
+
+        if existing_header == CSV_HEADER_COLUMNS:
+            print(f"{CYAN}ℹ️  Using existing CSV: {CSV_OUTPUT_PATH}{RESET}")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = CSV_OUTPUT_PATH.replace(".csv", f".invalid_{timestamp}.csv")
+        shutil.move(CSV_OUTPUT_PATH, backup_path)
+        print(f"{YELLOW}⚠️  Existing CSV schema mismatch; moved to: {backup_path}{RESET}")
+        if existing_header is not None:
+            print(f"{YELLOW}   Found columns: {existing_header}{RESET}")
+
+    header_df = pd.DataFrame(columns=CSV_HEADER_COLUMNS)
+    header_df.to_csv(CSV_OUTPUT_PATH, index=False)
+    print(f"{GREEN}✅ CSV output file initialized: {CSV_OUTPUT_PATH}{RESET}")
 
 
 def load_model_and_scaler(model_filename=None):
@@ -122,6 +160,8 @@ def load_model_and_scaler(model_filename=None):
                     f.write(model_filename)
             except Exception:
                 pass
+
+    model_filename = normalize_model_filename(model_filename)
     
     print(f"\n{CYAN}{'='*60}{RESET}")
     print(f"{BOLD}🔧 Loading ML Model & Scaler...{RESET}")
@@ -194,7 +234,11 @@ def load_model_and_scaler(model_filename=None):
             print(f"{GREEN}✅ StandardScaler loaded successfully{RESET}")
         
         CURRENT_MODEL_NAME = model_filename
-        print(f"{CYAN}   Features expected: {EXPECTED_FEATURE_COUNT}{RESET}\n")
+        expected_feature_names = get_expected_feature_names()
+        if expected_feature_names:
+            print(f"{CYAN}   Features expected by scaler: {len(expected_feature_names)}{RESET}\n")
+        else:
+            print(f"{YELLOW}   WARNING: scaler feature names are unavailable; schema checks will be limited{RESET}\n")
         
     except Exception as exc:
         print(f"{RED}❌ CRITICAL ERROR: Failed to load model/scaler!{RESET}")
@@ -213,7 +257,7 @@ def create_consumer():
     conf = {
         'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
         'group.id': KAFKA_GROUP_ID,
-        'auto.offset.reset': 'latest',  # Start from latest messages
+        'auto.offset.reset': KAFKA_AUTO_OFFSET_RESET,
         'enable.auto.commit': True,
         'auto.commit.interval.ms': 5000,
         'session.timeout.ms': 30000,
@@ -227,6 +271,7 @@ def create_consumer():
         print(f"{CYAN}   Bootstrap servers: {KAFKA_BOOTSTRAP_SERVERS}{RESET}")
         print(f"{CYAN}   Topic: {KAFKA_TOPIC}{RESET}")
         print(f"{CYAN}   Group ID: {KAFKA_GROUP_ID}{RESET}\n")
+        print(f"{CYAN}   Auto offset reset: {KAFKA_AUTO_OFFSET_RESET}{RESET}\n")
         return consumer
     except Exception as exc:
         print(f"{RED}❌ CRITICAL ERROR: Failed to create Kafka consumer!{RESET}")
@@ -388,6 +433,148 @@ def process_message(message_value):
         return False
 
 
+def process_message(message_value):
+    """
+    Process a single Kafka message: parse, validate, predict, log.
+
+    Args:
+        message_value: Raw message bytes from Kafka
+
+    Returns:
+        bool: True if processing successful, False otherwise
+    """
+    start_time = time.time()
+
+    try:
+        message_data = json.loads(message_value.decode("utf-8"))
+
+        timestamp = message_data.get("timestamp", datetime.now().isoformat())
+        src_ip = message_data.get("src_ip", "Unknown")
+        dst_ip = message_data.get("dst_ip", "Unknown")
+        features_dict = message_data.get("features", {})
+        producer_id = message_data.get("producer_id", "unknown")
+
+        if not isinstance(features_dict, dict) or not features_dict:
+            print(f"{YELLOW}⚠️  Rejected message from {producer_id}: empty or invalid feature payload{RESET}")
+            STATS["rejected_messages"] += 1
+            return False
+
+        expected_features = get_expected_feature_names()
+        incoming_feature_names = list(features_dict.keys())
+        features_df = pd.DataFrame([features_dict])
+
+        if expected_features:
+            missing_features = [col for col in expected_features if col not in features_dict]
+            extra_features = [col for col in incoming_feature_names if col not in expected_features]
+            shared_features = len(expected_features) - len(missing_features)
+
+            if shared_features == 0:
+                print(
+                    f"{YELLOW}⚠️  Rejected message from {producer_id}: no overlap with scaler schema "
+                    f"(incoming={len(incoming_feature_names)}, expected={len(expected_features)}){RESET}"
+                )
+                STATS["rejected_messages"] += 1
+                return False
+
+            if missing_features or extra_features:
+                STATS["schema_adjustments"] += 1
+                print(
+                    f"{CYAN}ℹ️  Schema adjusted from {producer_id}: "
+                    f"incoming={len(incoming_feature_names)} expected={len(expected_features)} "
+                    f"missing={len(missing_features)} extra={len(extra_features)}{RESET}"
+                )
+
+            features_df = features_df.reindex(columns=expected_features, fill_value=0.0)
+
+        try:
+            features_scaled = SCALER.transform(features_df)
+            features_scaled_df = pd.DataFrame(
+                features_scaled,
+                columns=features_df.columns,
+                index=features_df.index,
+            )
+        except Exception as exc:
+            print(f"{RED}⚠️  Scaling error: {exc}{RESET}")
+            features_df = features_df.fillna(0)
+            features_scaled = SCALER.transform(features_df)
+            features_scaled_df = pd.DataFrame(
+                features_scaled,
+                columns=features_df.columns,
+            )
+
+        if CURRENT_MODEL_TYPE == "keras":
+            features_for_prediction = features_scaled.reshape(
+                (features_scaled.shape[0], 1, features_scaled.shape[1])
+            )
+            prediction_proba = MODEL.predict(features_for_prediction, verbose=0)[0]
+
+            if len(prediction_proba) == 1:
+                confidence_score = float(prediction_proba[0])
+                prediction = 1 if confidence_score > 0.5 else 0
+            else:
+                prediction = int(np.argmax(prediction_proba))
+                confidence_score = float(prediction_proba[prediction])
+        else:
+            prediction = MODEL.predict(features_scaled_df)[0]
+            try:
+                probabilities = MODEL.predict_proba(features_scaled_df)[0]
+                confidence_score = float(probabilities[1])
+            except AttributeError:
+                confidence_score = float(prediction)
+
+        is_attack = prediction == 1
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        log_entry = {
+            "Timestamp": timestamp,
+            "Src_IP": src_ip,
+            "Dst_IP": dst_ip,
+            "Predicted_Label": int(prediction),
+            "Confidence_Score": round(confidence_score, 4),
+            "Model_Used": CURRENT_MODEL_NAME.replace(".pkl", "").replace(".keras", ""),
+            "Processing_Time_Ms": round(processing_time_ms, 2),
+        }
+
+        pd.DataFrame([log_entry]).to_csv(CSV_OUTPUT_PATH, mode="a", header=False, index=False)
+
+        if DB_AVAILABLE:
+            if is_attack:
+                if src_ip not in WHITELIST_IPS and src_ip != "Unknown":
+                    log_attack(src_ip, "BLOCKED", f"Attack detected (confidence: {confidence_score:.2%})")
+                else:
+                    log_attack(src_ip, "ALLOWED", f"Attack detected but whitelisted (confidence: {confidence_score:.2%})")
+
+        STATS["total_processed"] += 1
+        if is_attack:
+            STATS["attacks_detected"] += 1
+        else:
+            STATS["clean_traffic"] += 1
+
+        current_time = datetime.now().strftime("%H:%M:%S")
+        if is_attack:
+            print(f"{RED}{BOLD}🚨 [{current_time}] ALERT: ATTACK DETECTED!{RESET}")
+            print(f"{RED}   Source IP: {src_ip} → Destination: {dst_ip}{RESET}")
+            print(f"{RED}   Confidence: {confidence_score:.2%} | Processing: {processing_time_ms:.2f}ms{RESET}")
+            if src_ip in WHITELIST_IPS:
+                print(f"{YELLOW}   ⚠️  IP is whitelisted - not blocking{RESET}")
+        else:
+            print(f"{GREEN}✅ [{current_time}] Clean Traffic{RESET}", end="")
+            print(f"{GREEN} | {src_ip} → {dst_ip} | Confidence: {confidence_score:.2%} | {processing_time_ms:.2f}ms{RESET}")
+
+        return True
+
+    except json.JSONDecodeError as exc:
+        print(f"{RED}⚠️  JSON parsing error: {exc}{RESET}")
+        STATS["errors"] += 1
+        return False
+    except Exception as exc:
+        print(f"{RED}⚠️  Processing error: {exc}{RESET}")
+        import traceback
+        traceback.print_exc()
+        STATS["errors"] += 1
+        return False
+
+
 def print_statistics():
     """Print consumer statistics."""
     runtime = datetime.now() - STATS["start_time"]
@@ -400,6 +587,8 @@ def print_statistics():
     print(f"   Total Processed: {STATS['total_processed']}")
     print(f"   {RED}Attacks Detected: {STATS['attacks_detected']}{RESET}")
     print(f"   {GREEN}Clean Traffic: {STATS['clean_traffic']}{RESET}")
+    print(f"   {YELLOW}Rejected Messages: {STATS['rejected_messages']}{RESET}")
+    print(f"   {CYAN}Schema Adjustments: {STATS['schema_adjustments']}{RESET}")
     print(f"   {YELLOW}Errors: {STATS['errors']}{RESET}")
     if runtime_seconds > 0:
         print(f"   Throughput: {STATS['total_processed']/runtime_seconds:.2f} messages/sec")
@@ -445,7 +634,7 @@ def check_and_reload_model():
 def main():
     """Main consumer loop."""
     print(f"\n{BOLD}{CYAN}╔{'═'*58}╗{RESET}")
-    print(f"{BOLD}{CYAN}║{' '*10}🛡️  KAFKA CONSUMER - NETWORK IPS{' '*15}║{RESET}")
+    print(f"{BOLD}{CYAN}║{' '*10}  KAFKA CONSUMER - NETWORK IPS{' '*15}║{RESET}")
     print(f"{BOLD}{CYAN}╚{'═'*58}╝{RESET}\n")
     
     # Initialize components

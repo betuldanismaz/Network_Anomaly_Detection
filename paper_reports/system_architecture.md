@@ -8,7 +8,7 @@ flowchart TD
     D["📨 Apache Kafka\nMessage Bus"]
     E["🤖 AI Consumer\nModel Inference\nXGBoost · LSTM · BiLSTM"]
     F{"Attack\nDetected?"}
-    G["🛡️ Firewall Block\nfirewall_manager.py"]
+    G[" Firewall Block\nfirewall_manager.py"]
     H["📊 Streamlit Dashboard\nReal-Time Monitoring"]
 
     A --> B --> C --> D --> E --> F
