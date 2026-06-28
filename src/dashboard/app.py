@@ -77,6 +77,8 @@ from transforms import (
     find_first_present_column,
     parse_classification_report_text,
 )
+# Merkezi tunable sabitler (.env ile override edilebilir)
+from config import BUCKET_FREQUENCY, ESCALATION_WINDOW_SECONDS
 
 try:
     from utils.db_manager import fetch_logs, log_heartbeat, fetch_recent_events, get_service_health
@@ -133,7 +135,7 @@ SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
 SCALER_PATH_FALLBACK = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
 ACTIVE_MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "active_model.txt")
 THRESHOLD_PATH = os.path.join(PROJECT_ROOT, "models", "threshold.txt")
-BUCKET_FREQUENCY = "10s"
+# BUCKET_FREQUENCY config.py'den (merkezi) import ediliyor.
 
 CLASS_NAMES = {0: "Benign", 1: "Volumetric", 2: "Semantic"}
 CLASS_COLORS = {"Benign": "#00CC66", "Volumetric": "#FF4B4B", "Semantic": "#FFA500"}
@@ -2068,7 +2070,7 @@ def render_perf_model_detail(perf: dict, model_key: str):
 # ---------------------------------------------------------------------------
 # Yönetim & Yanıt yardımcıları (Sprint 4)
 # ---------------------------------------------------------------------------
-ESCALATION_WINDOW_VIEW = int(os.getenv("ESCALATION_WINDOW_SECONDS", "60"))
+ESCALATION_WINDOW_VIEW = ESCALATION_WINDOW_SECONDS  # config.py'den (merkezi)
 
 
 def save_model_threshold(value: float) -> bool:
