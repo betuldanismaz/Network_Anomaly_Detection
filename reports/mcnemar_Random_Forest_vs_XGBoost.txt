@@ -1,0 +1,29 @@
+==============================================================================
+  McNemar Testi: Random Forest vs XGBoost
+==============================================================================
+Ornek sayisi (N): 283,078
+
+--- Macro F1 ---
+  Random Forest       : 0.959080
+  XGBoost             : 0.958722
+  Fark (A - B):        +0.000358
+
+--- 2x2 Uyumsuzluk (contingency) tablosu ---
+  Her ikisi dogru   (n11):    273,980
+  Sadece A dogru    (b)  :      1,558
+  Sadece B dogru    (c)  :      2,621
+  Her ikisi yanlis  (n00):      4,919
+
+--- McNemar ki-kare ---
+  CC acik  : chi2 =   269.8837   p = 0.00000000  *
+  CC kapali: chi2 =   270.3922   p = 0.00000000  *
+  alpha = 0.05
+  Karar (CC acik): ANLAMLI (H0 reddedilir)
+
+--- Sinif bazli McNemar (CC acik) ---
+  Sinif               b        c       chi2            p  Anlamli
+  ------------------------------------------------------------
+  Benign          1,437    2,280   190.7355   0.00000000     Evet
+  Volumetric        121       59    20.6722   0.00000545     Evet
+  Semantic            0      282   280.0035   0.00000000     Evet
+==============================================================================

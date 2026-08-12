@@ -1,0 +1,28 @@
+==============================================================================
+  McNemar Testi: LSTM vs BiLSTM
+==============================================================================
+Ornek sayisi (N): 566,080
+
+--- Macro F1 ---
+  LSTM                : 0.964495
+  BiLSTM              : 0.979800
+  Fark (A - B):        -0.015305
+
+--- 2x2 Uyumsuzluk (contingency) tablosu ---
+  Her ikisi dogru   (n11):    554,966
+  Sadece A dogru    (b)  :        637
+  Sadece B dogru    (c)  :      4,758
+  Her ikisi yanlis  (n00):      5,719
+
+--- McNemar ki-kare ---
+  CC acik  : chi2 =  3146.3207   p = 0.00000000e+00  *
+  alpha = 0.05
+  Karar (CC acik): ANLAMLI (H0 reddedilir)
+
+--- Sinif bazli McNemar (CC acik) ---
+  Sinif              b        c       chi2             p   Anlamli
+  ------------------------------------------------------------
+  Benign           316    3,336   2495.7177   0.00000000e+00     Evet
+  Volumetric       176      927    509.9728   6.43e-113          Evet
+  Semantic         145      495    190.3141   2.72e-43           Evet
+==============================================================================

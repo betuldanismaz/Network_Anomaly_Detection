@@ -1,0 +1,29 @@
+==============================================================================
+  McNemar Testi: Random Forest vs Decision Tree
+==============================================================================
+Ornek sayisi (N): 283,078
+
+--- Macro F1 ---
+  Random Forest       : 0.959080
+  Decision Tree       : 0.958392
+  Fark (A - B):        +0.000688
+
+--- 2x2 Uyumsuzluk (contingency) tablosu ---
+  Her ikisi dogru   (n11):    275,223
+  Sadece A dogru    (b)  :        315
+  Sadece B dogru    (c)  :        136
+  Her ikisi yanlis  (n00):      7,404
+
+--- McNemar ki-kare ---
+  CC acik  : chi2 =    70.2528   p = 0.00000000  *
+  CC kapali: chi2 =    71.0443   p = 0.00000000  *
+  alpha = 0.05
+  Karar (CC acik): ANLAMLI (H0 reddedilir)
+
+--- Sinif bazli McNemar (CC acik) ---
+  Sinif               b        c       chi2            p  Anlamli
+  ------------------------------------------------------------
+  Benign            239       48   125.7840   0.00000000     Evet
+  Volumetric         62       15    27.4805   0.00000016     Evet
+  Semantic           14       73    38.6667   0.00000000     Evet
+==============================================================================
