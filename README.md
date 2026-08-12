@@ -25,7 +25,7 @@ This project implements a production-ready **Network Intrusion Detection System 
 **Authors:** Betül Danışmaz · Mustafa Emre Bıyık  
 **Advisor:** Dr. Necip Gözüaçık
 
-**Paper:** [IEEE SIU 2026](https://siu2026.pirireis.edu.tr/) - Multi-Class Network Intrusion Detection: Machine and Deep Learning Benchmark with Live Stream Deployment 
+**Paper:** [IEEE](https://ieeexplore.ieee.org/document/11636987) - Multi-Class Network Intrusion Detection: Machine and Deep Learning Benchmark with Live Stream Deployment 
 
 ---
 
