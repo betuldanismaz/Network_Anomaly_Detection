@@ -1,0 +1,75 @@
+====================================================================================================
+  McNEMAR ISTATISTIKSEL ANLAMLILIK OZET TABLOSU
+  Network Intrusion Detection — 3-Class (Benign / Volumetric / Semantic)
+  Veri seti: CICIDS2017  |  Tarih: 2026-08-13
+====================================================================================================
+
+  GENEL KARSILASTIRMA (Yates sureklilik duzeltmesi uygulanmis, alpha=0.05)
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+  Cift  Model A           Model B           F1_A      F1_B      dF1         b        c      chi2            p   Sig.           N
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+    1   Random Forest      XGBoost          0.9591    0.9587   +0.0004    1,558    2,621    269.88    1.20e-60   ***      283,078
+    2   Random Forest      Decision Tree    0.9591    0.9584   +0.0007      315      136     70.25    5.22e-17   ***      283,078
+    3   XGBoost            Decision Tree    0.9587    0.9584   +0.0003    2,820    1,578    350.18    3.88e-78   ***      283,078
+    4   LSTM               BiLSTM           0.9645    0.9798   -0.0153      637    4,758  3,146.32    0.00e+00   ***      566,080
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+  Anlamlilik: *** p<0.001, ** p<0.01, * p<0.05, n.s. p>=0.05
+  b: Sadece Model A dogru tahmin etti;  c: Sadece Model B dogru tahmin etti
+  Ciftler 1-3: ayni test.csv (283,078 ornek);  Cift 4: ayni X_test.npy (566,080 sekans)
+
+
+  SINIF BAZLI McNEMAR SONUCLARI
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+  Cift  Model A           Model B           Sinif            b        c      chi2            p   Sig.
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+    1   Random Forest      XGBoost          Benign       1,437    2,280    190.74    2.20e-43   ***
+    1   Random Forest      XGBoost          Volumetric     121       59     20.67    5.45e-06   ***
+    1   Random Forest      XGBoost          Semantic         0      282    280.00    7.50e-63   ***
+  ....................................................................................................
+    2   Random Forest      Decision Tree    Benign         239       48    125.78    3.43e-29   ***
+    2   Random Forest      Decision Tree    Volumetric      62       15     27.48    1.59e-07   ***
+    2   Random Forest      Decision Tree    Semantic        14       73     38.67    5.03e-10   ***
+  ....................................................................................................
+    3   XGBoost            Decision Tree    Benign       2,478    1,444    272.08    4.00e-61   ***
+    3   XGBoost            Decision Tree    Volumetric     107      122      0.86    3.55e-01   n.s.
+    3   XGBoost            Decision Tree    Semantic       235       12    199.53    2.64e-45   ***
+  ....................................................................................................
+    4   LSTM               BiLSTM           Benign         316    3,336  2,495.72    0.00e+00   ***
+    4   LSTM               BiLSTM           Volumetric     176      927    509.97    6.43e-113  ***
+    4   LSTM               BiLSTM           Semantic       145      495    190.31    2.72e-43   ***
+  ....................................................................................................
+
+
+  YORUM VE BULGULAR
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+  1. Tum 4 cift icin genel McNemar testi istatistiksel olarak anlamli (p < 0.001).
+
+  2. TABULAR MODELLER (RF vs XGB vs DT):
+     - Macro F1 farklari kucuk (delta < 0.001), ancak buyuk N (283K) nedeniyle
+       tum farklar istatistiksel olarak anlamli.
+     - RF vs XGBoost: XGBoost daha fazla ornegi dogru tahmin ediyor (c=2,621 > b=1,558),
+       ozellikle Semantic sinifinda (b=0, c=282). XGBoost, Semantic saldiri
+       tespitinde RF'den ustun.
+     - RF vs DT: RF, DT'den daha fazla ornegi yakaladi (b=315 > c=136).
+     - XGBoost vs DT Volumetric: Tek n.s. sonuc (p=0.355). Bu iki model,
+       Volumetric saldiri tespitinde esit performans gosteriyor.
+
+  3. SEQUENCE MODELLER (LSTM vs BiLSTM):
+     - BiLSTM, LSTM'den anlamli sekilde ustun (delta F1 = -0.0153, p ~ 0).
+     - BiLSTM her uc sinifta da LSTM'den daha fazla ornegi dogru siniflandirdi
+       (c >> b, her sinif icin).
+     - En buyuk fark Benign sinifinda (c=3,336 vs b=316).
+
+  4. PRATIK ANLAM:
+     - Tabular modeller arasi F1 farklari akademik olarak anlamli ancak
+       pratik etki kucuk (< 0.1 puan). Model secimi latency ve operasyonel
+       gereksinimlere gore yapilabilir.
+     - BiLSTM vs LSTM farki hem istatistiksel hem pratik olarak anlamli
+       (+1.5 puan Macro F1).
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────
+  McNemar testi: chi2 = (|b-c|-1)^2 / (b+c), df=1, Yates CC uygulanmis.
+  p-degeri: erfc(sqrt(chi2/2)).
+  Tabular modeller: test.csv (283,078 ornek, 20 ozellik).
+  Sequence modeller: X_test.npy (566,080 sekans, pencere=10, adim=20).
+====================================================================================================

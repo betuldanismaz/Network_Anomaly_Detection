@@ -1,0 +1,29 @@
+==============================================================================
+  McNemar Testi: XGBoost vs Decision Tree
+==============================================================================
+Ornek sayisi (N): 283,078
+
+--- Macro F1 ---
+  XGBoost             : 0.958722
+  Decision Tree       : 0.958392
+  Fark (A - B):        +0.000330
+
+--- 2x2 Uyumsuzluk (contingency) tablosu ---
+  Her ikisi dogru   (n11):    273,781
+  Sadece A dogru    (b)  :      2,820
+  Sadece B dogru    (c)  :      1,578
+  Her ikisi yanlis  (n00):      4,899
+
+--- McNemar ki-kare ---
+  CC acik  : chi2 =   350.1776   p = 0.00000000  *
+  CC kapali: chi2 =   350.7422   p = 0.00000000  *
+  alpha = 0.05
+  Karar (CC acik): ANLAMLI (H0 reddedilir)
+
+--- Sinif bazli McNemar (CC acik) ---
+  Sinif               b        c       chi2            p  Anlamli
+  ------------------------------------------------------------
+  Benign          2,478    1,444   272.0778   0.00000000     Evet
+  Volumetric        107      122     0.8559   0.35488995    Hayir
+  Semantic          235       12   199.5304   0.00000000     Evet
+==============================================================================
