@@ -227,6 +227,13 @@ def load_model_and_scaler(model_key=None):
         sys.exit(1)
 
     entry = MODEL_REGISTRY[registry_key]
+
+    if not entry.get("live_supported", False):
+        fallback = DEFAULT_MODEL
+        print(f"{YELLOW}⚠️  Model '{registry_key}' is not live-supported (live_supported=False).{RESET}")
+        print(f"{YELLOW}   Falling back to default: {fallback}{RESET}")
+        registry_key = fallback
+        entry = MODEL_REGISTRY[registry_key]
     model_path = entry["artifact_path"]
     scaler_path = entry["scaler_path"]
 
@@ -544,17 +551,24 @@ def check_and_reload_model():
         with open(ACTIVE_MODEL_CONFIG, 'r') as f:
             requested_model = f.read().strip()
         
+        resolved_key = _resolve_registry_key(requested_model)
+
         # Check if model changed
-        if requested_model != CURRENT_MODEL_NAME:
+        if requested_model != CURRENT_MODEL_NAME and resolved_key != CURRENT_MODEL_NAME:
+            if resolved_key and not MODEL_REGISTRY[resolved_key].get("live_supported", False):
+                print(f"\n{YELLOW}⚠️  Model switch to '{resolved_key}' rejected: not live-supported.{RESET}")
+                print(f"{YELLOW}   Keeping current model: {CURRENT_MODEL_NAME}{RESET}")
+                return
+
             print(f"\n{YELLOW}{'='*60}{RESET}")
             print(f"{BOLD}{YELLOW}🔄 MODEL SWITCH DETECTED!{RESET}")
             print(f"{YELLOW}   Current: {CURRENT_MODEL_NAME}{RESET}")
             print(f"{YELLOW}   New:     {requested_model}{RESET}")
             print(f"{YELLOW}{'='*60}{RESET}")
-            
+
             # Reload model
             load_model_and_scaler(requested_model)
-            
+
             print(f"{GREEN}✅ Model switch complete! Now using: {CURRENT_MODEL_NAME}{RESET}\n")
     except Exception as e:
         print(f"{RED}⚠️  Error checking model config: {e}{RESET}")
