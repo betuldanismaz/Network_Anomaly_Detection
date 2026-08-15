@@ -127,8 +127,8 @@ if _TTL_THREAD_STARTED not in st.session_state:
 # ---------------------------------------------------------------------------
 # CONSTANTS
 # ---------------------------------------------------------------------------
-LIVE_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic_bilstm.csv")
-LIVE_CSV_PATH_OLD = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
+LIVE_CSV_PATH = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic.csv")
+LIVE_CSV_PATH_OLD = os.path.join(PROJECT_ROOT, "data", "live_captured_traffic_bilstm.csv")
 BILSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "bilstm_best.keras")
 LSTM_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "lstm_best.keras")
 SCALER_PATH = os.path.join(PROJECT_ROOT, "models", "scaler_lstm.pkl")
