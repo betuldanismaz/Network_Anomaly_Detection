@@ -2560,16 +2560,17 @@ selected_model = st.sidebar.selectbox(
     key="model_selector",
     label_visibility="collapsed",
 )
-if selected_model != current_model:
-    try:
-        with open(ACTIVE_MODEL_PATH, "w") as f:
-            f.write(selected_model)  # dosya adı değil, registry anahtar adı yazılır
-    except Exception:
-        pass
-
 _is_live = MODEL_LIVE.get(selected_model, True)
+if selected_model != current_model:
+    if _is_live:
+        try:
+            with open(ACTIVE_MODEL_PATH, "w") as f:
+                f.write(selected_model)
+        except Exception:
+            pass
+
 _badge_color = "#00CC66" if _is_live else "#FFA500"
-_badge_text = t("● Aktif") if _is_live else t("● Canlı değil")
+_badge_text = t("● Aktif") if _is_live else t("● Sadece Offline")
 st.sidebar.markdown(f"""
 <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-top: -10px;">
     <span style="font-weight: 600; font-size: 0.9rem;">{selected_model}</span>
@@ -2577,7 +2578,7 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 if not _is_live:
-    st.sidebar.warning(t("⚠️ Bu model henüz canlı pipeline'da desteklenmiyor (Sprint 2). Tüketici varsayılan modele dönebilir."))
+    st.sidebar.warning(t("⚠️ Bu model canlı pipeline'da desteklenmiyor. Sequence modeller (LSTM/BiLSTM) 10 adımlık sliding window gerektirir; canlı hatta yalnızca tabular modeller kullanılır."))
 
 st.sidebar.markdown("---")
 
